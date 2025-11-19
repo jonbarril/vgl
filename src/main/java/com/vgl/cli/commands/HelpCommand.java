@@ -7,7 +7,7 @@ public class HelpCommand implements Command {
     @Override public String name() { return "help"; }
     @Override public int run(List<String> args) {
         String txt = String.join("\n",
-            "vgl - Voodoo Gitless (" + Utils.versionFromRuntime() + ")",
+            "Voodoo Gitless  (" + Utils.versionFromRuntime() + ") -- Git for mortals",
             "Commands:",
             "  create <path>[@branch]                 Create local repo (warn if nested), set focus",
             "  create @<branch> | create -b <branch>  Create local branch, set focus",
