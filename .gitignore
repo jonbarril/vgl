@@ -1,0 +1,58 @@
+############################
+# Java
+############################
+*.class
+*.log
+*.ctxt
+hs_err_pid*
+replay_pid*
+
+############################
+# Maven
+############################
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+
+############################
+# Gradle
+############################
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!gradlew
+!gradlew.bat
+
+# Ignore Gradle GUI config
+.gradle-build/
+buildSrc/.gradle/
+buildSrc/build/
+
+############################
+# IntelliJ IDEA
+############################
+*.iml
+.idea/
+out/
+
+############################
+# Eclipse
+############################
+.project
+.classpath
+.settings/
+bin/
+
+############################
+# VS Code
+############################
+.vscode/
+
+############################
+# OS (macOS / Windows)
+############################
+.DS_Store
+Thumbs.db
