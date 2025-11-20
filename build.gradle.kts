@@ -7,7 +7,7 @@ plugins {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17)) // Changed from 23 to 17 for compatibility
+        languageVersion.set(JavaLanguageVersion.of(23)) // Updated to Java 23
     }
 }
 
