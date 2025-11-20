@@ -2,46 +2,48 @@ package com.vgl.cli;
 
 import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
 import java.io.*;
 import java.nio.file.*;
-//import java.util.*;
 
 public class CommitAndDiffTest {
 
-  private static String run(String... args) throws Exception {
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-    PrintStream oldOut = System.out;
-    try {
-      System.setOut(new PrintStream(baos, true, "UTF-8"));
-      new Vgl().run(args);
-      return baos.toString("UTF-8");
-    } finally {
-      System.setOut(oldOut);
+    private static String run(String... args) throws Exception {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream oldOut = System.out;
+        try {
+            System.setOut(new PrintStream(baos, true, "UTF-8"));
+            new Vgl().run(args);
+            return baos.toString("UTF-8");
+        } finally {
+            System.setOut(oldOut);
+        }
     }
-  }
 
-  @Test
-  public void commitPrintsShortId_andDiffShowsChanges() throws Exception {
-    Path tmp = Files.createTempDirectory("vgltest");
-    // create repo
-    new Vgl().run(new String[]{"create", tmp.toString()});
-    // create file and track & commit
-    Files.writeString(tmp.resolve("a.txt"), "hello\n");
-    new Vgl().run(new String[]{"focus", tmp.toString()});
-    new Vgl().run(new String[]{"track", "a.txt"});
-    String out = run("commit", "initial");
-    // first line should be a short hash (7 hex)
-    String first = out.strip();
-    assertThat(first).matches("[0-9a-fA-F]{7,40}");
+    @Test
+    public void commitPrintsShortId_andDiffShowsChanges(@TempDir Path tmp) throws Exception {
+        // Create a new repository
+        new Vgl().run(new String[]{"create", tmp.toString()});
 
-    // modify file and diff should show something (no args defaults to -lb)
-    Files.writeString(tmp.resolve("a.txt"), "hello\nworld\n", java.nio.file.StandardOpenOption.APPEND);
-    new Vgl().run(new String[]{"focus", tmp.toString()});
-    String d1 = run("diff");
-    assertThat(d1).isNotBlank();
+        // Create a file, track it, and commit it
+        Path file = tmp.resolve("a.txt");
+        Files.writeString(file, "hello\n");
+        new Vgl().run(new String[]{"focus", tmp.toString()});
+        new Vgl().run(new String[]{"track", "a.txt"});
+        String commitOutput = run("commit", "initial");
 
-    // requesting -rb with no remote should still default to -lb (not error, and show diff)
-    String d2 = run("diff", "-rb");
-    assertThat(d2).isNotBlank();
-  }
+        // Assert the commit output contains a valid short hash
+        String firstLine = commitOutput.strip();
+        assertThat(firstLine).matches("[0-9a-fA-F]{7,40}");
+
+        // Modify the file and check the diff output
+        Files.writeString(file, "hello\nworld\n", StandardOpenOption.APPEND);
+        String diffOutput = run("diff");
+        assertThat(diffOutput).isNotBlank();
+
+        // Check the diff output with the -rb flag (should default to -lb)
+        String diffRemoteOutput = run("diff", "-rb");
+        assertThat(diffRemoteOutput).isNotBlank();
+    }
 }
