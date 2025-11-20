@@ -6,10 +6,14 @@ plugins {
 }
 
 java {
-    toolchain { languageVersion.set(JavaLanguageVersion.of(23)) }
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17)) // Changed from 23 to 17 for compatibility
+    }
 }
 
-repositories { mavenCentral() }
+repositories {
+    mavenCentral()
+}
 
 dependencies {
     runtimeOnly("org.slf4j:slf4j-simple:2.0.13")
@@ -42,4 +46,10 @@ tasks.jar {
             "Implementation-Version" to project.version
         )
     }
+}
+
+// Ensure the wrapper task uses a compatible Gradle version
+tasks.wrapper {
+    gradleVersion = "8.3" // Set to a stable version
+    distributionType = Wrapper.DistributionType.BIN
 }

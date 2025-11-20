@@ -10,8 +10,8 @@ public class Vgl {
         register(new HelpCommand());
         register(new CreateCommand());
         register(new CheckoutCommand());
-        register(new FocusCommand());
-        register(new ConnectCommand());
+        register(new LocalCommand());
+        register(new RemoteCommand());
         register(new TrackCommand());
         register(new UntrackCommand());
         register(new CommitCommand());

@@ -29,8 +29,9 @@ public class CommitAndDiffTest {
         // Create a file, track it, and commit it
         Path file = tmp.resolve("a.txt");
         Files.writeString(file, "hello\n");
-        new Vgl().run(new String[]{"focus", tmp.toString()});
+        new Vgl().run(new String[]{"local", tmp.toString()}); // Updated from "focus" to "local"
         new Vgl().run(new String[]{"track", "a.txt"});
+        new Vgl().run(new String[]{"remote", "origin"}); // Updated from "connect" to "remote"
         String commitOutput = run("commit", "initial");
 
         // Assert the commit output contains a valid short hash
