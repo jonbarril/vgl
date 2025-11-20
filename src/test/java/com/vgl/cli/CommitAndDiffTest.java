@@ -36,7 +36,7 @@ public class CommitAndDiffTest {
 
     // modify file and diff should show something (no args defaults to -lb)
     Files.writeString(tmp.resolve("a.txt"), "hello\nworld\n", java.nio.file.StandardOpenOption.APPEND);
-    //new Vgl().run(new String[]{"focus", tmp.toString()});
+    new Vgl().run(new String[]{"focus", tmp.toString()});
     String d1 = run("diff");
     assertThat(d1).isNotBlank();
 
