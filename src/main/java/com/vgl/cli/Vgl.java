@@ -26,16 +26,19 @@ public class Vgl {
         register(new LogCommand());
     }
 
-    private void register(Command c){ cmds.put(c.name(), c); }
+    private void register(Command c) {
+        cmds.put(c.name(), c);
+    }
 
-    public int run(String[] argv){
+    public int run(String[] argv) {
         List<String> args = new ArrayList<>(Arrays.asList(argv));
-        String sub = args.isEmpty()? "help": args.remove(0);
-        Command c = cmds.getOrDefault(sub, cmds.get("help"));
+        String sub = args.isEmpty() ? "help" : args.remove(0);
+        Command command = cmds.getOrDefault(sub, cmds.get("help"));
         try {
-            return c.run(Collections.unmodifiableList(args));
+            return command.run(Collections.unmodifiableList(args));
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
+            e.printStackTrace(); // Added for better debugging
             return 1;
         }
     }

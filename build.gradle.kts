@@ -28,12 +28,9 @@ application {
 tasks.test {
     useJUnitPlatform()
     filter {
-        excludeTestsMatching("com.vgl.cli.CommitAndDiffTest")
-        excludeTestsMatching("*CommitAndDiffTest")
+        includeTestsMatching("*")
     }
-    exclude("**/CommitAndDiffTest.class", "**/CommitAndDiffTest*.class")
-
-    useJUnitPlatform()
+    include("**/*.class")
 }
 
 version = vglVersion
