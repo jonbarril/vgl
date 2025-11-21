@@ -23,7 +23,7 @@ public class HelpCommand implements Command {
             "  abort                                 Cancel merge in progress",
             "  status [-v|-vv] | <commit>            Dashboard with commit details",
             "  diff [-lb|-rb] [<file...>|<glob>]     Compare working files to local/remote branch",
-            "  log [-v|-vv] [-gr]                    Creation+commit history, graph optional",
+            "  log [-v|-vv] [-graph]                 Creation+commit history, graph optional",
             "Flags:",
             "  -b <branch>      Specify branch name",
             "  -noop            No-op / dry run (no local/remote changes)",
@@ -35,7 +35,24 @@ public class HelpCommand implements Command {
             "      [A-Z]*       -> Docs Makefile README",
             "      **/*.py      -> main.py lib/util.py",
             "      *.{png,jpg}  -> cat.png dog.jpg",
-            "      \"*.md\"       -> *.md"
+            "      \"*.md\"       -> *.md",
+                "Overview:",
+                "  Use 'create' to specify the root directory for a new local repository and",
+                "  its associated branch (default: 'main'). This is also where your workspace",
+                "  files live. Use 'local' instead to switch the local repo and its",
+                "  associated branch, old or new (default: 'main').",
+                "",
+                "  Changes in the workspace exist only in the file system. To record them",
+                "  in the local repository, you must 'commit' them.",
+                "",
+                "  Optionally use 'remote' to specify an existing remote repository and its",
+                "  associated branch, old or new (default: 'main'). You can then 'pull'",
+                "  remote changes into the local repo and 'push' local commits to the",
+                "  remote repository.",
+                "",
+                "  Use 'status' anytime to see the current state of your workspace and",
+                "  repositories, and 'diff' to compare workspace changes with the local",
+                "  or remote repository branch."
         );
         System.out.println(txt);
         return 0;
