@@ -5,8 +5,10 @@ import java.util.List;
 
 public class HelpCommand implements Command {
     @Override public String name() { return "help"; }
+
     @Override public int run(List<String> args) {
-        String txt = String.join("\n",
+        StringBuilder helpText = new StringBuilder();
+        helpText.append(String.join("\n",
             "Voodoo Gitless  (" + Utils.versionFromRuntime() + ") -- Git for mortals",
             "Commands:",
             "  create [<dir>] [-b <branch>]          Create local repo (warn if exists or nested), set local",
@@ -24,19 +26,29 @@ public class HelpCommand implements Command {
             "  status [-v|-vv] | <commit>            Dashboard with commit details",
             "  diff [-lb|-rb] [<file...>|<glob>]     Compare working files to local/remote branch",
             "  log [-v|-vv] [-graph]                 Creation+commit history, graph optional",
-            "Flags:",
-            "  -b <branch>      Specify branch name",
-            "  -noop            No-op / dry run (no local/remote changes)",
-            "  -v|-vv           Verbose and very verbose info",
-            "  <commit>         Commit ID",
-            "  <glob>           Expands wildcard patterns into matching filenames",
-            "      *.log        -> app.log build.log",
-            "      file?.txt    -> file1.txt fileA.txt",
-            "      [A-Z]*       -> Docs Makefile README",
-            "      **/*.py      -> main.py lib/util.py",
-            "      *.{png,jpg}  -> cat.png dog.jpg",
-            "      \"*.md\"       -> *.md",
-                "Overview:",
+            "  help [-v|-vv]                         Usage help"
+        ));
+
+        if (args.contains("-v") || args.contains("-vv")) {
+            helpText.append("\nFlags:\n");
+            helpText.append(String.join("\n",
+                "  -b <branch>      Specify branch name",
+                "  -noop            No-op / dry run (no local/remote changes)",
+                "  -v|-vv           Verbose and very verbose info",
+                "  <commit>         Commit ID",
+                "  <glob>           Expands wildcard patterns into matching filenames",
+                "      *.log        -> app.log build.log",
+                "      file?.txt    -> file1.txt fileA.txt",
+                "      [A-Z]*       -> Docs Makefile README",
+                "      **/*.py      -> main.py lib/util.py",
+                "      *.{png,jpg}  -> cat.png dog.jpg",
+                "      \"*.md\"       -> *.md"
+            ));
+        }
+
+        if (args.contains("-vv")) {
+            helpText.append("\nOverview:\n");
+            helpText.append(String.join("\n",
                 "  Use 'create' to specify the root directory for a new local repository and",
                 "  its associated branch (default: 'main'). This is also where your workspace",
                 "  files live. Use 'local' instead to switch the local repo and its",
@@ -47,14 +59,16 @@ public class HelpCommand implements Command {
                 "",
                 "  Optionally use 'remote' to specify an existing remote repository and its",
                 "  associated branch, old or new (default: 'main'). You can then 'pull'",
-                "  remote changes into the local repo and 'push' local commits to the",
-                "  remote repository.",
+                "  and merge remote changes into the local repo and 'push' local commits",
+                "  to the remote repository.",
                 "",
                 "  Use 'status' anytime to see the current state of your workspace and",
                 "  repositories, and 'diff' to compare workspace changes with the local",
                 "  or remote repository branch."
-        );
-        System.out.println(txt);
+            ));
+        }
+
+        System.out.println(helpText.toString());
         return 0;
     }
 }

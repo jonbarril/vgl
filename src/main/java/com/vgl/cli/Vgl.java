@@ -32,8 +32,7 @@ public class Vgl {
 
     public int run(String[] argv) {
         List<String> args = new ArrayList<>(Arrays.asList(argv));
-        String sub = args.isEmpty() ? "help" : args.remove(0);
-        Command command = cmds.getOrDefault(sub, cmds.get("help"));
+        Command command = cmds.getOrDefault(args, cmds.get("help"));
         try {
             return command.run(Collections.unmodifiableList(args));
         } catch (Exception e) {
