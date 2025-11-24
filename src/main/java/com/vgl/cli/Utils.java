@@ -26,6 +26,14 @@ public final class Utils {
         return new Git(r);
     }
 
+    public static Git openGit(File directory) throws IOException {
+        FileRepositoryBuilder fb = new FileRepositoryBuilder();
+        fb.findGitDir(directory);
+        Repository repo = (fb.getGitDir() != null) ? fb.build() : null;
+        if (repo == null || repo.isBare()) return null;
+        return new Git(repo);
+    }
+
     public static String versionFromRuntime() {
         Package p = Utils.class.getPackage();
         String v = (p != null) ? p.getImplementationVersion() : null;

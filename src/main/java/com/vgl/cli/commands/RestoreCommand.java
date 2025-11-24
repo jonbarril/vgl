@@ -22,11 +22,20 @@ public class RestoreCommand implements Command {
         for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) pats.add(s);
 
         try (Git git = Utils.openGit()) {
-            if (git == null) return 1;
+            if (git == null) {
+                System.out.println("No Git repository found.");
+                return 1;
+            }
             if (!lb && !rb) lb = true;
             String remoteUrl = git.getRepository().getConfig().getString("remote","origin","url");
-            if (rb && remoteUrl == null) { System.out.println("No remote connected."); return 1; }
-            if (pats.isEmpty()) { System.out.println("Usage: vgl restore -lb|-rb <commit|glob|*>"); return 1; }
+            if (rb && remoteUrl == null) {
+                System.out.println("No remote connected.");
+                return 1;
+            }
+            if (pats.isEmpty()) {
+                System.out.println("Usage: vgl restore -lb|-rb <commit|glob|*>");
+                return 1;
+            }
 
             Repository repo = git.getRepository();
             String branch = repo.getBranch();
@@ -35,10 +44,16 @@ public class RestoreCommand implements Command {
             for (String p : pats) {
                 String spec = treeish + ":" + p.replace("\\", "/");
                 ObjectId blobId = repo.resolve(spec);
-                if (blobId == null) continue;
+                if (blobId == null) {
+                    System.out.println("No matching file found for: " + p);
+                    continue;
+                }
 
                 try (TreeWalk tw = TreeWalk.forPath(repo, p.replace("\\","/"), repo.resolve(treeish + "^{tree}"))) {
-                    if (tw == null) continue;
+                    if (tw == null) {
+                        System.out.println("No matching file found for: " + p);
+                        continue;
+                    }
                     byte[] data = repo.open(tw.getObjectId(0)).getBytes();
                     Path target = repo.getWorkTree().toPath().resolve(p);
                     Files.createDirectories(target.getParent());
