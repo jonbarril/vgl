@@ -32,4 +32,9 @@ public class TrackCommand implements Command {
         }
         return 0;
     }
+
+    @Override
+    public String toString() {
+        return name();
+    }
 }

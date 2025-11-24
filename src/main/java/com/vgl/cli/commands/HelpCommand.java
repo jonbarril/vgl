@@ -16,7 +16,7 @@ public class HelpCommand implements Command {
             "  local [<dir>] [-b <branch>]           Set local repo+branch (warn if missing or nested)",
             "  remote [<url>] [-b <branch>]          Set remote repo+branch (warn if missing)",
             "  track <glob...> | untrack <glob...>   File control (uses .gitignore rules)",
-            "  commit \"msg\" | -new \"new msg\"     New commit / modify last message (pre-push)",
+            "  commit \"msg\" | -new \"new msg\"         New commit / modify last message (pre-push)",
             "  restore -lb|-rb <commit|glob|*>       Restore working files from local/remote branch",
             "  pull [-noop]                          Merge remote into working files",
             "  push [-noop]                          Replace remote with committed local files (warn if conflict)",
@@ -70,5 +70,10 @@ public class HelpCommand implements Command {
 
         System.out.println(helpText.toString());
         return 0;
+    }
+
+    @Override
+    public String toString() {
+        return name();
     }
 }

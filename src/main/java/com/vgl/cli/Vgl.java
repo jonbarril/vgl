@@ -32,9 +32,17 @@ public class Vgl {
 
     public int run(String[] argv) {
         List<String> args = new ArrayList<>(Arrays.asList(argv));
-        Command command = cmds.getOrDefault(args, cmds.get("help"));
+
+        // Insert "help" as the default command if no command is provided
+        if (args.isEmpty() || cmds.get(args.get(0)) == null) {
+            args.add(0, "help");
+        }
+
+        String commandName = args.remove(0); // Extract the command name
+        Command command = cmds.get(commandName);
+
         try {
-            return command.run(Collections.unmodifiableList(args));
+            return command.run(Collections.unmodifiableList(args)); // Pass the remaining args
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());
             e.printStackTrace(); // Added for better debugging

@@ -10,4 +10,9 @@ public class SyncCommand implements Command {
         if (rc1 != 0) return rc1;
         return new PushCommand().run(args);
     }
+
+    @Override
+    public String toString() {
+        return name();
+    }
 }

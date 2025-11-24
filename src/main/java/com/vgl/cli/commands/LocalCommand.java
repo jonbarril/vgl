@@ -10,6 +10,8 @@ import java.nio.file.Paths;
 import java.util.List;
 
 public class LocalCommand implements Command {
+    private static Path lastLocalDir = null;
+
     @Override
     public String name() {
         return "local";
@@ -17,18 +19,19 @@ public class LocalCommand implements Command {
 
     @Override
     public int run(List<String> args) throws Exception {
-        if (args.isEmpty()) {
-            System.out.println("Usage: vgl local [<dir>] [-b <branch>]");
-            return 1;
-        }
-
-        String path = args.get(0);
+        String path = ".";
         String branch = "main";
-        if (args.contains("-b")) {
-            int index = args.indexOf("-b");
-            if (index + 1 < args.size()) {
-                branch = args.get(index + 1);
+
+        if (!args.isEmpty()) {
+            path = args.get(0);
+            if (args.contains("-b")) {
+                int index = args.indexOf("-b");
+                if (index + 1 < args.size()) {
+                    branch = args.get(index + 1);
+                }
             }
+        } else if (lastLocalDir != null) {
+            path = lastLocalDir.toString();
         }
 
         Path dir = Paths.get(path).toAbsolutePath().normalize();
@@ -44,12 +47,25 @@ public class LocalCommand implements Command {
             }
 
             StoredConfig cfg = git.getRepository().getConfig();
+            if (!Files.exists(dir.resolve(".git"))) {
+                System.out.println("Warning: No local repository found in the specified directory.");
+            }
+
+            if (!branchExists(git, branch)) {
+                System.out.println("Warning: Branch '" + branch + "' does not exist in the local repository.");
+            }
+
             cfg.setString("branch", branch, "remote", "origin");
             cfg.setString("branch", branch, "merge", "refs/heads/" + branch);
             cfg.save();
 
-            System.out.println("Switched to local repository: " + dir + " on branch " + branch);
+            lastLocalDir = dir; // Update the last local directory
+            System.out.println("Switched to local repository: " + dir + " on branch '" + branch + "'.");
         }
         return 0;
+    }
+
+    private boolean branchExists(Git git, String branch) throws Exception {
+        return git.branchList().call().stream().anyMatch(ref -> ref.getName().endsWith(branch));
     }
 }
