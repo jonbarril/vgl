@@ -1,19 +1,18 @@
 package com.vgl.cli.commands;
 
+import com.vgl.cli.Vgl;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.RefAlreadyExistsException;
 
 import java.nio.file.*;
 import java.util.List;
 
 public class CreateCommand implements Command {
-    private static Path lastCreatedDir = null;
-
-    @Override public String name(){ return "create"; }
+    @Override public String name() { return "create"; }
 
     @Override public int run(List<String> args) throws Exception {
-        String path = ".";
-        String branch = "main";
+        Vgl vgl = new Vgl();
+        String path = vgl.getLocalDir(); // Default to .vgl state
+        String branch = vgl.getLocalBranch(); // Default to .vgl state
 
         if (!args.isEmpty()) {
             path = args.get(0);
@@ -23,36 +22,30 @@ public class CreateCommand implements Command {
                     branch = args.get(index + 1);
                 }
             }
-        } else if (lastCreatedDir != null) {
-            path = lastCreatedDir.toString();
         }
+
+        // Fallback to current working directory and "main" branch if not set
+        if (path == null || path.isBlank()) path = ".";
+        if (branch == null || branch.isBlank()) branch = "main";
 
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir)) Files.createDirectories(dir);
-        try (Git git = Git.init().setDirectory(dir.toFile()).call()) {
-            boolean branchCreated = false;
-            if (branchExists(git, branch)) {
-                System.out.println("Switched to existing local repository: " + dir + " on branch '" + branch + "'.");
-            } else {
-                git.branchCreate().setName(branch).call();
-                branchCreated = true;
-                System.out.println("Created new branch '" + branch + "' in local repository: " + dir + ".");
+
+        if (!Files.exists(dir.resolve(".git"))) {
+            try (Git git = Git.init().setDirectory(dir.toFile()).call()) {
+                System.out.println("Created new local repository: " + dir);
+                // Correctly link HEAD to the new branch
+                git.getRepository().updateRef("HEAD").link("refs/heads/" + branch);
+                System.out.println("Created new branch: " + branch);
             }
-            git.checkout().setName(branch).call();
-            lastCreatedDir = dir; // Update the last created directory
-            if (!branchCreated) {
-                System.out.println("Switched to local repository: " + dir + " on branch '" + branch + "'.");
-            }
+        } else {
+            System.out.println("Git repository already exists in: " + dir);
         }
+
+        // Perform the local command to set the new repo/branch
+        vgl.setLocalDir(dir.toString());
+        vgl.setLocalBranch(branch);
+
         return 0;
-    }
-
-    private boolean branchExists(Git git, String branch) throws Exception {
-        return git.branchList().call().stream().anyMatch(ref -> ref.getName().endsWith(branch));
-    }
-
-    @Override
-    public String toString() {
-        return name();
     }
 }

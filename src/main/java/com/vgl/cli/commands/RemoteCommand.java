@@ -1,14 +1,12 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.Utils;
+import com.vgl.cli.Vgl;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.lib.StoredConfig;
 
+import java.nio.file.*;
 import java.util.List;
 
 public class RemoteCommand implements Command {
-    private static String lastRemoteUrl = null;
-
     @Override
     public String name() {
         return "remote";
@@ -16,8 +14,9 @@ public class RemoteCommand implements Command {
 
     @Override
     public int run(List<String> args) throws Exception {
-        String url = null;
-        String branch = "main";
+        Vgl vgl = new Vgl();
+        String url = vgl.getRemoteUrl(); // Default to .vgl state
+        String branch = vgl.getRemoteBranch(); // Default to .vgl state
 
         if (!args.isEmpty()) {
             url = args.get(0);
@@ -27,37 +26,20 @@ public class RemoteCommand implements Command {
                     branch = args.get(index + 1);
                 }
             }
-        } else if (lastRemoteUrl != null) {
-            url = lastRemoteUrl;
-        } else {
-            System.out.println("Warning: No remote URL specified. Use `vgl remote <url>` to set a remote repository.");
+        }
+
+        // Fallback to "main" branch if not set
+        if (branch == null || branch.isBlank()) branch = "main";
+
+        Path dir = Paths.get(vgl.getLocalDir()).toAbsolutePath().normalize();
+        if (!Files.exists(dir.resolve(".git"))) {
+            System.out.println("Warning: No Git repository found in: " + dir);
             return 1;
         }
 
-        try (Git git = Utils.openGit()) {
-            if (git == null) {
-                System.out.println("No local repository. Use `vgl local` to set a local repository.");
-                return 1;
-            }
-
-            StoredConfig cfg = git.getRepository().getConfig();
-            if (!branchExists(git, branch)) {
-                System.out.println("Warning: Branch '" + branch + "' does not exist in the remote repository.");
-            }
-
-            cfg.setString("remote", "origin", "url", url);
-            cfg.setString("branch", branch, "remote", "origin");
-            cfg.setString("branch", branch, "merge", "refs/heads/" + branch);
-            cfg.save();
-
-            lastRemoteUrl = url; // Update the last remote URL
+        try (Git git = Git.open(dir.toFile())) {
             System.out.println("Set remote repository: " + url + " on branch '" + branch + "'.");
         }
         return 0;
-    }
-
-    private boolean branchExists(Git git, String branch) throws Exception {
-        return git.branchList().setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE)
-                .call().stream().anyMatch(ref -> ref.getName().endsWith(branch));
     }
 }

@@ -1,9 +1,11 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Utils;
+import com.vgl.cli.Vgl;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.NoFilepatternException;
 
+import java.nio.file.Paths;
 import java.util.List;
 
 public class UntrackCommand implements Command {
@@ -14,11 +16,11 @@ public class UntrackCommand implements Command {
             System.out.println("Usage: vgl untrack <glob...>");
             return 1;
         }
-        try (Git git = Utils.openGit()) {
-            if (git == null) {
-                System.out.println("No Git repository found.");
-                return 1;
-            }
+
+        Vgl vgl = new Vgl();
+        String localDir = vgl.getLocalDir();
+
+        try (Git git = Git.open(Paths.get(localDir).toFile())) {
             var rmc = git.rm().setCached(true);
             for (String p : Utils.expandGlobs(args)) {
                 rmc.addFilepattern(p);
