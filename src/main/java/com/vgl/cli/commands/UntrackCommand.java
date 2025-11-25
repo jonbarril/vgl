@@ -1,7 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Utils;
-import com.vgl.cli.Vgl;
+import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.NoFilepatternException;
 
@@ -17,7 +17,7 @@ public class UntrackCommand implements Command {
             return 1;
         }
 
-        Vgl vgl = new Vgl();
+        VglCli vgl = new VglCli();
         String localDir = vgl.getLocalDir();
 
         try (Git git = Git.open(Paths.get(localDir).toFile())) {
@@ -33,10 +33,5 @@ public class UntrackCommand implements Command {
             }
         }
         return 0;
-    }
-
-    @Override
-    public String toString() {
-        return name();
     }
 }

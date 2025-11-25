@@ -71,9 +71,4 @@ public class HelpCommand implements Command {
         System.out.println(helpText.toString());
         return 0;
     }
-
-    @Override
-    public String toString() {
-        return name();
-    }
 }

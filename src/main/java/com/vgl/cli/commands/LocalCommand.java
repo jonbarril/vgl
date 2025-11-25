@@ -1,6 +1,6 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.Vgl;
+import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 
 import java.nio.file.*;
@@ -14,7 +14,7 @@ public class LocalCommand implements Command {
 
     @Override
     public int run(List<String> args) throws Exception {
-        Vgl vgl = new Vgl();
+        VglCli vgl = new VglCli();
         String path = vgl.getLocalDir(); // Default to .vgl state
         String branch = vgl.getLocalBranch(); // Default to .vgl state
 

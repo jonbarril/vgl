@@ -1,6 +1,6 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.Vgl;
+import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.lib.BranchTrackingStatus;
@@ -14,7 +14,7 @@ public class StatusCommand implements Command {
     @Override public String name() { return "status"; }
 
     @Override public int run(List<String> args) throws Exception {
-        Vgl vgl = new Vgl();
+        VglCli vgl = new VglCli();
         boolean hasLocalRepo = vgl.isConfigurable();
         String localDir = hasLocalRepo ? Paths.get(vgl.getLocalDir()).toAbsolutePath().normalize().toString() : "(none)";
         String localBranch = hasLocalRepo ? vgl.getLocalBranch() : "main";
@@ -73,10 +73,5 @@ public class StatusCommand implements Command {
         }
 
         return 0;
-    }
-
-    @Override
-    public String toString() {
-        return name();
     }
 }

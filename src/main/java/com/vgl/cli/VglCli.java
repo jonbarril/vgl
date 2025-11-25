@@ -5,12 +5,12 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 
-public class Vgl {
+public class VglCli {
     private static final String CONFIG_FILE = ".vgl";
     private final Map<String, Command> cmds = new LinkedHashMap<>();
     private final Properties config = new Properties();
 
-    public Vgl() {
+    public VglCli() {
         loadConfig();
         register(new HelpCommand());
         register(new CreateCommand());

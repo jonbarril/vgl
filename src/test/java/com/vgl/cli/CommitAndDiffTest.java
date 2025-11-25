@@ -14,7 +14,7 @@ public class CommitAndDiffTest {
         PrintStream oldOut = System.out;
         try {
             System.setOut(new PrintStream(baos, true, "UTF-8"));
-            new Vgl().run(args);
+            new VglCli().run(args);
             return baos.toString("UTF-8");
         } finally {
             System.setOut(oldOut);
@@ -24,14 +24,14 @@ public class CommitAndDiffTest {
     @Test
     public void commitPrintsShortId_andDiffShowsChanges(@TempDir Path tmp) throws Exception {
         // Create a new repository
-        new Vgl().run(new String[]{"create", tmp.toString()});
+        new VglCli().run(new String[]{"create", tmp.toString()});
 
         // Create a file, track it, and commit it
         Path file = tmp.resolve("a.txt");
         Files.writeString(file, "hello\n");
-        new Vgl().run(new String[]{"local", tmp.toString()}); // Updated from "focus" to "local"
-        new Vgl().run(new String[]{"track", "a.txt"});
-        new Vgl().run(new String[]{"remote", "origin"}); // Updated from "connect" to "remote"
+        new VglCli().run(new String[]{"local", tmp.toString()}); // Updated from "focus" to "local"
+        new VglCli().run(new String[]{"track", "a.txt"});
+        new VglCli().run(new String[]{"remote", "origin"}); // Updated from "connect" to "remote"
         String commitOutput = run("commit", "initial");
 
         // Assert the commit output contains a valid short hash

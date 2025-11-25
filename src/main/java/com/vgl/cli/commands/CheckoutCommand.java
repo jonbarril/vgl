@@ -1,6 +1,6 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.Vgl;
+import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 
 import java.nio.file.*;
@@ -32,7 +32,7 @@ public class CheckoutCommand implements Command {
         }
 
         try (Git git = Git.cloneRepository().setURI(url).setDirectory(dir.toFile()).setBranch("refs/heads/" + branch).call()) {
-            Vgl vgl = new Vgl();
+            VglCli vgl = new VglCli();
             vgl.setLocalDir(dir.toString());
             vgl.setLocalBranch(branch);
             vgl.setRemoteUrl(url);
@@ -40,10 +40,5 @@ public class CheckoutCommand implements Command {
             System.out.println("Cloned remote repository: " + url + " to local directory: " + dir + " on branch '" + branch + "'.");
         }
         return 0;
-    }
-
-    @Override
-    public String toString() {
-        return name();
     }
 }
