@@ -32,7 +32,14 @@ public class CommitAndDiffTest {
         new VglCli().run(new String[]{"local", tmp.toString()}); // Updated from "focus" to "local"
         new VglCli().run(new String[]{"track", "a.txt"});
         new VglCli().run(new String[]{"remote", "origin"}); // Updated from "connect" to "remote"
-        String commitOutput = run("commit", "initial");
+        String oldUserDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", tmp.toString());
+        String commitOutput;
+        try {
+            commitOutput = run("commit", "initial");
+        } finally {
+            System.setProperty("user.dir", oldUserDir);
+        }
 
         // Assert the commit output contains a valid short hash
         String firstLine = commitOutput.strip();
@@ -40,11 +47,24 @@ public class CommitAndDiffTest {
 
         // Modify the file and check the diff output
         Files.writeString(file, "hello\nworld\n", StandardOpenOption.APPEND);
-        String diffOutput = run("diff");
+        // Run diff in the repo directory so Utils.openGit() finds the repo
+        System.setProperty("user.dir", tmp.toString());
+        String diffOutput;
+        try {
+            diffOutput = run("diff");
+        } finally {
+            System.setProperty("user.dir", oldUserDir);
+        }
         assertThat(diffOutput).isNotBlank();
 
         // Check the diff output with the -rb flag (should default to -lb)
-        String diffRemoteOutput = run("diff", "-rb");
+        System.setProperty("user.dir", tmp.toString());
+        String diffRemoteOutput;
+        try {
+            diffRemoteOutput = run("diff", "-rb");
+        } finally {
+            System.setProperty("user.dir", oldUserDir);
+        }
         assertThat(diffRemoteOutput).isNotBlank();
     }
 }
