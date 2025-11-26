@@ -12,12 +12,16 @@ public class CommitAndDiffTest {
     private static String run(String... args) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         PrintStream oldOut = System.out;
+        PrintStream oldErr = System.err;
         try {
-            System.setOut(new PrintStream(baos, true, "UTF-8"));
+            PrintStream ps = new PrintStream(baos, true, "UTF-8");
+            System.setOut(ps);
+            System.setErr(ps);
             new VglCli().run(args);
             return baos.toString("UTF-8");
         } finally {
             System.setOut(oldOut);
+            System.setErr(oldErr);
         }
     }
 
