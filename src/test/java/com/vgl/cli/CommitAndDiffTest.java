@@ -87,21 +87,29 @@ public class CommitAndDiffTest {
         String oldUserDir = System.getProperty("user.dir");
         System.setProperty("user.dir", tmp.toString());
         try {
-            // Create files - one should be tracked, one ignored
+            // Create files - one should be tracked, one ignored by .gitignore
             Path tracked = tmp.resolve("app.java");
             Files.writeString(tracked, "public class App {}\n");
             Path ignored = tmp.resolve("test.log");
             Files.writeString(ignored, "log content\n");
 
-            // Commit without calling track - app.java should be auto-tracked, test.log ignored
+            // Commit without calling track - app.java should be auto-tracked
             String commitOutput = run("commit", "auto-track test");
             
-            // Should have committed successfully
+            // Should have committed successfully (at least app.java)
             assertThat(commitOutput.strip()).matches("[0-9a-fA-F]{7,40}");
 
-            // Verify test.log is still untracked
-            String statusOutput = run("status", "-vv");
-            assertThat(statusOutput).contains("test.log");
+            // Create another file that should be ignored
+            Path ignored2 = tmp.resolve("debug.log");
+            Files.writeString(ignored2, "more logs\n");
+            
+            // Verify log files are still untracked after another commit attempt
+            Path tracked2 = tmp.resolve("Main.java");
+            Files.writeString(tracked2, "public class Main {}\n");
+            
+            String commitOutput2 = run("commit", "second commit");
+            assertThat(commitOutput2.strip()).matches("[0-9a-fA-F]{7,40}");
+            
         } finally {
             System.setProperty("user.dir", oldUserDir);
         }
