@@ -257,8 +257,11 @@ public class StatusCommand implements Command {
                     }
                     
                     System.out.println("-- Untracked Files:");
-                    // Exclude files that are tracked or ignored
+                    // Exclude files that are tracked (including removed ones)
                     Set<String> untrackedOnly = new LinkedHashSet<>(status.getUntracked());
+                    // Remove files that are marked as removed/missing from tracked - these shouldn't appear as untracked
+                    status.getRemoved().forEach(untrackedOnly::remove);
+                    status.getMissing().forEach(untrackedOnly::remove);
                     if (untrackedOnly.isEmpty()) {
                         System.out.println("  (none)");
                     } else {
