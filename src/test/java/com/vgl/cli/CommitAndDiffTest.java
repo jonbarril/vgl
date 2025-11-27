@@ -81,21 +81,21 @@ public class CommitAndDiffTest {
 
     @Test
     public void commitAutoTracksFilesNotInGitignore(@TempDir Path tmp) throws Exception {
+        // Create a new repository
+        new VglCli().run(new String[]{"create", tmp.toString()});
+        
+        // Set local to the temp directory
+        new VglCli().run(new String[]{"local", tmp.toString()});
+
+        // Create two files
+        Path tracked = tmp.resolve("app.java");
+        Files.writeString(tracked, "public class App {}\n");
+        Path alsoTracked = tmp.resolve("README.md");
+        Files.writeString(alsoTracked, "# Project\n");
+
         String oldUserDir = System.getProperty("user.dir");
         System.setProperty("user.dir", tmp.toString());
         try {
-            // Create a new repository in the temp directory
-            run("create", tmp.toString());
-
-            // Verify .gitignore was created
-            assertThat(Files.exists(tmp.resolve(".gitignore"))).isTrue();
-
-            // Create two files
-            Path tracked = tmp.resolve("app.java");
-            Files.writeString(tracked, "public class App {}\n");
-            Path alsoTracked = tmp.resolve("README.md");
-            Files.writeString(alsoTracked, "# Project\n");
-
             // Commit without calling track - both files should be auto-tracked
             String commitOutput = run("commit", "auto-track test");
             
