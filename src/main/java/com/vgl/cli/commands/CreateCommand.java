@@ -81,6 +81,9 @@ public class CreateCommand implements Command {
                     } else {
                         System.out.println("Local branch '" + finalBranch + "' already exists");
                     }
+                    
+                    // Checkout the branch
+                    git.checkout().setName(finalBranch).call();
                 }
             }
         }

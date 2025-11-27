@@ -44,7 +44,18 @@ public class RemoteCommand implements Command {
 
         @SuppressWarnings("resource")
         Git git = Git.open(dir.toFile());
+        
+        // Actually configure the remote in Git
+        if (url != null && !url.isBlank()) {
+            git.remoteSetUrl().setRemoteName("origin").setRemoteUri(new org.eclipse.jgit.transport.URIish(url)).call();
+        }
+        
         git.close();
+        
+        // Update VGL config
+        vgl.setRemoteUrl(url);
+        vgl.setRemoteBranch(branch);
+        
         System.out.println("Set remote repository: " + url + " on branch '" + branch + "'.");
         return 0;
     }
