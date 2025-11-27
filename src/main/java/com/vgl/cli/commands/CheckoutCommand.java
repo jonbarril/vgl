@@ -39,9 +39,47 @@ public class CheckoutCommand implements Command {
 
         String repoName = url.replaceAll(".*/", "").replaceAll("\\.git$", "");
         Path dir = Paths.get(repoName).toAbsolutePath().normalize();
+        
+        // Check if directory already exists
         if (Files.exists(dir) && Files.list(dir).findAny().isPresent()) {
-            System.out.println("Directory already exists and is not empty: " + dir);
-            return 1;
+            // Check if it's a git repository with uncommitted changes
+            if (Files.exists(dir.resolve(".git"))) {
+                try (Git existingGit = Git.open(dir.toFile())) {
+                    org.eclipse.jgit.api.Status status = existingGit.status().call();
+                    boolean hasChanges = !status.getModified().isEmpty() || !status.getChanged().isEmpty() || 
+                                        !status.getAdded().isEmpty() || !status.getRemoved().isEmpty() || 
+                                        !status.getMissing().isEmpty();
+                    
+                    if (hasChanges) {
+                        System.out.println("Warning: Directory already exists with uncommitted changes: " + dir);
+                        System.out.println("Checking out will overwrite these changes:");
+                        status.getModified().forEach(f -> System.out.println("  M " + f));
+                        status.getChanged().forEach(f -> System.out.println("  M " + f));
+                        status.getAdded().forEach(f -> System.out.println("  A " + f));
+                        status.getRemoved().forEach(f -> System.out.println("  D " + f));
+                        status.getMissing().forEach(f -> System.out.println("  D " + f));
+                        System.out.println();
+                        System.out.print("Continue? (y/N): ");
+                        
+                        String response;
+                        try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
+                            response = scanner.nextLine().trim().toLowerCase();
+                        }
+                        
+                        if (!response.equals("y") && !response.equals("yes")) {
+                            System.out.println("Checkout cancelled.");
+                            return 0;
+                        }
+                    } else {
+                        System.out.println("Directory already exists: " + dir);
+                        System.out.println("Use 'vgl local' to switch to this repository.");
+                        return 1;
+                    }
+                }
+            } else {
+                System.out.println("Directory already exists and is not empty: " + dir);
+                return 1;
+            }
         }
 
         Git git = Git.cloneRepository().setURI(url).setDirectory(dir.toFile()).setBranch("refs/heads/" + branch).call();

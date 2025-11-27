@@ -82,6 +82,53 @@ public class CreateCommand implements Command {
                         System.out.println("Local branch '" + finalBranch + "' already exists");
                     }
                     
+                    // Check for unpushed commits
+                    String remoteUrl = git.getRepository().getConfig().getString("remote","origin","url");
+                    if (remoteUrl != null) {
+                        try {
+                            org.eclipse.jgit.lib.ObjectId localHead = git.getRepository().resolve("HEAD");
+                            org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + git.getRepository().getBranch());
+                            
+                            if (localHead != null && remoteHead != null && !localHead.equals(remoteHead)) {
+                                org.eclipse.jgit.lib.BranchTrackingStatus bts = org.eclipse.jgit.lib.BranchTrackingStatus.of(git.getRepository(), git.getRepository().getBranch());
+                                if (bts != null && bts.getAheadCount() > 0) {
+                                    System.out.println("Warning: Current branch has " + bts.getAheadCount() + " unpushed commit(s).");
+                                    System.out.println("These commits will not be lost, but you should push before switching.");
+                                }
+                            }
+                        } catch (Exception e) {
+                            // Ignore - remote tracking may not be set up
+                        }
+                    }
+                    
+                    // Check for uncommitted changes before switching
+                    org.eclipse.jgit.api.Status status = git.status().call();
+                    boolean hasChanges = !status.getModified().isEmpty() || !status.getChanged().isEmpty() || 
+                                        !status.getAdded().isEmpty() || !status.getRemoved().isEmpty() || 
+                                        !status.getMissing().isEmpty();
+                    
+                    if (hasChanges) {
+                        System.out.println("Warning: You have uncommitted changes.");
+                        System.out.println("Switching branches will discard these changes:");
+                        status.getModified().forEach(f -> System.out.println("  M " + f));
+                        status.getChanged().forEach(f -> System.out.println("  M " + f));
+                        status.getAdded().forEach(f -> System.out.println("  A " + f));
+                        status.getRemoved().forEach(f -> System.out.println("  D " + f));
+                        status.getMissing().forEach(f -> System.out.println("  D " + f));
+                        System.out.println();
+                        System.out.print("Continue? (y/N): ");
+                        
+                        String response;
+                        try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
+                            response = scanner.nextLine().trim().toLowerCase();
+                        }
+                        
+                        if (!response.equals("y") && !response.equals("yes")) {
+                            System.out.println("Branch switch cancelled.");
+                            return 0;
+                        }
+                    }
+                    
                     // Checkout the branch
                     git.checkout().setName(finalBranch).call();
                 }
