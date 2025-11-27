@@ -84,12 +84,15 @@ public class CheckoutCommand implements Command {
 
         Git git = Git.cloneRepository().setURI(url).setDirectory(dir.toFile()).setBranch("refs/heads/" + branch).call();
         git.close();
+        
+        // Create .vgl config for the cloned repository
         VglCli vgl = new VglCli();
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(branch);
         vgl.setRemoteUrl(url);
         vgl.setRemoteBranch(branch);
         vgl.save();
+        
         System.out.println("Cloned remote repository: " + url + " to local directory: " + dir + " on branch '" + branch + "'.");
         return 0;
     }

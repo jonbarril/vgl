@@ -84,7 +84,7 @@ public class IntegrationTest {
 
     @Test
     void statusShowsCommitMessagesWithVerbose(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 1/10: statusShowsCommitMessagesWithVerbose]");
+        System.out.println("\n[Test 1/11: statusShowsCommitMessagesWithVerbose]");
         // Create repo and commit
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -99,7 +99,7 @@ public class IntegrationTest {
 
     @Test
     void statusVeryVerboseShowsAllTrackedFiles(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 2/10: statusVeryVerboseShowsAllTrackedFiles]");
+        System.out.println("\n[Test 2/11: statusVeryVerboseShowsAllTrackedFiles]");
         // Create repo with files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("file1.txt"), "content1");
@@ -116,7 +116,7 @@ public class IntegrationTest {
 
     @Test
     void statusFiltersByFileName(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 3/10: statusFiltersByFileName]");
+        System.out.println("\n[Test 3/11: statusFiltersByFileName]");
         // Create repo with multiple files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.java"), "java");
@@ -136,7 +136,7 @@ public class IntegrationTest {
 
     @Test
     void statusFiltersWithGlobPattern(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 4/10: statusFiltersWithGlobPattern]");
+        System.out.println("\n[Test 4/11: statusFiltersWithGlobPattern]");
         // Create repo with multiple files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("file1.java"), "java1");
@@ -159,7 +159,7 @@ public class IntegrationTest {
 
     @Test
     void diffShowsChangesWithGlobPattern(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 5/10: diffShowsChangesWithGlobPattern]");
+        System.out.println("\n[Test 5/11: diffShowsChangesWithGlobPattern]");
         // Create repo with files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.java"), "original java");
@@ -179,7 +179,7 @@ public class IntegrationTest {
 
     @Test
     void restoreAsksForConfirmationAndDefaults(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 6/10: restoreAsksForConfirmationAndDefaults]");
+        System.out.println("\n[Test 6/11: restoreAsksForConfirmationAndDefaults]");
         // Create repo with file
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "original");
@@ -198,7 +198,7 @@ public class IntegrationTest {
 
     @Test
     void restoreRestoresFileWithConfirmation(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 7/10: restoreRestoresFileWithConfirmation]");
+        System.out.println("\n[Test 7/11: restoreRestoresFileWithConfirmation]");
         // Create repo with file
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "original");
@@ -217,7 +217,7 @@ public class IntegrationTest {
 
     @Test
     void localSwitchesBranches(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 8/10: localSwitchesBranches]");
+        System.out.println("\n[Test 8/11: localSwitchesBranches]");
         // Create repo with two branches
         runVgl(tmp, "create", tmp.toString(), "-b", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -235,7 +235,7 @@ public class IntegrationTest {
 
     @Test
     void localWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 9/10: localWarnsAboutUncommittedChanges]");
+        System.out.println("\n[Test 9/11: localWarnsAboutUncommittedChanges]");
         // Create repo with two branches
         runVgl(tmp, "create", tmp.toString(), "-b", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -256,7 +256,7 @@ public class IntegrationTest {
 
     @Test
     void createCommandCreatesNewBranch(@TempDir Path tmp) throws Exception {
-        System.out.println("\n[Test 10/10: createCommandCreatesNewBranch]");
+        System.out.println("\n[Test 10/11: createCommandCreatesNewBranch]");
         // Create repo
         runVgl(tmp, "create", tmp.toString(), "-b", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -269,4 +269,31 @@ public class IntegrationTest {
         assertThat(result.output).containsPattern("LOCAL.*:feature");
         System.out.println(" ✓");
     }
+
+    @Test
+    void checkoutCreatesVglConfig(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test 11/11: checkoutCreatesVglConfig]");
+        // Create a source repo to clone from
+        Path sourceRepo = tmp.resolve("source");
+        Files.createDirectories(sourceRepo);
+        runVgl(sourceRepo, "create", sourceRepo.toString(), "-b", "main");
+        Files.writeString(sourceRepo.resolve("test.txt"), "content");
+        runVgl(sourceRepo, "commit", "initial");
+
+        // Checkout to a new location (simulating cloning)
+        Path targetDir = tmp.resolve("cloned");
+        Files.createDirectories(targetDir);
+        
+        // Use file:// URL for local clone
+        String fileUrl = "file:///" + sourceRepo.toString().replace("\\", "/");
+        runVgl(targetDir.getParent(), "checkout", fileUrl, "-b", "main");
+
+        // Verify .vgl was created in the cloned directory
+        Path clonedRepo = targetDir.getParent().resolve("source");
+        assertThat(Files.exists(clonedRepo.resolve(".vgl"))).isTrue();
+        assertThat(Files.exists(clonedRepo.resolve(".git"))).isTrue();
+        assertThat(Files.exists(clonedRepo.resolve("test.txt"))).isTrue();
+        System.out.println(" ✓");
+    }
 }
+
