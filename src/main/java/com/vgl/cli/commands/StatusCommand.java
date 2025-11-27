@@ -78,21 +78,63 @@ public class StatusCommand implements Command {
         // Report STATE and FILES
         if (hasLocalRepo) {
             try (Git git = Git.open(Paths.get(localDir).toFile())) {
-                BranchTrackingStatus bts = BranchTrackingStatus.of(git.getRepository(), localBranch);
+                // Get working tree status
+                Status status = git.status().call();
+                int modified = status.getChanged().size() + status.getModified().size() + status.getAdded().size() +
+                               status.getRemoved().size() + status.getMissing().size();
+                int untracked = status.getUntracked().size();
+                
+                // Check sync state with remote
                 System.out.print("STATE   ");
-                if (bts == null) {
-                    System.out.print("(no tracking)");
-                } else if (bts.getAheadCount() == 0 && bts.getBehindCount() == 0) {
-                    System.out.print("clean");
+                boolean hasRemote = !remoteUrl.equals("none");
+                
+                if (!hasRemote) {
+                    System.out.print("local only");
                 } else {
-                    System.out.printf("ahead %d, behind %d", bts.getAheadCount(), bts.getBehindCount());
+                    try {
+                        // Try to get remote tracking info
+                        org.eclipse.jgit.lib.ObjectId localHead = git.getRepository().resolve("HEAD");
+                        org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + remoteBranch);
+                        
+                        if (localHead == null) {
+                            System.out.print("no commits yet");
+                        } else if (remoteHead == null) {
+                            System.out.print("remote branch not found");
+                        } else if (localHead.equals(remoteHead)) {
+                            System.out.print("in sync");
+                        } else {
+                            // Calculate differences
+                            BranchTrackingStatus bts = BranchTrackingStatus.of(git.getRepository(), localBranch);
+                            if (bts != null) {
+                                int ahead = bts.getAheadCount();
+                                int behind = bts.getBehindCount();
+                                
+                                if (ahead > 0 && behind == 0) {
+                                    System.out.print("needs push");
+                                } else if (ahead == 0 && behind > 0) {
+                                    System.out.print("needs pull");
+                                } else if (ahead > 0 && behind > 0) {
+                                    System.out.print("diverged");
+                                }
+                                
+                                // Show commit details for -v
+                                if (verbose || veryVerbose) {
+                                    System.out.print(" (ahead " + ahead + ", behind " + behind + ")");
+                                }
+                            } else {
+                                System.out.print("out of sync");
+                            }
+                        }
+                    } catch (Exception e) {
+                        System.out.print("unknown");
+                    }
                 }
                 
-                // For -v, list commit codes in STATE section
+                // For -v and -vv, show recent commits
                 if (verbose || veryVerbose) {
                     System.out.print(" [commits: ");
                     try {
-                        Iterable<RevCommit> commits = git.log().setMaxCount(5).call();
+                        Iterable<RevCommit> commits = git.log().setMaxCount(3).call();
                         boolean first = true;
                         for (RevCommit commit : commits) {
                             if (!first) System.out.print(", ");
@@ -108,12 +150,86 @@ public class StatusCommand implements Command {
                     System.out.print("]");
                 }
                 System.out.println();
-
-                Status status = git.status().call();
-                int modified = status.getChanged().size() + status.getModified().size() + status.getAdded().size() +
-                               status.getRemoved().size() + status.getMissing().size();
-                int untracked = status.getUntracked().size();
                 System.out.printf("FILES   %d modified(tracked), %d untracked%n", modified, untracked);
+
+                // For -v, show which files need push/pull
+                if (verbose || veryVerbose) {
+                    if (hasRemote) {
+                        try {
+                            org.eclipse.jgit.lib.ObjectId localHead = git.getRepository().resolve("HEAD");
+                            org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + remoteBranch);
+                            
+                            if (localHead != null && remoteHead != null && !localHead.equals(remoteHead)) {
+                                // Get commits to push
+                                Iterable<RevCommit> commitsToPush = git.log()
+                                    .add(localHead)
+                                    .not(remoteHead)
+                                    .call();
+                                
+                                Set<String> filesToPush = new LinkedHashSet<>();
+                                for (RevCommit commit : commitsToPush) {
+                                    // Get files changed in this commit
+                                    if (commit.getParentCount() > 0) {
+                                        org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
+                                        org.eclipse.jgit.treewalk.CanonicalTreeParser oldTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                                        org.eclipse.jgit.treewalk.CanonicalTreeParser newTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                                        oldTree.reset(reader, commit.getParent(0).getTree());
+                                        newTree.reset(reader, commit.getTree());
+                                        
+                                        List<org.eclipse.jgit.diff.DiffEntry> diffs = git.diff()
+                                            .setOldTree(oldTree)
+                                            .setNewTree(newTree)
+                                            .call();
+                                        
+                                        for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
+                                            filesToPush.add(diff.getNewPath());
+                                        }
+                                        reader.close();
+                                    }
+                                }
+                                
+                                if (!filesToPush.isEmpty()) {
+                                    System.out.println("-- Files to Push:");
+                                    filesToPush.forEach(f -> System.out.println("  " + f));
+                                }
+                                
+                                // Get commits to pull
+                                Iterable<RevCommit> commitsToPull = git.log()
+                                    .add(remoteHead)
+                                    .not(localHead)
+                                    .call();
+                                
+                                Set<String> filesToPull = new LinkedHashSet<>();
+                                for (RevCommit commit : commitsToPull) {
+                                    if (commit.getParentCount() > 0) {
+                                        org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
+                                        org.eclipse.jgit.treewalk.CanonicalTreeParser oldTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                                        org.eclipse.jgit.treewalk.CanonicalTreeParser newTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                                        oldTree.reset(reader, commit.getParent(0).getTree());
+                                        newTree.reset(reader, commit.getTree());
+                                        
+                                        List<org.eclipse.jgit.diff.DiffEntry> diffs = git.diff()
+                                            .setOldTree(oldTree)
+                                            .setNewTree(newTree)
+                                            .call();
+                                        
+                                        for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
+                                            filesToPull.add(diff.getNewPath());
+                                        }
+                                        reader.close();
+                                    }
+                                }
+                                
+                                if (!filesToPull.isEmpty()) {
+                                    System.out.println("-- Files to Pull:");
+                                    filesToPull.forEach(f -> System.out.println("  " + f));
+                                }
+                            }
+                        } catch (Exception e) {
+                            // Ignore errors in detailed sync reporting
+                        }
+                    }
+                }
 
                 if (verbose) {
                     System.out.println("-- Recent Commits:");
