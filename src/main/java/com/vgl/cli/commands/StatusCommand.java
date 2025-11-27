@@ -5,8 +5,8 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.lib.BranchTrackingStatus;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.api.errors.NoHeadException;
 
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -50,9 +50,13 @@ public class StatusCommand implements Command {
 
                 if (verbose) {
                     System.out.println("-- Recent Commits:");
-                    Iterable<RevCommit> commits = git.log().setMaxCount(5).call();
-                    for (RevCommit commit : commits) {
-                        System.out.printf("  %s %s%n", commit.getId().abbreviate(7).name(), commit.getShortMessage());
+                    try {
+                        Iterable<RevCommit> commits = git.log().setMaxCount(5).call();
+                        for (RevCommit commit : commits) {
+                            System.out.printf("  %s %s%n", commit.getId().abbreviate(7).name(), commit.getShortMessage());
+                        }
+                    } catch (NoHeadException ex) {
+                        System.out.println("  (no commits)");
                     }
                 }
 
