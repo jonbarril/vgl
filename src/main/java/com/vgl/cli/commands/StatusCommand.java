@@ -30,9 +30,40 @@ public class StatusCommand implements Command {
 
         // Report LOCAL
         System.out.println("LOCAL   " + (hasLocalRepo ? localDir + ":" + localBranch : "(none)"));
+        if (veryVerbose && hasLocalRepo) {
+            try (Git git = Git.open(Paths.get(localDir).toFile())) {
+                List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
+                if (!branches.isEmpty()) {
+                    for (org.eclipse.jgit.lib.Ref ref : branches) {
+                        String branchName = ref.getName().replaceFirst("refs/heads/", "");
+                        if (branchName.equals(localBranch)) {
+                            System.out.println("  * " + branchName);
+                        } else {
+                            System.out.println("    " + branchName);
+                        }
+                    }
+                }
+            }
+        }
 
         // Report REMOTE
         System.out.println("REMOTE  " + (!remoteUrl.equals("none") ? remoteUrl + ":" + remoteBranch : "(none)"));
+        if (veryVerbose && hasLocalRepo && !remoteUrl.equals("none")) {
+            try (Git git = Git.open(Paths.get(localDir).toFile())) {
+                List<org.eclipse.jgit.lib.Ref> remoteBranches = git.branchList()
+                    .setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE).call();
+                if (!remoteBranches.isEmpty()) {
+                    for (org.eclipse.jgit.lib.Ref ref : remoteBranches) {
+                        String branchName = ref.getName().replaceFirst("refs/remotes/origin/", "");
+                        if (branchName.equals(remoteBranch)) {
+                            System.out.println("  * " + branchName);
+                        } else {
+                            System.out.println("    " + branchName);
+                        }
+                    }
+                }
+            }
+        }
 
         // Report STATE and FILES
         if (hasLocalRepo) {
@@ -89,6 +120,23 @@ public class StatusCommand implements Command {
                     }
                 }
                 System.out.println();
+                
+                // Show commits subsection for -v under STATE
+                if (verbose || veryVerbose) {
+                    try {
+                        Iterable<RevCommit> commits = git.log().setMaxCount(5).call();
+                        for (RevCommit commit : commits) {
+                            System.out.print("  " + commit.getId().abbreviate(7).name());
+                            if (veryVerbose) {
+                                System.out.print(" " + commit.getShortMessage());
+                            }
+                            System.out.println();
+                        }
+                    } catch (NoHeadException ex) {
+                        System.out.println("  (none)");
+                    }
+                }
+                
                 System.out.printf("FILES   %d modified(tracked), %d untracked%n", modified, untracked);
 
                 // For -v, show which files need push/pull
@@ -166,58 +214,6 @@ public class StatusCommand implements Command {
                             }
                         } catch (Exception e) {
                             // Ignore errors in detailed sync reporting
-                        }
-                    }
-                }
-
-                // Show commits subsection for -v
-                if (verbose || veryVerbose) {
-                    System.out.println("-- Commits:");
-                    try {
-                        Iterable<RevCommit> commits = git.log().setMaxCount(5).call();
-                        for (RevCommit commit : commits) {
-                            System.out.print("  " + commit.getId().abbreviate(7).name());
-                            if (veryVerbose) {
-                                System.out.print(" " + commit.getShortMessage());
-                            }
-                            System.out.println();
-                        }
-                    } catch (NoHeadException ex) {
-                        System.out.println("  (none)");
-                    }
-                }
-
-                if (veryVerbose) {
-                    System.out.println("-- Local Branches:");
-                    List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
-                    if (branches.isEmpty()) {
-                        System.out.println("  (none)");
-                    } else {
-                        for (org.eclipse.jgit.lib.Ref ref : branches) {
-                            String branchName = ref.getName().replaceFirst("refs/heads/", "");
-                            if (branchName.equals(localBranch)) {
-                                System.out.println("  * " + branchName);
-                            } else {
-                                System.out.println("    " + branchName);
-                            }
-                        }
-                    }
-                    
-                    if (!remoteUrl.equals("none")) {
-                        System.out.println("-- Remote Branches:");
-                        List<org.eclipse.jgit.lib.Ref> remoteBranches = git.branchList()
-                            .setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE).call();
-                        if (remoteBranches.isEmpty()) {
-                            System.out.println("  (none)");
-                        } else {
-                            for (org.eclipse.jgit.lib.Ref ref : remoteBranches) {
-                                String branchName = ref.getName().replaceFirst("refs/remotes/origin/", "");
-                                if (branchName.equals(remoteBranch)) {
-                                    System.out.println("  * " + branchName);
-                                } else {
-                                    System.out.println("    " + branchName);
-                                }
-                            }
                         }
                     }
                 }
