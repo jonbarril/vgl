@@ -85,7 +85,10 @@ public class CommitAndDiffTest {
         System.setProperty("user.dir", tmp.toString());
         try {
             // Create a new repository in the temp directory
-            new VglCli().run(new String[]{"create", tmp.toString()});
+            run("create", tmp.toString());
+
+            // Verify .gitignore was created
+            assertThat(Files.exists(tmp.resolve(".gitignore"))).isTrue();
 
             // Create two files
             Path tracked = tmp.resolve("app.java");
