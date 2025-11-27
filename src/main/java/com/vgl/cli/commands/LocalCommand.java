@@ -63,6 +63,11 @@ public class LocalCommand implements Command {
         }
         // If no branches exist (fresh repo), allow any branch name
         
+        // Actually checkout the branch in Git
+        if (!branches.isEmpty()) {
+            git.checkout().setName(finalBranch).call();
+        }
+        
         git.close();
         
         vgl.setLocalDir(dir.toString());
