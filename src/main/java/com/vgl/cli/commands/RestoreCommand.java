@@ -9,6 +9,7 @@ import org.eclipse.jgit.lib.Repository;
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,7 +24,8 @@ public class RestoreCommand implements Command {
 
         try (Git git = Utils.openGit()) {
             if (git == null) {
-                System.out.println("No Git repository found.");
+                System.out.println("Warning: No Git repository found in: " + 
+                    Paths.get(".").toAbsolutePath().normalize());
                 return 1;
             }
             if (!lb && !rb) lb = true;

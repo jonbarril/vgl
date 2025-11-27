@@ -5,6 +5,7 @@ import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.NoFilepatternException;
 
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -19,8 +20,14 @@ public class UntrackCommand implements Command {
 
         VglCli vgl = new VglCli();
         String localDir = vgl.getLocalDir();
+        Path dir = Paths.get(localDir).toAbsolutePath().normalize();
 
-        try (Git git = Git.open(Paths.get(localDir).toFile())) {
+        if (!vgl.isConfigurable()) {
+            System.out.println("Warning: No Git repository found in: " + dir);
+            return 1;
+        }
+
+        try (Git git = Git.open(dir.toFile())) {
             var rmc = git.rm().setCached(true);
             for (String p : Utils.expandGlobs(args)) {
                 rmc.addFilepattern(p);

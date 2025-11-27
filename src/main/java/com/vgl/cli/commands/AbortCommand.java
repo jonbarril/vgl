@@ -4,6 +4,7 @@ import com.vgl.cli.Utils;
 import org.eclipse.jgit.api.Git;
 
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.List;
 
 public class AbortCommand implements Command {
@@ -11,7 +12,11 @@ public class AbortCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         try (Git git = Utils.openGit()) {
-            if (git == null) return 1;
+            if (git == null) {
+                System.out.println("Warning: No Git repository found in: " + 
+                    Paths.get(".").toAbsolutePath().normalize());
+                return 1;
+            }
             File mergeHead = new File(git.getRepository().getDirectory(), "MERGE_HEAD");
             if (mergeHead.exists()) {
                 mergeHead.delete();

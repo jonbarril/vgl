@@ -3,6 +3,7 @@ package com.vgl.cli.commands;
 import com.vgl.cli.Utils;
 import org.eclipse.jgit.api.Git;
 
+import java.nio.file.Paths;
 import java.util.List;
 
 public class CheckinCommand implements Command {
@@ -13,7 +14,11 @@ public class CheckinCommand implements Command {
         boolean fin = args.contains("-final");
         if (!draft && !fin) { System.out.println("Usage: vgl checkin -draft|-final"); return 1; }
         try (Git git = Utils.openGit()) {
-            if (git == null) return 1;
+            if (git == null) {
+                System.out.println("Warning: No Git repository found in: " + 
+                    Paths.get(".").toAbsolutePath().normalize());
+                return 1;
+            }
             String branch = git.getRepository().getBranch();
             String url = git.getRepository().getConfig().getString("remote","origin","url");
             if (url != null && url.contains("github.com")) {

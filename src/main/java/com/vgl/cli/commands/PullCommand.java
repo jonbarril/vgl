@@ -4,6 +4,7 @@ import com.vgl.cli.Utils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullResult;
 
+import java.nio.file.Paths;
 import java.util.List;
 
 public class PullCommand implements Command {
@@ -13,7 +14,11 @@ public class PullCommand implements Command {
         boolean dr = args.contains("-dr");
         if (dr) { System.out.println("(dry run) would pull from remote"); return 0; }
         try (Git git = Utils.openGit()) {
-            if (git == null) return 1;
+            if (git == null) {
+                System.out.println("Warning: No Git repository found in: " + 
+                    Paths.get(".").toAbsolutePath().normalize());
+                return 1;
+            }
             PullResult r = git.pull().call();
             if (r.isSuccessful()) System.out.println("Pulled and merged.");
             else System.out.println("Pull had conflicts or failed.");

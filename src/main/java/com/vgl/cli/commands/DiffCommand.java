@@ -4,6 +4,7 @@ import com.vgl.cli.Utils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -19,7 +20,11 @@ public class DiffCommand implements Command {
         for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) paths.add(s);
 
         try (Git git = Utils.openGit()) {
-            if (git == null) return 0;
+            if (git == null) {
+                System.out.println("Warning: No Git repository found in: " + 
+                    Paths.get(".").toAbsolutePath().normalize());
+                return 1;
+            }
             String remoteUrl = git.getRepository().getConfig().getString("remote","origin","url");
 
             if (!lb && !rb) lb = true; // default local when not specified

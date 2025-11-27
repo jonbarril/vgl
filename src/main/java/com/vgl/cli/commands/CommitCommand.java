@@ -1,5 +1,6 @@
 package com.vgl.cli.commands;
 
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,8 +27,12 @@ public class CommitCommand implements Command {
 
         Git maybe = Utils.openGit();
         if (maybe == null) maybe = Git.open(new java.io.File("."));
+        if (maybe == null) {
+            System.out.println("Warning: No Git repository found in: " + 
+                Paths.get(".").toAbsolutePath().normalize());
+            return 1;
+        }
         try (Git git = maybe) {
-            if (git == null) return 1;
 
             // Stage everything: additions and modifications
             git.add().addFilepattern(".").call();

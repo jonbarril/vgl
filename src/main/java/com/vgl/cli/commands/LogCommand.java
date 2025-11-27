@@ -4,6 +4,7 @@ import com.vgl.cli.Utils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.revwalk.RevCommit;
 
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -14,7 +15,11 @@ public class LogCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         try (Git git = Utils.openGit()) {
-            if (git == null) return 0;
+            if (git == null) {
+                System.out.println("Warning: No Git repository found in: " + 
+                    Paths.get(".").toAbsolutePath().normalize());
+                return 1;
+            }
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
             Iterable<RevCommit> logs = git.log().call();
             for (RevCommit c : logs) {
