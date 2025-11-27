@@ -245,10 +245,31 @@ public class StatusCommand implements Command {
                 
                 if (veryVerbose) {
                     System.out.println("-- Ignored Files:");
-                    if (status.getIgnoredNotInIndex().isEmpty()) {
-                        System.out.println("  (none)");
-                    } else {
-                        status.getIgnoredNotInIndex().forEach(p -> System.out.println("  ! " + p));
+                    // Manually scan for ignored files using TreeWalk and ignore rules
+                    try {
+                        Set<String> ignoredFiles = new LinkedHashSet<>();
+                        org.eclipse.jgit.treewalk.FileTreeIterator workingTreeIt = 
+                            new org.eclipse.jgit.treewalk.FileTreeIterator(git.getRepository());
+                        org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
+                        treeWalk.addTree(workingTreeIt);
+                        treeWalk.setRecursive(true);
+                        
+                        while (treeWalk.next()) {
+                            org.eclipse.jgit.treewalk.WorkingTreeIterator workingTreeIterator = 
+                                (org.eclipse.jgit.treewalk.WorkingTreeIterator) treeWalk.getTree(0, org.eclipse.jgit.treewalk.WorkingTreeIterator.class);
+                            if (workingTreeIterator != null && workingTreeIterator.isEntryIgnored()) {
+                                ignoredFiles.add(treeWalk.getPathString());
+                            }
+                        }
+                        treeWalk.close();
+                        
+                        if (ignoredFiles.isEmpty()) {
+                            System.out.println("  (none)");
+                        } else {
+                            ignoredFiles.forEach(p -> System.out.println("  ! " + p));
+                        }
+                    } catch (Exception e) {
+                        System.out.println("  (error detecting ignored files)");
                     }
                 }
             }
