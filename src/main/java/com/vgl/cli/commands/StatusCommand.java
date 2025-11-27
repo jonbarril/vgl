@@ -29,53 +29,10 @@ public class StatusCommand implements Command {
         boolean veryVerbose = args.contains("-vv");
 
         // Report LOCAL
-        System.out.print("LOCAL   " + (hasLocalRepo ? localDir + ":" + localBranch : "(none)"));
-        if (veryVerbose && hasLocalRepo) {
-            try (Git git = Git.open(Paths.get(localDir).toFile())) {
-                List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
-                if (!branches.isEmpty()) {
-                    System.out.print(" [branches: ");
-                    boolean first = true;
-                    for (org.eclipse.jgit.lib.Ref ref : branches) {
-                        String branchName = ref.getName().replaceFirst("refs/heads/", "");
-                        if (!first) System.out.print(", ");
-                        if (branchName.equals(localBranch)) {
-                            System.out.print("*" + branchName);
-                        } else {
-                            System.out.print(branchName);
-                        }
-                        first = false;
-                    }
-                    System.out.print("]");
-                }
-            }
-        }
-        System.out.println();
+        System.out.println("LOCAL   " + (hasLocalRepo ? localDir + ":" + localBranch : "(none)"));
 
         // Report REMOTE
-        System.out.print("REMOTE  " + (!remoteUrl.equals("none") ? remoteUrl + ":" + remoteBranch : "(none)"));
-        if (veryVerbose && hasLocalRepo && !remoteUrl.equals("none")) {
-            try (Git git = Git.open(Paths.get(localDir).toFile())) {
-                List<org.eclipse.jgit.lib.Ref> remoteBranches = git.branchList()
-                    .setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE).call();
-                if (!remoteBranches.isEmpty()) {
-                    System.out.print(" [branches: ");
-                    boolean first = true;
-                    for (org.eclipse.jgit.lib.Ref ref : remoteBranches) {
-                        String branchName = ref.getName().replaceFirst("refs/remotes/origin/", "");
-                        if (!first) System.out.print(", ");
-                        if (branchName.equals(remoteBranch)) {
-                            System.out.print("*" + branchName);
-                        } else {
-                            System.out.print(branchName);
-                        }
-                        first = false;
-                    }
-                    System.out.print("]");
-                }
-            }
-        }
-        System.out.println();
+        System.out.println("REMOTE  " + (!remoteUrl.equals("none") ? remoteUrl + ":" + remoteBranch : "(none)"));
 
         // Report STATE and FILES
         if (hasLocalRepo) {
@@ -227,6 +184,41 @@ public class StatusCommand implements Command {
                         }
                     } catch (NoHeadException ex) {
                         System.out.println("  (none)");
+                    }
+                }
+
+                if (veryVerbose) {
+                    System.out.println("-- Local Branches:");
+                    List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
+                    if (branches.isEmpty()) {
+                        System.out.println("  (none)");
+                    } else {
+                        for (org.eclipse.jgit.lib.Ref ref : branches) {
+                            String branchName = ref.getName().replaceFirst("refs/heads/", "");
+                            if (branchName.equals(localBranch)) {
+                                System.out.println("  * " + branchName);
+                            } else {
+                                System.out.println("    " + branchName);
+                            }
+                        }
+                    }
+                    
+                    if (!remoteUrl.equals("none")) {
+                        System.out.println("-- Remote Branches:");
+                        List<org.eclipse.jgit.lib.Ref> remoteBranches = git.branchList()
+                            .setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE).call();
+                        if (remoteBranches.isEmpty()) {
+                            System.out.println("  (none)");
+                        } else {
+                            for (org.eclipse.jgit.lib.Ref ref : remoteBranches) {
+                                String branchName = ref.getName().replaceFirst("refs/remotes/origin/", "");
+                                if (branchName.equals(remoteBranch)) {
+                                    System.out.println("  * " + branchName);
+                                } else {
+                                    System.out.println("    " + branchName);
+                                }
+                            }
+                        }
                     }
                 }
 
