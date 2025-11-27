@@ -43,6 +43,8 @@ public class CreateCommand implements Command {
             Path gi = dir.resolve(".gitignore");
             if (!Files.exists(gi)) {
                 String content = String.join("\n",
+                    "# VGL configuration",
+                    ".vgl",
                     "# Compiled class files",
                     "*.class",
                     "# Log files",
