@@ -63,9 +63,39 @@ public class VglCli {
     }
 
     private void loadConfig() {
-        // First try current directory, then try from stored local.dir
+        // Check for .vgl in current directory
         Path configPath = Paths.get(CONFIG_FILE);
         if (Files.exists(configPath)) {
+            // Check if .git exists alongside .vgl
+            if (!Files.exists(Paths.get(".git"))) {
+                // Orphaned .vgl file - .git was deleted or moved
+                System.err.println("Warning: Found .vgl but no .git directory.");
+                System.err.println("The .git repository may have been deleted or moved.");
+                System.err.println();
+                System.err.println("Options:");
+                System.err.println("  - Delete .vgl and start fresh: vgl create <path>");
+                System.err.println("  - Clone from remote: vgl checkout <url>");
+                System.err.println("  - Keep .vgl if you plan to restore .git");
+                System.err.println();
+                System.err.print("Delete orphaned .vgl file? (y/N): ");
+                
+                try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
+                    String response = scanner.nextLine().trim().toLowerCase();
+                    if (response.equals("y") || response.equals("yes")) {
+                        Files.delete(configPath);
+                        System.err.println("Deleted .vgl file.");
+                        return;
+                    } else {
+                        System.err.println("Kept .vgl file. Remember: .vgl only works with .git");
+                    }
+                } catch (IOException e) {
+                    System.err.println("Warning: Failed to delete .vgl file.");
+                }
+                // Don't load the orphaned config
+                return;
+            }
+            
+            // Valid .vgl with .git - load it
             try (InputStream in = Files.newInputStream(configPath)) {
                 config.load(in);
             } catch (IOException e) {
