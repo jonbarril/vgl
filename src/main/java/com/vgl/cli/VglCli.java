@@ -77,19 +77,30 @@ public class VglCli {
                 System.err.println("  - Clone from remote: vgl checkout <url>");
                 System.err.println("  - Keep .vgl if you plan to restore .git");
                 System.err.println();
-                System.err.print("Delete orphaned .vgl file? (y/N): ");
                 
-                try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
-                    String response = scanner.nextLine().trim().toLowerCase();
-                    if (response.equals("y") || response.equals("yes")) {
-                        Files.delete(configPath);
-                        System.err.println("Deleted .vgl file.");
-                        return;
-                    } else {
-                        System.err.println("Kept .vgl file. Remember: .vgl only works with .git");
+                // Only prompt if we have an interactive console
+                if (System.console() != null) {
+                    System.err.print("Delete orphaned .vgl file? (y/N): ");
+                    try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
+                        String response = scanner.nextLine().trim().toLowerCase();
+                        if (response.equals("y") || response.equals("yes")) {
+                            Files.delete(configPath);
+                            System.err.println("Deleted .vgl file.");
+                            return;
+                        } else {
+                            System.err.println("Kept .vgl file. Remember: .vgl only works with .git");
+                        }
+                    } catch (IOException e) {
+                        System.err.println("Warning: Failed to delete .vgl file.");
                     }
-                } catch (IOException e) {
-                    System.err.println("Warning: Failed to delete .vgl file.");
+                } else {
+                    // Non-interactive mode - just delete it
+                    try {
+                        Files.delete(configPath);
+                        System.err.println("Deleted orphaned .vgl file (non-interactive mode).");
+                    } catch (IOException e) {
+                        System.err.println("Warning: Failed to delete orphaned .vgl file.");
+                    }
                 }
                 // Don't load the orphaned config
                 return;
