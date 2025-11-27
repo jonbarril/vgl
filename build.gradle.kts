@@ -35,6 +35,12 @@ tasks.test {
         includeTestsMatching("*")
     }
     include("**/*.class")
+    
+    // Show test output in real-time
+    testLogging {
+        events("passed", "skipped", "failed", "standardOut", "standardError")
+        showStandardStreams = true
+    }
 }
 
 version = vglVersion
