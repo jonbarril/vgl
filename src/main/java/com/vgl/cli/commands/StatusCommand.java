@@ -8,8 +8,10 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.api.errors.NoHeadException;
 
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class StatusCommand implements Command {
@@ -245,14 +247,16 @@ public class StatusCommand implements Command {
 
                 if (veryVerbose) {
                     System.out.println("-- Tracked Files:");
-                    // Use a set to avoid duplicates
-                    Set<String> trackedFiles = new LinkedHashSet<>();
-                    status.getChanged().forEach(p -> trackedFiles.add("M " + p));
-                    status.getModified().forEach(p -> trackedFiles.add("M " + p));
-                    status.getAdded().forEach(p -> trackedFiles.add("A " + p));
-                    status.getRemoved().forEach(p -> trackedFiles.add("D " + p));
-                    status.getMissing().forEach(p -> trackedFiles.add("D " + p + " (missing)"));
-                    trackedFiles.forEach(f -> System.out.println("  " + f));
+                    // Use a map to track each file once with its most relevant status
+                    Map<String, String> trackedFiles = new LinkedHashMap<>();
+                    // Priority order: Added > Removed/Missing > Modified/Changed
+                    status.getModified().forEach(p -> trackedFiles.put(p, "M"));
+                    status.getChanged().forEach(p -> trackedFiles.put(p, "M"));
+                    status.getRemoved().forEach(p -> trackedFiles.put(p, "D"));
+                    status.getMissing().forEach(p -> trackedFiles.put(p, "D"));
+                    status.getAdded().forEach(p -> trackedFiles.put(p, "A"));
+                    trackedFiles.forEach((file, statusCode) -> 
+                        System.out.println("  " + statusCode + " " + file));
                     
                     System.out.println("-- Untracked Files:");
                     status.getUntracked().forEach(p -> System.out.println("  ? " + p));
