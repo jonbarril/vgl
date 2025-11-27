@@ -27,13 +27,19 @@ public class IntegrationTest {
         } else {
             vglCommand = new File("build/install/vgl/bin/vgl").getAbsolutePath();
         }
+        System.out.println("[IntegrationTest] Starting integration tests with: " + vglCommand);
+        System.out.flush();
     }
 
     private static ProcessResult runVgl(Path workingDir, String... args) throws Exception {
+        System.out.print(".");
+        System.out.flush();
         return runVglWithInput(workingDir, null, args);
     }
 
     private static ProcessResult runVglWithInput(Path workingDir, String input, String... args) throws Exception {
+        System.out.print(".");
+        System.out.flush();
         List<String> command = new ArrayList<>();
         command.add(vglCommand);
         command.addAll(Arrays.asList(args));
@@ -78,6 +84,7 @@ public class IntegrationTest {
 
     @Test
     void statusShowsCommitMessagesWithVerbose(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: statusShowsCommitMessagesWithVerbose]");
         // Create repo and commit
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -87,10 +94,12 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("first commit message");
         assertThat(result.output).containsPattern("[0-9a-f]{7}"); // commit hash
+        System.out.println(" ✓");
     }
 
     @Test
     void statusVeryVerboseShowsAllTrackedFiles(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: statusVeryVerboseShowsAllTrackedFiles]");
         // Create repo with files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("file1.txt"), "content1");
@@ -102,10 +111,12 @@ public class IntegrationTest {
         assertThat(result.output).contains("-- Tracked Files:");
         assertThat(result.output).contains("file1.txt");
         assertThat(result.output).contains("file2.txt");
+        System.out.println(" ✓");
     }
 
     @Test
     void statusFiltersByFileName(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: statusFiltersByFileName]");
         // Create repo with multiple files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.java"), "java");
@@ -120,10 +131,12 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("test.java");
         assertThat(result.output).doesNotContain("test.txt");
+        System.out.println(" ✓");
     }
 
     @Test
     void statusFiltersWithGlobPattern(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: statusFiltersWithGlobPattern]");
         // Create repo with multiple files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("file1.java"), "java1");
@@ -141,10 +154,12 @@ public class IntegrationTest {
         assertThat(result.output).contains("file1.java");
         assertThat(result.output).contains("file2.java");
         assertThat(result.output).doesNotContain("file.txt");
+        System.out.println(" ✓");
     }
 
     @Test
     void diffShowsChangesWithGlobPattern(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: diffShowsChangesWithGlobPattern]");
         // Create repo with files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.java"), "original java");
@@ -159,10 +174,12 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("test.java");
         assertThat(result.output).doesNotContain("test.txt");
+        System.out.println(" ✓");
     }
 
     @Test
     void restoreAsksForConfirmationAndDefaults(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: restoreAsksForConfirmationAndDefaults]");
         // Create repo with file
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "original");
@@ -176,10 +193,12 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("Continue? (y/N):");
         assertThat(result.output).containsAnyOf("cancelled", "Cancelled");
+        System.out.println(" ✓");
     }
 
     @Test
     void restoreRestoresFileWithConfirmation(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: restoreRestoresFileWithConfirmation]");
         // Create repo with file
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "original");
@@ -193,10 +212,12 @@ public class IntegrationTest {
         runVglWithInput(tmp, "y\n", "restore", "test.txt");
 
         assertThat(Files.readString(tmp.resolve("test.txt"))).isEqualTo("original");
+        System.out.println(" ✓");
     }
 
     @Test
     void localSwitchesBranches(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: localSwitchesBranches]");
         // Create repo with two branches
         runVgl(tmp, "create", tmp.toString(), "-b", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -209,10 +230,12 @@ public class IntegrationTest {
 
         ProcessResult result = runVgl(tmp, "status");
         assertThat(result.output).containsPattern("LOCAL.*:main");
+        System.out.println(" ✓");
     }
 
     @Test
     void localWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: localWarnsAboutUncommittedChanges]");
         // Create repo with two branches
         runVgl(tmp, "create", tmp.toString(), "-b", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -228,10 +251,12 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("uncommitted changes");
         assertThat(result.output).contains("Continue? (y/N):");
+        System.out.println(" ✓");
     }
 
     @Test
     void createCommandCreatesNewBranch(@TempDir Path tmp) throws Exception {
+        System.out.println("\n[Test: createCommandCreatesNewBranch]");
         // Create repo
         runVgl(tmp, "create", tmp.toString(), "-b", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -242,5 +267,6 @@ public class IntegrationTest {
 
         ProcessResult result = runVgl(tmp, "status");
         assertThat(result.output).containsPattern("LOCAL.*:feature");
+        System.out.println(" ✓");
     }
 }
