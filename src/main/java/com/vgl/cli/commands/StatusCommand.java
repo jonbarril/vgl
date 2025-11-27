@@ -25,22 +25,87 @@ public class StatusCommand implements Command {
         boolean veryVerbose = args.contains("-vv");
 
         // Report LOCAL
-        System.out.println("LOCAL   " + (hasLocalRepo ? localDir + ":" + localBranch : "(none)"));
+        System.out.print("LOCAL   " + (hasLocalRepo ? localDir + ":" + localBranch : "(none)"));
+        if (veryVerbose && hasLocalRepo) {
+            try (Git git = Git.open(Paths.get(localDir).toFile())) {
+                List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
+                if (!branches.isEmpty()) {
+                    System.out.print(" [branches: ");
+                    boolean first = true;
+                    for (org.eclipse.jgit.lib.Ref ref : branches) {
+                        String branchName = ref.getName().replaceFirst("refs/heads/", "");
+                        if (!first) System.out.print(", ");
+                        if (branchName.equals(localBranch)) {
+                            System.out.print("*" + branchName);
+                        } else {
+                            System.out.print(branchName);
+                        }
+                        first = false;
+                    }
+                    System.out.print("]");
+                }
+            }
+        }
+        System.out.println();
 
         // Report REMOTE
-        System.out.println("REMOTE  " + (!remoteUrl.equals("none") ? remoteUrl + ":" + remoteBranch : "(none)"));
+        System.out.print("REMOTE  " + (!remoteUrl.equals("none") ? remoteUrl + ":" + remoteBranch : "(none)"));
+        if (veryVerbose && hasLocalRepo && !remoteUrl.equals("none")) {
+            try (Git git = Git.open(Paths.get(localDir).toFile())) {
+                List<org.eclipse.jgit.lib.Ref> remoteBranches = git.branchList()
+                    .setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE).call();
+                if (!remoteBranches.isEmpty()) {
+                    System.out.print(" [branches: ");
+                    boolean first = true;
+                    for (org.eclipse.jgit.lib.Ref ref : remoteBranches) {
+                        String branchName = ref.getName().replaceFirst("refs/remotes/origin/", "");
+                        if (!first) System.out.print(", ");
+                        if (branchName.equals(remoteBranch)) {
+                            System.out.print("*" + branchName);
+                        } else {
+                            System.out.print(branchName);
+                        }
+                        first = false;
+                    }
+                    System.out.print("]");
+                }
+            }
+        }
+        System.out.println();
 
         // Report STATE and FILES
         if (hasLocalRepo) {
             try (Git git = Git.open(Paths.get(localDir).toFile())) {
                 BranchTrackingStatus bts = BranchTrackingStatus.of(git.getRepository(), localBranch);
+                System.out.print("STATE   ");
                 if (bts == null) {
-                    System.out.println("STATE   (no tracking)");
+                    System.out.print("(no tracking)");
                 } else if (bts.getAheadCount() == 0 && bts.getBehindCount() == 0) {
-                    System.out.println("STATE   clean");
+                    System.out.print("clean");
                 } else {
-                    System.out.printf("STATE   ahead %d, behind %d%n", bts.getAheadCount(), bts.getBehindCount());
+                    System.out.printf("ahead %d, behind %d", bts.getAheadCount(), bts.getBehindCount());
                 }
+                
+                // For -v, list commit codes in STATE section
+                if (verbose || veryVerbose) {
+                    System.out.print(" [commits: ");
+                    try {
+                        Iterable<RevCommit> commits = git.log().setMaxCount(5).call();
+                        boolean first = true;
+                        for (RevCommit commit : commits) {
+                            if (!first) System.out.print(", ");
+                            System.out.print(commit.getId().abbreviate(7).name());
+                            if (veryVerbose) {
+                                System.out.print(" \"" + commit.getShortMessage() + "\"");
+                            }
+                            first = false;
+                        }
+                    } catch (NoHeadException ex) {
+                        System.out.print("none");
+                    }
+                    System.out.print("]");
+                }
+                System.out.println();
 
                 Status status = git.status().call();
                 int modified = status.getChanged().size() + status.getModified().size() + status.getAdded().size() +
