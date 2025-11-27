@@ -90,6 +90,10 @@ public class VglCli {
         }
     }
 
+    public void save() {
+        saveConfig();
+    }
+
     public String getLocalDir() {
         return config.getProperty("local.dir", ".");
     }

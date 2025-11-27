@@ -55,6 +55,7 @@ public class RemoteCommand implements Command {
         // Update VGL config
         vgl.setRemoteUrl(url);
         vgl.setRemoteBranch(branch);
+        vgl.save();
         
         System.out.println("Set remote repository: " + url + " on branch '" + branch + "'.");
         return 0;

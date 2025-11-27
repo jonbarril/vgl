@@ -72,6 +72,7 @@ public class LocalCommand implements Command {
         
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(finalBranch);
+        vgl.save();
         System.out.println("Switched to local repository: " + dir + " on branch '" + branch + "'.");
         return 0;
     }

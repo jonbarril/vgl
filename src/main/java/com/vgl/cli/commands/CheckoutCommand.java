@@ -51,6 +51,7 @@ public class CheckoutCommand implements Command {
         vgl.setLocalBranch(branch);
         vgl.setRemoteUrl(url);
         vgl.setRemoteBranch(branch);
+        vgl.save();
         System.out.println("Cloned remote repository: " + url + " to local directory: " + dir + " on branch '" + branch + "'.");
         return 0;
     }

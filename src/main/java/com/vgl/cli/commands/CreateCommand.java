@@ -91,6 +91,7 @@ public class CreateCommand implements Command {
         // Perform the local command to set the new repo/branch
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(finalBranch);
+        vgl.save();
 
         return 0;
     }
