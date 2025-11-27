@@ -33,6 +33,7 @@ public class StatusFilteringTest {
         Path file = tmp.resolve("test.txt");
         Files.writeString(file, "content");
         new VglCli().run(new String[]{"local", tmp.toString()});
+        new VglCli().run(new String[]{"remote", "origin"});
         
         String old = System.getProperty("user.dir");
         try {
