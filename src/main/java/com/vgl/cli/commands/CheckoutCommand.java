@@ -16,11 +16,25 @@ public class CheckoutCommand implements Command {
             return 1;
         }
 
-        String url = args.get(0);
+        // Parse arguments
         String branch = "main";
-        int index = args.indexOf("-b");
-        if (index != -1 && index + 1 < args.size()) {
-            branch = args.get(index + 1);
+        int bIndex = args.indexOf("-b");
+        if (bIndex != -1 && bIndex + 1 < args.size()) {
+            branch = args.get(bIndex + 1);
+        }
+        
+        // Get URL from first non-flag argument
+        String url = null;
+        for (String arg : args) {
+            if (!arg.equals("-b") && !arg.equals(branch)) {
+                url = arg;
+                break;
+            }
+        }
+        
+        if (url == null) {
+            System.out.println("Usage: vgl checkout <url> -b <branch>");
+            return 1;
         }
 
         String repoName = url.replaceAll(".*/", "").replaceAll("\\.git$", "");
