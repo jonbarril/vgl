@@ -91,7 +91,7 @@ public class StatusCommand implements Command {
                 boolean hasRemote = !remoteUrl.equals("none");
                 
                 if (!hasRemote) {
-                    System.out.print("local only");
+                    System.out.print("(local only)");
                 } else {
                     try {
                         // Try to get remote tracking info
@@ -99,9 +99,9 @@ public class StatusCommand implements Command {
                         org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + remoteBranch);
                         
                         if (localHead == null) {
-                            System.out.print("no commits yet");
+                            System.out.print("(no commits yet)");
                         } else if (remoteHead == null) {
-                            System.out.print("remote branch not found");
+                            System.out.print("(remote branch not found)");
                         } else if (localHead.equals(remoteHead)) {
                             System.out.print("in sync");
                         } else {
@@ -128,28 +128,8 @@ public class StatusCommand implements Command {
                             }
                         }
                     } catch (Exception e) {
-                        System.out.print("unknown");
+                        System.out.print("(unknown)");
                     }
-                }
-                
-                // For -v and -vv, show recent commits
-                if (verbose || veryVerbose) {
-                    System.out.print(" [commits: ");
-                    try {
-                        Iterable<RevCommit> commits = git.log().setMaxCount(3).call();
-                        boolean first = true;
-                        for (RevCommit commit : commits) {
-                            if (!first) System.out.print(", ");
-                            System.out.print(commit.getId().abbreviate(7).name());
-                            if (veryVerbose) {
-                                System.out.print(" \"" + commit.getShortMessage() + "\"");
-                            }
-                            first = false;
-                        }
-                    } catch (NoHeadException ex) {
-                        System.out.print("none");
-                    }
-                    System.out.print("]");
                 }
                 System.out.println();
                 System.out.printf("FILES   %d modified(tracked), %d untracked%n", modified, untracked);
@@ -233,15 +213,20 @@ public class StatusCommand implements Command {
                     }
                 }
 
-                if (verbose) {
-                    System.out.println("-- Recent Commits:");
+                // Show commits subsection for -v
+                if (verbose || veryVerbose) {
+                    System.out.println("-- Commits:");
                     try {
                         Iterable<RevCommit> commits = git.log().setMaxCount(5).call();
                         for (RevCommit commit : commits) {
-                            System.out.printf("  %s %s%n", commit.getId().abbreviate(7).name(), commit.getShortMessage());
+                            System.out.print("  " + commit.getId().abbreviate(7).name());
+                            if (veryVerbose) {
+                                System.out.print(" " + commit.getShortMessage());
+                            }
+                            System.out.println();
                         }
                     } catch (NoHeadException ex) {
-                        System.out.println("  (no commits)");
+                        System.out.println("  (none)");
                     }
                 }
 
