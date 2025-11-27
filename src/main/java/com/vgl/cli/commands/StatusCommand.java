@@ -222,12 +222,33 @@ public class StatusCommand implements Command {
                     System.out.println("-- Tracked Files:");
                     // Use a map to track each file once with its most relevant status
                     Map<String, String> trackedFiles = new LinkedHashMap<>();
+                    
+                    if (veryVerbose) {
+                        // For -vv, show ALL tracked files (including clean ones)
+                        try {
+                            org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
+                            org.eclipse.jgit.lib.ObjectId headId = git.getRepository().resolve("HEAD^{tree}");
+                            if (headId != null) {
+                                treeWalk.addTree(headId);
+                                treeWalk.setRecursive(true);
+                                while (treeWalk.next()) {
+                                    trackedFiles.put(treeWalk.getPathString(), " "); // Clean files have no status marker
+                                }
+                                treeWalk.close();
+                            }
+                        } catch (Exception e) {
+                            // If there's an error reading the tree, fall through to modified-only
+                        }
+                    }
+                    
                     // Priority order: Added > Removed/Missing > Modified/Changed
+                    // These will overwrite clean file entries with status codes
                     status.getModified().forEach(p -> trackedFiles.put(p, "M"));
                     status.getChanged().forEach(p -> trackedFiles.put(p, "M"));
                     status.getRemoved().forEach(p -> trackedFiles.put(p, "D"));
                     status.getMissing().forEach(p -> trackedFiles.put(p, "D"));
                     status.getAdded().forEach(p -> trackedFiles.put(p, "A"));
+                    
                     if (trackedFiles.isEmpty()) {
                         System.out.println("  (none)");
                     } else {
