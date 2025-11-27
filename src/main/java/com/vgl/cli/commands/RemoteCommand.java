@@ -19,11 +19,17 @@ public class RemoteCommand implements Command {
         String url = vgl.getRemoteUrl(); // Default to .vgl state
         String branch = vgl.getRemoteBranch(); // Default to .vgl state
 
-        if (!args.isEmpty()) {
-            url = args.get(0);
-            int index = args.indexOf("-b");
-            if (index != -1 && index + 1 < args.size()) {
-                branch = args.get(index + 1);
+        // Parse arguments
+        int bIndex = args.indexOf("-b");
+        if (bIndex != -1 && bIndex + 1 < args.size()) {
+            branch = args.get(bIndex + 1);
+        }
+        
+        // Get URL from first non-flag argument
+        for (String arg : args) {
+            if (!arg.equals("-b") && !arg.equals(branch)) {
+                url = arg;
+                break;
             }
         }
 

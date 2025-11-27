@@ -36,6 +36,8 @@ public class LocalCommand implements Command {
         // Fallback to current working directory and "main" branch if not set
         if (path == null || path.isBlank()) path = ".";
         if (branch == null || branch.isBlank()) branch = "main";
+        
+        final String finalBranch = branch;
 
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir.resolve(".git"))) {
@@ -45,9 +47,21 @@ public class LocalCommand implements Command {
 
         @SuppressWarnings("resource")
         Git git = Git.open(dir.toFile());
+        
+        // Verify the branch exists
+        boolean branchExists = git.branchList().call().stream()
+            .anyMatch(ref -> ref.getName().equals("refs/heads/" + finalBranch));
+        
         git.close();
+        
+        if (!branchExists) {
+            System.out.println("Warning: Branch '" + finalBranch + "' does not exist in repository: " + dir);
+            System.out.println("Use 'vgl checkout -b " + finalBranch + "' to create the branch.");
+            return 1;
+        }
+        
         vgl.setLocalDir(dir.toString());
-        vgl.setLocalBranch(branch);
+        vgl.setLocalBranch(finalBranch);
         System.out.println("Switched to local repository: " + dir + " on branch '" + branch + "'.");
         return 0;
     }
