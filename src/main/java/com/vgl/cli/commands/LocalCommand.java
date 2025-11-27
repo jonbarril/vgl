@@ -48,17 +48,22 @@ public class LocalCommand implements Command {
         @SuppressWarnings("resource")
         Git git = Git.open(dir.toFile());
         
-        // Verify the branch exists
-        boolean branchExists = git.branchList().call().stream()
-            .anyMatch(ref -> ref.getName().equals("refs/heads/" + finalBranch));
+        // Verify the branch exists (if any branches exist at all)
+        List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
+        if (!branches.isEmpty()) {
+            boolean branchExists = branches.stream()
+                .anyMatch(ref -> ref.getName().equals("refs/heads/" + finalBranch));
+            
+            if (!branchExists) {
+                git.close();
+                System.out.println("Warning: Branch '" + finalBranch + "' does not exist in repository: " + dir);
+                System.out.println("Use 'vgl checkout -b " + finalBranch + "' to create the branch.");
+                return 1;
+            }
+        }
+        // If no branches exist (fresh repo), allow any branch name
         
         git.close();
-        
-        if (!branchExists) {
-            System.out.println("Warning: Branch '" + finalBranch + "' does not exist in repository: " + dir);
-            System.out.println("Use 'vgl checkout -b " + finalBranch + "' to create the branch.");
-            return 1;
-        }
         
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(finalBranch);
