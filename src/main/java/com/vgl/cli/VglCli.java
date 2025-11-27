@@ -63,6 +63,7 @@ public class VglCli {
     }
 
     private void loadConfig() {
+        // First try current directory, then try from stored local.dir
         Path configPath = Paths.get(CONFIG_FILE);
         if (Files.exists(configPath)) {
             try (InputStream in = Files.newInputStream(configPath)) {
@@ -77,8 +78,9 @@ public class VglCli {
     }
 
     private void saveConfig() {
-        if (isConfigurable()) {
-            Path configPath = Paths.get(CONFIG_FILE);
+        String localDir = getLocalDir();
+        if (Files.exists(Paths.get(localDir).resolve(".git"))) {
+            Path configPath = Paths.get(localDir).resolve(CONFIG_FILE);
             try (OutputStream out = Files.newOutputStream(configPath)) {
                 config.store(out, "VGL Configuration");
             } catch (IOException e) {
