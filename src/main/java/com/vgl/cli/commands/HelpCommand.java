@@ -59,7 +59,7 @@ public class HelpCommand implements Command {
                 "  associated branch (default: 'main'). You can then 'pull' and merge remote",
                 "  changes into the local repo and 'push' local commits to the remote repository.",
                 "",
-                "  For shortcuts, use 'checkout' to create/clone a remote repository, 'sync' to",
+                "  For shortcuts use 'checkout' to create/clone a remote repository, 'sync' to",
                 "  pull and then push any changes, and 'checkin' to push and then issue a remote",
                 "  pull request (PR).",
                 "",
