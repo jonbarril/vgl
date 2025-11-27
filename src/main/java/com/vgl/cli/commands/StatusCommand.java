@@ -257,16 +257,43 @@ public class StatusCommand implements Command {
                     }
                     
                     System.out.println("-- Untracked Files:");
-                    if (status.getUntracked().isEmpty()) {
+                    // Exclude files that are tracked or ignored
+                    Set<String> untrackedOnly = new LinkedHashSet<>(status.getUntracked());
+                    if (untrackedOnly.isEmpty()) {
                         System.out.println("  (none)");
                     } else {
-                        status.getUntracked().forEach(p -> System.out.println("  ? " + p));
+                        untrackedOnly.forEach(p -> System.out.println("  ? " + p));
                     }
                 }
                 
                 if (veryVerbose) {
                     System.out.println("-- Ignored Files:");
                     // Manually scan for ignored files using TreeWalk and ignore rules
+                    // Exclude files that appear in tracked or untracked sections
+                    Set<String> trackedOrUntracked = new LinkedHashSet<>();
+                    if (verbose || veryVerbose) {
+                        // Collect all tracked files
+                        try {
+                            org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
+                            org.eclipse.jgit.lib.ObjectId headId = git.getRepository().resolve("HEAD^{tree}");
+                            if (headId != null) {
+                                treeWalk.addTree(headId);
+                                treeWalk.setRecursive(true);
+                                while (treeWalk.next()) {
+                                    trackedOrUntracked.add(treeWalk.getPathString());
+                                }
+                                treeWalk.close();
+                            }
+                        } catch (Exception e) {
+                            // Ignore
+                        }
+                        status.getModified().forEach(trackedOrUntracked::add);
+                        status.getChanged().forEach(trackedOrUntracked::add);
+                        status.getAdded().forEach(trackedOrUntracked::add);
+                        // Don't add removed/missing - those should show as ignored if they match patterns
+                    }
+                    trackedOrUntracked.addAll(status.getUntracked());
+                    
                     try {
                         Set<String> ignoredFiles = new LinkedHashSet<>();
                         org.eclipse.jgit.treewalk.FileTreeIterator workingTreeIt = 
@@ -278,8 +305,12 @@ public class StatusCommand implements Command {
                         while (treeWalk.next()) {
                             org.eclipse.jgit.treewalk.WorkingTreeIterator workingTreeIterator = 
                                 (org.eclipse.jgit.treewalk.WorkingTreeIterator) treeWalk.getTree(0, org.eclipse.jgit.treewalk.WorkingTreeIterator.class);
+                            String path = treeWalk.getPathString();
                             if (workingTreeIterator != null && workingTreeIterator.isEntryIgnored()) {
-                                ignoredFiles.add(treeWalk.getPathString());
+                                // Only show if not already in tracked or untracked sections
+                                if (!trackedOrUntracked.contains(path)) {
+                                    ignoredFiles.add(path);
+                                }
                             }
                         }
                         treeWalk.close();
