@@ -2,8 +2,9 @@ package com.vgl.cli.commands;
 
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
-
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 
 public class LocalCommand implements Command {
@@ -20,11 +21,9 @@ public class LocalCommand implements Command {
 
         if (!args.isEmpty()) {
             path = args.get(0);
-            if (args.contains("-b")) {
-                int index = args.indexOf("-b");
-                if (index + 1 < args.size()) {
-                    branch = args.get(index + 1);
-                }
+            int index = args.indexOf("-b");
+            if (index != -1 && index + 1 < args.size()) {
+                branch = args.get(index + 1);
             }
         }
 
@@ -38,11 +37,12 @@ public class LocalCommand implements Command {
             return 1;
         }
 
-        try (Git git = Git.open(dir.toFile())) {
-            vgl.setLocalDir(dir.toString());
-            vgl.setLocalBranch(branch);
-            System.out.println("Switched to local repository: " + dir + " on branch '" + branch + "'.");
-        }
+        @SuppressWarnings("resource")
+        Git git = Git.open(dir.toFile());
+        git.close();
+        vgl.setLocalDir(dir.toString());
+        vgl.setLocalBranch(branch);
+        System.out.println("Switched to local repository: " + dir + " on branch '" + branch + "'.");
         return 0;
     }
 }
