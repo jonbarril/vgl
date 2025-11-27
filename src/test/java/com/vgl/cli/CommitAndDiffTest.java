@@ -87,15 +87,19 @@ public class CommitAndDiffTest {
         // Set local to the temp directory
         new VglCli().run(new String[]{"local", tmp.toString()});
 
-        // Create two files
-        Path tracked = tmp.resolve("app.java");
-        Files.writeString(tracked, "public class App {}\n");
-        Path alsoTracked = tmp.resolve("README.md");
-        Files.writeString(alsoTracked, "# Project\n");
-
         String oldUserDir = System.getProperty("user.dir");
         System.setProperty("user.dir", tmp.toString());
         try {
+            // First commit the .gitignore that was auto-created
+            String firstCommit = run("commit", "initial");
+            assertThat(firstCommit.strip()).matches("[0-9a-fA-F]{7,40}");
+
+            // Create two files
+            Path tracked = tmp.resolve("app.java");
+            Files.writeString(tracked, "public class App {}\n");
+            Path alsoTracked = tmp.resolve("README.md");
+            Files.writeString(alsoTracked, "# Project\n");
+
             // Commit without calling track - both files should be auto-tracked
             String commitOutput = run("commit", "auto-track test");
             
