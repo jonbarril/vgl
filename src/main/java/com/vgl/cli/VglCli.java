@@ -48,7 +48,7 @@ public class VglCli {
 
         try {
             int result = command.run(Collections.unmodifiableList(args));
-            saveConfig(); // Save the configuration after running the command
+            // Note: Commands that modify configuration are responsible for calling save()
             return result;
         } catch (Exception e) {
             System.err.println("Error: " + e.getMessage());

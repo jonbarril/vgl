@@ -1,2 +1,4 @@
 #VGL Configuration
-#Thu Nov 27 01:16:40 CST 2025
+#Thu Nov 27 01:20:03 CST 2025
+remote.branch=main
+remote.url=origin
