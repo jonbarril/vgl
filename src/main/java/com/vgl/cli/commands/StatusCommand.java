@@ -27,6 +27,14 @@ public class StatusCommand implements Command {
 
         boolean verbose = args.contains("-v");
         boolean veryVerbose = args.contains("-vv");
+        
+        // Extract filter arguments (file patterns or commit IDs)
+        List<String> filters = new java.util.ArrayList<>();
+        for (String arg : args) {
+            if (!arg.equals("-v") && !arg.equals("-vv")) {
+                filters.add(arg);
+            }
+        }
 
         // Report LOCAL
         System.out.println("LOCAL   " + (hasLocalRepo ? localDir + ":" + localBranch : "(none)"));
@@ -126,9 +134,33 @@ public class StatusCommand implements Command {
                     try {
                         Iterable<RevCommit> commits = git.log().setMaxCount(5).call();
                         for (RevCommit commit : commits) {
-                            System.out.print("  " + commit.getId().abbreviate(7).name());
-                            if (veryVerbose) {
-                                System.out.print(" " + commit.getShortMessage());
+                            String hash = commit.getId().abbreviate(7).name();
+                            String message = commit.getShortMessage();
+                            
+                            // Check if filtering by commit ID
+                            if (!filters.isEmpty()) {
+                                boolean matchesFilter = false;
+                                for (String filter : filters) {
+                                    if (hash.startsWith(filter) || commit.getId().name().startsWith(filter)) {
+                                        matchesFilter = true;
+                                        break;
+                                    }
+                                }
+                                if (!matchesFilter) continue;
+                            }
+                            
+                            System.out.print("  " + hash);
+                            if (verbose && !veryVerbose) {
+                                // For -v, truncate message to fit ~70 chars total (hash is 7 + 2 spaces = 9)
+                                int maxLength = 61;
+                                if (message.length() > maxLength) {
+                                    System.out.print(" " + message.substring(0, maxLength) + "...");
+                                } else {
+                                    System.out.print(" " + message);
+                                }
+                            } else if (veryVerbose) {
+                                // For -vv, show full message
+                                System.out.print(" " + commit.getFullMessage().trim());
                             }
                             System.out.println();
                         }
@@ -232,7 +264,12 @@ public class StatusCommand implements Command {
                                 treeWalk.addTree(headId);
                                 treeWalk.setRecursive(true);
                                 while (treeWalk.next()) {
-                                    trackedFiles.put(treeWalk.getPathString(), " "); // Clean files have no status marker
+                                    String path = treeWalk.getPathString();
+                                    // Apply filters if specified
+                                    if (!filters.isEmpty() && !matchesAnyFilter(path, filters)) {
+                                        continue;
+                                    }
+                                    trackedFiles.put(path, " "); // Clean files have no status marker
                                 }
                                 treeWalk.close();
                             }
@@ -243,11 +280,31 @@ public class StatusCommand implements Command {
                     
                     // Priority order: Added > Removed/Missing > Modified/Changed
                     // These will overwrite clean file entries with status codes
-                    status.getModified().forEach(p -> trackedFiles.put(p, "M"));
-                    status.getChanged().forEach(p -> trackedFiles.put(p, "M"));
-                    status.getRemoved().forEach(p -> trackedFiles.put(p, "D"));
-                    status.getMissing().forEach(p -> trackedFiles.put(p, "D"));
-                    status.getAdded().forEach(p -> trackedFiles.put(p, "A"));
+                    status.getModified().forEach(p -> {
+                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
+                            trackedFiles.put(p, "M");
+                        }
+                    });
+                    status.getChanged().forEach(p -> {
+                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
+                            trackedFiles.put(p, "M");
+                        }
+                    });
+                    status.getRemoved().forEach(p -> {
+                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
+                            trackedFiles.put(p, "D");
+                        }
+                    });
+                    status.getMissing().forEach(p -> {
+                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
+                            trackedFiles.put(p, "D");
+                        }
+                    });
+                    status.getAdded().forEach(p -> {
+                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
+                            trackedFiles.put(p, "A");
+                        }
+                    });
                     
                     if (trackedFiles.isEmpty()) {
                         System.out.println("  (none)");
@@ -262,6 +319,12 @@ public class StatusCommand implements Command {
                     // Remove files that are marked as removed/missing from tracked - these shouldn't appear as untracked
                     status.getRemoved().forEach(untrackedOnly::remove);
                     status.getMissing().forEach(untrackedOnly::remove);
+                    
+                    // Apply filters if specified
+                    if (!filters.isEmpty()) {
+                        untrackedOnly.removeIf(p -> !matchesAnyFilter(p, filters));
+                    }
+                    
                     if (untrackedOnly.isEmpty()) {
                         System.out.println("  (none)");
                     } else {
@@ -334,5 +397,25 @@ public class StatusCommand implements Command {
         }
 
         return 0;
+    }
+    
+    private boolean matchesAnyFilter(String path, List<String> filters) {
+        for (String filter : filters) {
+            // Support glob patterns
+            if (filter.contains("*") || filter.contains("?")) {
+                String regex = filter.replace(".", "\\.")
+                                    .replace("*", ".*")
+                                    .replace("?", ".");
+                if (path.matches(regex)) {
+                    return true;
+                }
+            } else {
+                // Exact match or prefix match
+                if (path.equals(filter) || path.startsWith(filter + "/") || path.contains("/" + filter)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }
