@@ -34,13 +34,13 @@ public class BranchSwitchingTest {
 
     @Test
     void localCommandValidatesBranchExists(@TempDir Path tmp) throws Exception {
+        // Create repo with a commit (so branch exists)
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.txt"), "content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with a commit (so branch exists)
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.txt"), "content");
             run("track", "test.txt");
             run("commit", "initial");
 
@@ -57,13 +57,13 @@ public class BranchSwitchingTest {
 
     @Test
     void createCommandCreatesBranchInExistingRepo(@TempDir Path tmp) throws Exception {
+        // Create repo
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.txt"), "content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.txt"), "content");
             run("track", "test.txt");
             run("commit", "initial");
 
@@ -79,13 +79,13 @@ public class BranchSwitchingTest {
 
     @Test
     void localCommandWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
+        // Create repo with two branches
+        run("create", tmp.toString(), "-b", "main");
+        Files.writeString(tmp.resolve("test.txt"), "content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with two branches
-            run("create", tmp.toString(), "-b", "main");
-            Files.writeString(tmp.resolve("test.txt"), "content");
             run("track", "test.txt");
             run("commit", "initial");
             run("create", tmp.toString(), "-b", "branch2");
@@ -108,13 +108,13 @@ public class BranchSwitchingTest {
 
     @Test
     void localCommandSwitchesBranchWithConfirmation(@TempDir Path tmp) throws Exception {
+        // Create repo with two branches
+        run("create", tmp.toString(), "-b", "main");
+        Files.writeString(tmp.resolve("test.txt"), "content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with two branches
-            run("create", tmp.toString(), "-b", "main");
-            Files.writeString(tmp.resolve("test.txt"), "content");
             run("track", "test.txt");
             run("commit", "initial");
             run("create", tmp.toString(), "-b", "branch2");
@@ -135,13 +135,13 @@ public class BranchSwitchingTest {
 
     @Test
     void localCommandActuallySwitchesGitBranch(@TempDir Path tmp) throws Exception {
+        // Create repo with two branches
+        run("create", tmp.toString(), "-b", "main");
+        Files.writeString(tmp.resolve("test.txt"), "main content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with two branches
-            run("create", tmp.toString(), "-b", "main");
-            Files.writeString(tmp.resolve("test.txt"), "main content");
             run("track", "test.txt");
             run("commit", "on main");
             
@@ -163,13 +163,13 @@ public class BranchSwitchingTest {
 
     @Test
     void createCommandWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
+        // Create repo
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.txt"), "content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.txt"), "content");
             run("track", "test.txt");
             run("commit", "initial");
             

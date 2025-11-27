@@ -34,13 +34,13 @@ public class SafetyWarningsTest {
 
     @Test
     void pullWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
+        // Create repo with uncommitted changes
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.txt"), "content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with uncommitted changes
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.txt"), "content");
             run("track", "test.txt");
             run("commit", "initial");
             
@@ -61,13 +61,13 @@ public class SafetyWarningsTest {
 
     @Test
     void localWarnsAboutUnpushedCommits(@TempDir Path tmp) throws Exception {
+        // Create repo with remote
+        run("create", tmp.toString(), "-b", "main");
+        Files.writeString(tmp.resolve("test.txt"), "content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with remote
-            run("create", tmp.toString(), "-b", "main");
-            Files.writeString(tmp.resolve("test.txt"), "content");
             run("track", "test.txt");
             run("commit", "initial");
             run("remote", "https://github.com/test/repo.git");
@@ -94,16 +94,17 @@ public class SafetyWarningsTest {
 
     @Test
     void checkoutToExistingGitRepoSuggestsLocal(@TempDir Path tmp) throws Exception {
+        // Create a subdirectory that will be the target
+        Path targetDir = tmp.resolve("existing-repo");
+        Files.createDirectories(targetDir);
+        
+        // Initialize it as a git repo
+        run("create", targetDir.toString());
+        Files.writeString(targetDir.resolve("test.txt"), "content");
+
         String old = System.getProperty("user.dir");
         try {
-            // Create a subdirectory that will be the target
-            Path targetDir = tmp.resolve("existing-repo");
-            Files.createDirectories(targetDir);
             System.setProperty("user.dir", targetDir.toString());
-
-            // Initialize it as a git repo
-            run("create", targetDir.toString());
-            Files.writeString(targetDir.resolve("test.txt"), "content");
             run("track", "test.txt");
             run("commit", "initial");
 

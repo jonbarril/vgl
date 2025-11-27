@@ -34,13 +34,13 @@ public class RestoreCommandTest {
 
     @Test
     void restoreWithNoArgsDefaultsToAll(@TempDir Path tmp) throws Exception {
+        // Create repo with committed file
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.txt"), "original");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with committed file
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.txt"), "original");
             run("track", "test.txt");
             run("commit", "initial");
             
@@ -60,14 +60,14 @@ public class RestoreCommandTest {
 
     @Test
     void restoreWithGlobPatternShowsMatchingFiles(@TempDir Path tmp) throws Exception {
+        // Create repo with multiple files
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.java"), "java");
+        Files.writeString(tmp.resolve("test.txt"), "txt");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with multiple files
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.java"), "java");
-            Files.writeString(tmp.resolve("test.txt"), "txt");
             run("track", "test.java", "test.txt");
             run("commit", "initial");
             
@@ -88,13 +88,13 @@ public class RestoreCommandTest {
 
     @Test
     void restoreActuallyRestoresFilesWithConfirmation(@TempDir Path tmp) throws Exception {
+        // Create repo with committed file
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.txt"), "original");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with committed file
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.txt"), "original");
             run("track", "test.txt");
             run("commit", "initial");
             
@@ -115,13 +115,13 @@ public class RestoreCommandTest {
 
     @Test
     void restoreCancelsWithoutModifyingFiles(@TempDir Path tmp) throws Exception {
+        // Create repo with committed file
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.txt"), "original");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with committed file
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.txt"), "original");
             run("track", "test.txt");
             run("commit", "initial");
             
@@ -142,14 +142,14 @@ public class RestoreCommandTest {
 
     @Test
     void restoreWithSpecificFileRestoresOnlyThatFile(@TempDir Path tmp) throws Exception {
+        // Create repo with multiple files
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("file1.txt"), "original1");
+        Files.writeString(tmp.resolve("file2.txt"), "original2");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with multiple files
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("file1.txt"), "original1");
-            Files.writeString(tmp.resolve("file2.txt"), "original2");
             run("track", "file1.txt", "file2.txt");
             run("commit", "initial");
             

@@ -27,12 +27,12 @@ public class ConfigManagementTest {
 
     @Test
     void configSavedToCorrectDirectory(@TempDir Path tmp) throws Exception {
+        // Create repo
+        run("create", tmp.toString());
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo
-            run("create", tmp.toString());
             
             // Config should be in the repository directory
             Path vglFile = tmp.resolve(".vgl");
@@ -49,13 +49,13 @@ public class ConfigManagementTest {
 
     @Test
     void localCommandUpdatesConfigCorrectly(@TempDir Path tmp) throws Exception {
+        // Create repo
+        run("create", tmp.toString(), "-b", "main");
+        Files.writeString(tmp.resolve("test.txt"), "content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo
-            run("create", tmp.toString(), "-b", "main");
-            Files.writeString(tmp.resolve("test.txt"), "content");
             run("track", "test.txt");
             run("commit", "initial");
             
@@ -76,12 +76,12 @@ public class ConfigManagementTest {
 
     @Test
     void remoteCommandUpdatesConfigCorrectly(@TempDir Path tmp) throws Exception {
+        // Create repo
+        run("create", tmp.toString());
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo
-            run("create", tmp.toString());
             
             // Set remote
             run("remote", "https://github.com/test/repo.git", "-b", "develop");
@@ -98,12 +98,12 @@ public class ConfigManagementTest {
 
     @Test
     void statusReadsConfigCorrectly(@TempDir Path tmp) throws Exception {
+        // Create repo with specific branch
+        run("create", tmp.toString(), "-b", "mybranch");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with specific branch
-            run("create", tmp.toString(), "-b", "mybranch");
             
             // Status should show correct branch
             String output = run("status");
@@ -116,12 +116,12 @@ public class ConfigManagementTest {
 
     @Test
     void vglFileInGitignoreByDefault(@TempDir Path tmp) throws Exception {
+        // Create repo
+        run("create", tmp.toString());
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo
-            run("create", tmp.toString());
             
             // Check .gitignore contains .vgl
             String gitignore = Files.readString(tmp.resolve(".gitignore"));

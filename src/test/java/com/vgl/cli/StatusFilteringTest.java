@@ -27,14 +27,15 @@ public class StatusFilteringTest {
 
     @Test
     void statusVerboseShowsCommitMessages(@TempDir Path tmp) throws Exception {
+        // Create repo (run from current dir)
+        run("create", tmp.toString());
+        Path file = tmp.resolve("test.txt");
+        Files.writeString(file, "content");
+        
+        // Set user.dir to tmp for commands that need to run in the repo
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo and make a commit
-            run("create", tmp.toString());
-            Path file = tmp.resolve("test.txt");
-            Files.writeString(file, "content");
             run("track", "test.txt");
             run("commit", "test commit message");
 
@@ -50,14 +51,14 @@ public class StatusFilteringTest {
 
     @Test
     void statusVeryVerboseShowsFullCommitMessages(@TempDir Path tmp) throws Exception {
+        // Create repo and make a commit with multiline message
+        run("create", tmp.toString());
+        Path file = tmp.resolve("test.txt");
+        Files.writeString(file, "content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo and make a commit with multiline message
-            run("create", tmp.toString());
-            Path file = tmp.resolve("test.txt");
-            Files.writeString(file, "content");
             run("track", "test.txt");
             run("commit", "test commit\n\nDetailed description here");
 
@@ -73,15 +74,15 @@ public class StatusFilteringTest {
 
     @Test
     void statusWithFileFilterShowsOnlyMatchingFiles(@TempDir Path tmp) throws Exception {
+        // Create repo with multiple files
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.java"), "java");
+        Files.writeString(tmp.resolve("test.txt"), "txt");
+        Files.writeString(tmp.resolve("other.java"), "java2");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with multiple files
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.java"), "java");
-            Files.writeString(tmp.resolve("test.txt"), "txt");
-            Files.writeString(tmp.resolve("other.java"), "java2");
             run("track", "test.java", "test.txt", "other.java");
             
             // Modify files
@@ -101,15 +102,15 @@ public class StatusFilteringTest {
 
     @Test
     void statusWithGlobFilterShowsMatchingFiles(@TempDir Path tmp) throws Exception {
+        // Create repo with multiple files
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("test.java"), "java");
+        Files.writeString(tmp.resolve("test.txt"), "txt");
+        Files.writeString(tmp.resolve("other.java"), "java2");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with multiple files
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("test.java"), "java");
-            Files.writeString(tmp.resolve("test.txt"), "txt");
-            Files.writeString(tmp.resolve("other.java"), "java2");
             run("track", "test.java", "test.txt", "other.java");
             
             // Modify files
@@ -130,14 +131,14 @@ public class StatusFilteringTest {
 
     @Test
     void statusVeryVerboseShowsAllTrackedFiles(@TempDir Path tmp) throws Exception {
+        // Create repo with clean and modified files
+        run("create", tmp.toString());
+        Files.writeString(tmp.resolve("clean.txt"), "clean");
+        Files.writeString(tmp.resolve("modified.txt"), "original");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo with clean and modified files
-            run("create", tmp.toString());
-            Files.writeString(tmp.resolve("clean.txt"), "clean");
-            Files.writeString(tmp.resolve("modified.txt"), "original");
             run("track", "clean.txt", "modified.txt");
             run("commit", "initial");
             
@@ -157,15 +158,15 @@ public class StatusFilteringTest {
 
     @Test
     void statusShowsIgnoredFilesWithVeryVerbose(@TempDir Path tmp) throws Exception {
+        // Create repo
+        run("create", tmp.toString());
+        
+        // Create ignored file (should be in default .gitignore)
+        Files.writeString(tmp.resolve("test.log"), "log content");
+
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-
-            // Create repo
-            run("create", tmp.toString());
-            
-            // Create ignored file (should be in default .gitignore)
-            Files.writeString(tmp.resolve("test.log"), "log content");
 
             String output = run("status", "-vv");
             
