@@ -115,7 +115,7 @@ public class RepoAndStatusTest {
             assertThat(basic).contains("FILES");
 
             String v = run("status", "-v");
-            assertThat(v).contains("-- Recent Commits:");
+            assertThat(v).contains("-- Commits:");
             assertThat(v).contains("initial");
 
             String vv = run("status", "-vv");
