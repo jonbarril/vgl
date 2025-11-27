@@ -38,6 +38,28 @@ public class CreateCommand implements Command {
                 git.getRepository().updateRef("HEAD").link("refs/heads/" + branch);
                 System.out.println("Created new branch: " + branch);
             }
+
+            // Create a default .gitignore following common conventions
+            Path gi = dir.resolve(".gitignore");
+            if (!Files.exists(gi)) {
+                String content = String.join("\n",
+                    "# Compiled class files",
+                    "*.class",
+                    "# Log files",
+                    "*.log",
+                    "# Build directories",
+                    "/build/",
+                    "/out/",
+                    "# IDE files",
+                    ".idea/",
+                    ".vscode/",
+                    "# Gradle",
+                    ".gradle/",
+                    "# Mac files",
+                    ".DS_Store"
+                );
+                Files.writeString(gi, content);
+            }
         } else {
             System.out.println("Git repository already exists in: " + dir);
         }
