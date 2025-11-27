@@ -30,12 +30,11 @@ public class CommitAndDiffTest {
         // Create a new repository
         new VglCli().run(new String[]{"create", tmp.toString()});
 
-        // Create a file, track it, and commit it
+        // Create a file and commit it (no need to call track - auto-tracked)
         Path file = tmp.resolve("a.txt");
         Files.writeString(file, "hello\n");
-        new VglCli().run(new String[]{"local", tmp.toString()}); // Updated from "focus" to "local"
-        new VglCli().run(new String[]{"track", "a.txt"});
-        new VglCli().run(new String[]{"remote", "origin"}); // Updated from "connect" to "remote"
+        new VglCli().run(new String[]{"local", tmp.toString()});
+        new VglCli().run(new String[]{"remote", "origin"});
         String oldUserDir = System.getProperty("user.dir");
         System.setProperty("user.dir", tmp.toString());
         String commitOutput;
@@ -78,5 +77,33 @@ public class CommitAndDiffTest {
         assertThat(diffRemoteOutput).isNotNull();
         String dr = diffRemoteOutput.strip();
         assertThat(dr.isEmpty() || dr.contains("(remote diff)") || dr.contains("No remote connected.")).isTrue();
+    }
+
+    @Test
+    public void commitAutoTracksFilesNotInGitignore(@TempDir Path tmp) throws Exception {
+        // Create a new repository
+        new VglCli().run(new String[]{"create", tmp.toString()});
+
+        String oldUserDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", tmp.toString());
+        try {
+            // Create files - one should be tracked, one ignored
+            Path tracked = tmp.resolve("app.java");
+            Files.writeString(tracked, "public class App {}\n");
+            Path ignored = tmp.resolve("test.log");
+            Files.writeString(ignored, "log content\n");
+
+            // Commit without calling track - app.java should be auto-tracked, test.log ignored
+            String commitOutput = run("commit", "auto-track test");
+            
+            // Should have committed successfully
+            assertThat(commitOutput.strip()).matches("[0-9a-fA-F]{7,40}");
+
+            // Verify test.log is still untracked
+            String statusOutput = run("status", "-vv");
+            assertThat(statusOutput).contains("test.log");
+        } finally {
+            System.setProperty("user.dir", oldUserDir);
+        }
     }
 }
