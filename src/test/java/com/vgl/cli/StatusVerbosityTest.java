@@ -72,4 +72,30 @@ public class StatusVerbosityTest {
             System.setProperty("user.dir", oldUserDir);
         }
     }
+
+    @Test
+    void statusVeryVerboseShowsTrackedFiles(@TempDir Path tmp) throws Exception {
+        // Create repository with tracked files
+        new VglCli().run(new String[]{"create", tmp.toString()});
+        Path file1 = tmp.resolve("file1.txt");
+        Path file2 = tmp.resolve("file2.txt");
+        Files.writeString(file1, "content1");
+        Files.writeString(file2, "content2");
+        new VglCli().run(new String[]{"local", tmp.toString()});
+        new VglCli().run(new String[]{"remote", "https://github.com/test/repo.git"});
+        
+        String oldUserDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", tmp.toString());
+        try {
+            run("commit", "initial");
+            String output = run("status", "-vv");
+            
+            // -vv should show tracked files section
+            assertThat(output).contains("-- Tracked Files:");
+            assertThat(output).contains("file1.txt");
+            assertThat(output).contains("file2.txt");
+        } finally {
+            System.setProperty("user.dir", oldUserDir);
+        }
+    }
 }
