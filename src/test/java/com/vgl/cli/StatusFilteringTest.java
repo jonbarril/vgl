@@ -27,15 +27,16 @@ public class StatusFilteringTest {
 
     @Test
     void statusVerboseShowsCommitMessages(@TempDir Path tmp) throws Exception {
+        // Create a new repository
+        new VglCli().run(new String[]{"create", tmp.toString()});
+        
+        Path file = tmp.resolve("test.txt");
+        Files.writeString(file, "content");
+        new VglCli().run(new String[]{"local", tmp.toString()});
+        
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-            
-            // Create repo and make a commit
-            run("create", tmp.toString());
-            Path file = tmp.resolve("test.txt");
-            Files.writeString(file, "content");
-            run("track", "test.txt");
             run("commit", "test commit message");
 
             String output = run("status", "-v");
@@ -50,15 +51,16 @@ public class StatusFilteringTest {
 
     @Test
     void statusVeryVerboseShowsFullCommitMessages(@TempDir Path tmp) throws Exception {
+        // Create a new repository
+        new VglCli().run(new String[]{"create", tmp.toString()});
+        
+        Path file = tmp.resolve("test.txt");
+        Files.writeString(file, "content");
+        new VglCli().run(new String[]{"local", tmp.toString()});
+        
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-            
-            // Create repo and make a commit with multiline message
-            run("create", tmp.toString());
-            Path file = tmp.resolve("test.txt");
-            Files.writeString(file, "content");
-            run("track", "test.txt");
             run("commit", "test commit\n\nDetailed description here");
 
             String output = run("status", "-vv");
