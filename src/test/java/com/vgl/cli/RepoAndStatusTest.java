@@ -115,12 +115,11 @@ public class RepoAndStatusTest {
             assertThat(basic).contains("FILES");
 
             String v = run("status", "-v");
-            assertThat(v).contains("-- Commits:");
-            // -v shows only commit codes, not messages
+            assertThat(v).contains("STATE");
+            // -v shows commit codes under STATE section
 
             String vv = run("status", "-vv");
-            assertThat(vv).contains("-- Commits:");
-            assertThat(vv).contains("initial");
+            assertThat(vv).contains("initial");  // Commit message shown with -vv
             assertThat(vv).contains("-- Tracked Files:");
             assertThat(vv).contains("-- Untracked Files:");
             // Untracked file listing can vary by environment; ensure headings are present.
