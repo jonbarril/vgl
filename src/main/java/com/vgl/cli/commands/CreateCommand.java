@@ -42,7 +42,7 @@ public class CreateCommand implements Command {
                 System.out.println("Created new local repository: " + dir);
                 // Correctly link HEAD to the new branch
                 git.getRepository().updateRef("HEAD").link("refs/heads/" + finalBranch);
-                System.out.println("Created new local branch: " + finalBranch);
+                System.out.println("Created new branch: " + finalBranch);
             }
 
             // Create a default .gitignore following common conventions

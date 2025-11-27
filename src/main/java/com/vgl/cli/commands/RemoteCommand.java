@@ -45,7 +45,7 @@ public class RemoteCommand implements Command {
         @SuppressWarnings("resource")
         Git git = Git.open(dir.toFile());
         git.close();
-        System.out.println("Set remote repository: " + url + " on remote branch '" + branch + "'.");
+        System.out.println("Set remote repository: " + url + " on branch '" + branch + "'.");
         return 0;
     }
 }
