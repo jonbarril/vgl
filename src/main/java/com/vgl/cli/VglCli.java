@@ -63,9 +63,8 @@ public class VglCli {
     }
 
     private void loadConfig() {
-        // First try current directory (use user.dir for tests), then try from stored local.dir
-        String userDir = System.getProperty("user.dir");
-        Path configPath = Paths.get(userDir, CONFIG_FILE);
+        // First try current directory, then try from stored local.dir
+        Path configPath = Paths.get(CONFIG_FILE);
         if (Files.exists(configPath)) {
             try (InputStream in = Files.newInputStream(configPath)) {
                 config.load(in);

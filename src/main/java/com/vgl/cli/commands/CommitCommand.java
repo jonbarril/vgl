@@ -9,7 +9,6 @@ import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import com.vgl.cli.Utils;
-import com.vgl.cli.VglCli;
 
 public class CommitCommand implements Command {
     @Override public String name(){ return "commit"; }
@@ -26,21 +25,8 @@ public class CommitCommand implements Command {
             return 1;
         }
 
-        // Try to open Git from working directory first
         Git maybe = Utils.openGit();
-        
-        // If that fails, try using the localDir from config
-        if (maybe == null) {
-            VglCli vgl = new VglCli();
-            String localDir = vgl.getLocalDir();
-            try {
-                maybe = Git.open(Paths.get(localDir).toFile());
-            } catch (Exception e) {
-                // Fall back to current directory
-                maybe = Git.open(new java.io.File("."));
-            }
-        }
-        
+        if (maybe == null) maybe = Git.open(new java.io.File("."));
         if (maybe == null) {
             System.out.println("Warning: No local repository found in: " + 
                 Paths.get(".").toAbsolutePath().normalize());
