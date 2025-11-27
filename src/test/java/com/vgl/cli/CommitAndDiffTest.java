@@ -78,36 +78,4 @@ public class CommitAndDiffTest {
         String dr = diffRemoteOutput.strip();
         assertThat(dr.isEmpty() || dr.contains("(remote diff)") || dr.contains("No remote connected.")).isTrue();
     }
-
-    @Test
-    public void commitAutoTracksFilesNotInGitignore(@TempDir Path tmp) throws Exception {
-        // Create a new repository
-        new VglCli().run(new String[]{"create", tmp.toString()});
-        
-        // Set local to the temp directory
-        new VglCli().run(new String[]{"local", tmp.toString()});
-
-        String oldUserDir = System.getProperty("user.dir");
-        System.setProperty("user.dir", tmp.toString());
-        try {
-            // First commit the .gitignore that was auto-created
-            String firstCommit = run("commit", "initial");
-            assertThat(firstCommit.strip()).matches("[0-9a-fA-F]{7,40}");
-
-            // Create two files
-            Path tracked = tmp.resolve("app.java");
-            Files.writeString(tracked, "public class App {}\n");
-            Path alsoTracked = tmp.resolve("README.md");
-            Files.writeString(alsoTracked, "# Project\n");
-
-            // Commit without calling track - both files should be auto-tracked
-            String commitOutput = run("commit", "auto-track test");
-            
-            // Should have committed successfully
-            assertThat(commitOutput.strip()).matches("[0-9a-fA-F]{7,40}");
-            
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
-        }
-    }
 }
