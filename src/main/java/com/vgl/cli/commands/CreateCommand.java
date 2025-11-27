@@ -69,8 +69,6 @@ public class CreateCommand implements Command {
                 Files.writeString(gi, content);
             }
         } else {
-            System.out.println("Git repository already exists in: " + dir);
-            
             // If -b was specified, create the branch if it doesn't exist
             if (bIndex != -1) {
                 try (Git git = Git.open(dir.toFile())) {
