@@ -38,8 +38,10 @@ public class CommitCommand implements Command {
             Status preStatus = git.status().call();
             
             // Stage untracked files (respects .gitignore automatically)
-            for (String untracked : preStatus.getUntracked()) {
-                git.add().addFilepattern(untracked).call();
+            if (!preStatus.getUntracked().isEmpty()) {
+                for (String untracked : preStatus.getUntracked()) {
+                    git.add().addFilepattern(untracked).call();
+                }
             }
 
             // Stage everything: additions and modifications
