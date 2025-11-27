@@ -15,7 +15,7 @@ public class PullCommand implements Command {
         if (dr) { System.out.println("(dry run) would pull from remote"); return 0; }
         try (Git git = Utils.openGit()) {
             if (git == null) {
-                System.out.println("Warning: No Git repository found in: " + 
+                System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());
                 return 1;
             }

@@ -42,7 +42,7 @@ public class CreateCommand implements Command {
                 System.out.println("Created new local repository: " + dir);
                 // Correctly link HEAD to the new branch
                 git.getRepository().updateRef("HEAD").link("refs/heads/" + finalBranch);
-                System.out.println("Created new branch: " + finalBranch);
+                System.out.println("Created new local branch: " + finalBranch);
             }
 
             // Create a default .gitignore following common conventions
@@ -77,9 +77,9 @@ public class CreateCommand implements Command {
                     
                     if (!branchExists) {
                         git.branchCreate().setName(finalBranch).call();
-                        System.out.println("Created new branch: " + finalBranch);
+                        System.out.println("Created new local branch: " + finalBranch);
                     } else {
-                        System.out.println("Branch '" + finalBranch + "' already exists");
+                        System.out.println("Local branch '" + finalBranch + "' already exists");
                     }
                 }
             }

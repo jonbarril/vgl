@@ -23,7 +23,7 @@ public class UntrackCommand implements Command {
         Path dir = Paths.get(localDir).toAbsolutePath().normalize();
 
         if (!vgl.isConfigurable()) {
-            System.out.println("Warning: No Git repository found in: " + dir);
+            System.out.println("Warning: No local repository found in: " + dir);
             return 1;
         }
 

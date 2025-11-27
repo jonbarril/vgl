@@ -38,14 +38,14 @@ public class RemoteCommand implements Command {
 
         Path dir = Paths.get(vgl.getLocalDir()).toAbsolutePath().normalize();
         if (!Files.exists(dir.resolve(".git"))) {
-            System.out.println("Warning: No Git repository found in: " + dir);
+            System.out.println("Warning: No local repository found in: " + dir);
             return 1;
         }
 
         @SuppressWarnings("resource")
         Git git = Git.open(dir.toFile());
         git.close();
-        System.out.println("Set remote repository: " + url + " on branch '" + branch + "'.");
+        System.out.println("Set remote repository: " + url + " on remote branch '" + branch + "'.");
         return 0;
     }
 }

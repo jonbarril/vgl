@@ -21,7 +21,7 @@ public class DiffCommand implements Command {
 
         try (Git git = Utils.openGit()) {
             if (git == null) {
-                System.out.println("Warning: No Git repository found in: " + 
+                System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());
                 return 1;
             }

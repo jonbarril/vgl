@@ -28,7 +28,7 @@ public class CommitCommand implements Command {
         Git maybe = Utils.openGit();
         if (maybe == null) maybe = Git.open(new java.io.File("."));
         if (maybe == null) {
-            System.out.println("Warning: No Git repository found in: " + 
+            System.out.println("Warning: No local repository found in: " + 
                 Paths.get(".").toAbsolutePath().normalize());
             return 1;
         }

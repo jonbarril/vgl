@@ -15,7 +15,7 @@ public class CheckinCommand implements Command {
         if (!draft && !fin) { System.out.println("Usage: vgl checkin -draft|-final"); return 1; }
         try (Git git = Utils.openGit()) {
             if (git == null) {
-                System.out.println("Warning: No Git repository found in: " + 
+                System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());
                 return 1;
             }

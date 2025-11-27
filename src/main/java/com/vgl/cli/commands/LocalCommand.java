@@ -41,7 +41,7 @@ public class LocalCommand implements Command {
 
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir.resolve(".git"))) {
-            System.out.println("Warning: No Git repository found in: " + dir);
+            System.out.println("Warning: No local repository found in: " + dir);
             return 1;
         }
 
@@ -56,7 +56,7 @@ public class LocalCommand implements Command {
             
             if (!branchExists) {
                 git.close();
-                System.out.println("Warning: Branch '" + finalBranch + "' does not exist in repository: " + dir);
+                System.out.println("Warning: Local branch '" + finalBranch + "' does not exist in local repository: " + dir);
                 System.out.println("Create the branch with: vgl create -b " + finalBranch);
                 return 1;
             }
@@ -67,7 +67,7 @@ public class LocalCommand implements Command {
         
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(finalBranch);
-        System.out.println("Switched to local repository: " + dir + " on branch '" + branch + "'.");
+        System.out.println("Switched to local repository: " + dir + " on local branch '" + branch + "'.");
         return 0;
     }
 }

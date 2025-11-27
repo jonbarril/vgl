@@ -14,16 +14,16 @@ public class PushCommand implements Command {
         boolean dr = args.contains("-dr");
         try (Git git = Utils.openGit()) {
             if (git == null) {
-                System.out.println("Warning: No Git repository found in: " + 
+                System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());
                 return 1;
             }
             String branch = git.getRepository().getBranch();
             String remoteUrl = git.getRepository().getConfig().getString("remote","origin","url");
             if (remoteUrl == null) { System.out.println("No remote connected."); return 1; }
-            if (dr) { System.out.println("(dry run) would push " + branch + " -> " + remoteUrl); return 0; }
+            if (dr) { System.out.println("(dry run) would push local branch '" + branch + "' to remote: " + remoteUrl); return 0; }
             git.push().setRemote("origin").setRefSpecs(new RefSpec(branch+":"+branch)).setForce(false).call();
-            System.out.println("Pushed branch: " + branch + " -> " + remoteUrl);
+            System.out.println("Pushed local branch '" + branch + "' to remote: " + remoteUrl);
         }
         return 0;
     }
