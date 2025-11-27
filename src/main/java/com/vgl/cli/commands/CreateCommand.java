@@ -31,6 +31,8 @@ public class CreateCommand implements Command {
         // Fallback to current working directory and "main" branch if not set
         if (path == null || path.isBlank()) path = ".";
         if (branch == null || branch.isBlank()) branch = "main";
+        
+        final String finalBranch = branch;
 
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir)) Files.createDirectories(dir);
@@ -39,8 +41,8 @@ public class CreateCommand implements Command {
             try (Git git = Git.init().setDirectory(dir.toFile()).call()) {
                 System.out.println("Created new local repository: " + dir);
                 // Correctly link HEAD to the new branch
-                git.getRepository().updateRef("HEAD").link("refs/heads/" + branch);
-                System.out.println("Created new branch: " + branch);
+                git.getRepository().updateRef("HEAD").link("refs/heads/" + finalBranch);
+                System.out.println("Created new branch: " + finalBranch);
             }
 
             // Create a default .gitignore following common conventions
@@ -68,11 +70,26 @@ public class CreateCommand implements Command {
             }
         } else {
             System.out.println("Git repository already exists in: " + dir);
+            
+            // If -b was specified, create the branch if it doesn't exist
+            if (bIndex != -1) {
+                try (Git git = Git.open(dir.toFile())) {
+                    boolean branchExists = git.branchList().call().stream()
+                        .anyMatch(ref -> ref.getName().equals("refs/heads/" + finalBranch));
+                    
+                    if (!branchExists) {
+                        git.branchCreate().setName(finalBranch).call();
+                        System.out.println("Created new branch: " + finalBranch);
+                    } else {
+                        System.out.println("Branch '" + finalBranch + "' already exists");
+                    }
+                }
+            }
         }
 
         // Perform the local command to set the new repo/branch
         vgl.setLocalDir(dir.toString());
-        vgl.setLocalBranch(branch);
+        vgl.setLocalBranch(finalBranch);
 
         return 0;
     }

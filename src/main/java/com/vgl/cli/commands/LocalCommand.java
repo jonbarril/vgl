@@ -57,7 +57,7 @@ public class LocalCommand implements Command {
             if (!branchExists) {
                 git.close();
                 System.out.println("Warning: Branch '" + finalBranch + "' does not exist in repository: " + dir);
-                System.out.println("Create the branch first with: git checkout -b " + finalBranch);
+                System.out.println("Create the branch with: vgl create -b " + finalBranch);
                 return 1;
             }
         }
