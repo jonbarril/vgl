@@ -34,6 +34,14 @@ public class CommitCommand implements Command {
         }
         try (Git git = maybe) {
 
+            // First get status to see what needs to be added
+            Status preStatus = git.status().call();
+            
+            // Stage untracked files (respects .gitignore automatically)
+            for (String untracked : preStatus.getUntracked()) {
+                git.add().addFilepattern(untracked).call();
+            }
+
             // Stage everything: additions and modifications
             git.add().addFilepattern(".").call();
             // Stage deletions
