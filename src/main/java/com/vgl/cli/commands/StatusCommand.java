@@ -230,7 +230,7 @@ public class StatusCommand implements Command {
                     }
                 }
 
-                if (veryVerbose) {
+                if (verbose || veryVerbose) {
                     System.out.println("-- Tracked Files:");
                     // Use a map to track each file once with its most relevant status
                     Map<String, String> trackedFiles = new LinkedHashMap<>();
@@ -240,11 +240,28 @@ public class StatusCommand implements Command {
                     status.getRemoved().forEach(p -> trackedFiles.put(p, "D"));
                     status.getMissing().forEach(p -> trackedFiles.put(p, "D"));
                     status.getAdded().forEach(p -> trackedFiles.put(p, "A"));
-                    trackedFiles.forEach((file, statusCode) -> 
-                        System.out.println("  " + statusCode + " " + file));
+                    if (trackedFiles.isEmpty()) {
+                        System.out.println("  (none)");
+                    } else {
+                        trackedFiles.forEach((file, statusCode) -> 
+                            System.out.println("  " + statusCode + " " + file));
+                    }
                     
                     System.out.println("-- Untracked Files:");
-                    status.getUntracked().forEach(p -> System.out.println("  ? " + p));
+                    if (status.getUntracked().isEmpty()) {
+                        System.out.println("  (none)");
+                    } else {
+                        status.getUntracked().forEach(p -> System.out.println("  ? " + p));
+                    }
+                }
+                
+                if (veryVerbose) {
+                    System.out.println("-- Ignored Files:");
+                    if (status.getIgnoredNotInIndex().isEmpty()) {
+                        System.out.println("  (none)");
+                    } else {
+                        status.getIgnoredNotInIndex().forEach(p -> System.out.println("  ! " + p));
+                    }
                 }
             }
         } else {
