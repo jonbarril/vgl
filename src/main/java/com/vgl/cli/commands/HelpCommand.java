@@ -60,6 +60,7 @@ public class HelpCommand implements Command {
                 "  Optionally use 'remote' to specify an existing remote repository and its",
                 "  associated branch (default: 'main'). You can then 'pull' and merge remote",
                 "  changes into the local repo and 'push' local commits to the remote repository.",
+                "  Use 'checkin' to push and then issue a remote pull request (PR).",
                 "",
                 "  Use 'status' anytime to see the current state of your workspace, files and",
                 "  repositories, 'diff' to compare workspace changes with the local or remote",
