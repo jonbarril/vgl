@@ -12,7 +12,7 @@ public class HelpCommand implements Command {
             "Voodoo Gitless  (" + Utils.versionFromRuntime() + ") -- Git for mortals",
             "Commands:",
             "  create [<dir>] [-b <branch>]          Create local repo (warn if exists or nested), set local",
-            "  checkout <url> [-b <branch>]          Clone local repo+branch from remote, set local/remote",
+            "  checkout <url> [-b <branch>]          Create/clone local repo+branch from remote, set local/remote",
             "  local [<dir>] [-b <branch>]           Set local repo+branch (warn if missing or nested)",
             "  remote [<url>] [-b <branch>]          Set remote repo+branch (warn if missing)",
             "  track <glob...> | untrack <glob...>   File control (uses .gitignore rules)",
@@ -51,20 +51,22 @@ public class HelpCommand implements Command {
             helpText.append(String.join("\n",
                 "  Use 'create' to specify the root directory for a new local repository and",
                 "  its associated branch (default: 'main'). This is also where your workspace",
-                "  files live. Use 'local' instead to switch the local repo and its",
-                "  associated branch (default: 'main').",
-                "",
-                "  Changes in the workspace exist only in the file system. To record them",
-                "  in the local repository, you must 'commit' them.",
+                "  files live. Use 'local' instead to switch the local repo and its associated",
+                "  branch (default: 'main'). Changes in the workspace exist only in the file",
+                "  system. To record them, you must 'commit' them to the local repository.",
                 "",
                 "  Optionally use 'remote' to specify an existing remote repository and its",
                 "  associated branch (default: 'main'). You can then 'pull' and merge remote",
                 "  changes into the local repo and 'push' local commits to the remote repository.",
-                "  Use 'checkin' to push and then issue a remote pull request (PR).",
+                "",
+                "  Alternatively, as shortcuts, use 'checkout' to create/clone a remote",
+                "  repository, 'sync' to pull and then push any changes, and 'checkin' to push",
+                "  and then issue a remote pull request (PR).",
                 "",
                 "  Use 'status' anytime to see the current state of your workspace, files and",
                 "  repositories, 'diff' to compare workspace changes with the local or remote",
-                "  repository branch, and 'log' to view the commit history."
+                "  repository branch, 'restore' to undo workspace changes, and 'log' to view the",
+                "  commit history."
             ));
         }
 

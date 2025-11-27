@@ -27,14 +27,14 @@ public class DiffFilteringTest {
 
     @Test
     void diffWithSpecificFileShowsOnlyThatFile(@TempDir Path tmp) throws Exception {
-        // Create repo with multiple modified files
-        run("create", tmp.toString());
-        Files.writeString(tmp.resolve("file1.txt"), "content1");
-        Files.writeString(tmp.resolve("file2.txt"), "content2");
-
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
+            
+            // Create repo with multiple modified files
+            run("create", tmp.toString());
+            Files.writeString(tmp.resolve("file1.txt"), "content1");
+            Files.writeString(tmp.resolve("file2.txt"), "content2");
             run("track", "file1.txt", "file2.txt");
             run("commit", "initial");
             
@@ -55,15 +55,15 @@ public class DiffFilteringTest {
 
     @Test
     void diffWithGlobPatternShowsMatchingFiles(@TempDir Path tmp) throws Exception {
-        // Create repo with different file types
-        run("create", tmp.toString());
-        Files.writeString(tmp.resolve("test.java"), "java");
-        Files.writeString(tmp.resolve("test.txt"), "txt");
-        Files.writeString(tmp.resolve("other.java"), "java2");
-
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
+            
+            // Create repo with different file types
+            run("create", tmp.toString());
+            Files.writeString(tmp.resolve("test.java"), "java");
+            Files.writeString(tmp.resolve("test.txt"), "txt");
+            Files.writeString(tmp.resolve("other.java"), "java2");
             run("track", "test.java", "test.txt", "other.java");
             run("commit", "initial");
             
@@ -86,14 +86,14 @@ public class DiffFilteringTest {
 
     @Test
     void diffWithNoFiltersShowsAllChanges(@TempDir Path tmp) throws Exception {
-        // Create repo with multiple files
-        run("create", tmp.toString());
-        Files.writeString(tmp.resolve("file1.txt"), "content1");
-        Files.writeString(tmp.resolve("file2.txt"), "content2");
-
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
+            
+            // Create repo with multiple files
+            run("create", tmp.toString());
+            Files.writeString(tmp.resolve("file1.txt"), "content1");
+            Files.writeString(tmp.resolve("file2.txt"), "content2");
             run("track", "file1.txt", "file2.txt");
             run("commit", "initial");
             
