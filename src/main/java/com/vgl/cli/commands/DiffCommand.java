@@ -16,8 +16,8 @@ public class DiffCommand implements Command {
     @Override public int run(List<String> args) throws Exception {
         boolean lb = args.contains("-lb");
         boolean rb = args.contains("-rb");
-        List<String> paths = new ArrayList<>();
-        for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) paths.add(s);
+        List<String> filters = new ArrayList<>();
+        for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) filters.add(s);
 
         try (Git git = Utils.openGit()) {
             if (git == null) {
@@ -43,12 +43,36 @@ public class DiffCommand implements Command {
                 st.getRemoved().forEach(p -> out.add("DELETE " + p));
                 st.getMissing().forEach(p -> out.add("DELETE " + p + " (missing)"));
 
-                if (!paths.isEmpty()) {
+                if (!filters.isEmpty()) {
                     out.removeIf(line -> {
-                        String file = line.replaceFirst("^[A-Z]+\s+","");
-                        boolean any = false;
-                        for (String p : paths) if (file.equals(p)) { any = true; break; }
-                        return !any;
+                        String file = line.replaceFirst("^[A-Z]+\\s+","");
+                        // Check if any filter matches this file
+                        boolean matches = false;
+                        for (String filter : filters) {
+                            // Check if it's a commit ID - if so, ignore for diff (commits show changes)
+                            if (filter.matches("[0-9a-f]{7,40}")) {
+                                // For commit IDs in diff, we'd need to show diff between commits
+                                // For now, skip this filter
+                                continue;
+                            }
+                            // Support glob patterns
+                            if (filter.contains("*") || filter.contains("?")) {
+                                String regex = filter.replace(".", "\\\\.")
+                                                    .replace("*", ".*")
+                                                    .replace("?", ".");
+                                if (file.matches(regex)) {
+                                    matches = true;
+                                    break;
+                                }
+                            } else {
+                                // Exact match or path contains
+                                if (file.equals(filter) || file.startsWith(filter + "/") || file.contains("/" + filter)) {
+                                    matches = true;
+                                    break;
+                                }
+                            }
+                        }
+                        return !matches;
                     });
                 }
                 out.forEach(System.out::println);

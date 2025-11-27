@@ -17,14 +17,14 @@ public class HelpCommand implements Command {
             "  remote [<url>] [-b <branch>]          Set remote repo+branch (warn if missing)",
             "  track <glob...> | untrack <glob...>   File control (uses .gitignore rules)",
             "  commit \"msg\" | -new \"new msg\"         New commit / modify last message (pre-push)",
-            "  restore -lb|-rb <commit|glob|*>       Restore working files from local/remote branch",
+            "  restore -lb|-rb [<commit|glob|*>]     Restore working files from local/remote branch",
             "  pull [-noop]                          Merge remote into working files",
             "  push [-noop]                          Replace remote with committed local files (warn if conflict)",
             "  checkin -draft|-final                 Push + PR intent (prints URL template)",
             "  sync [-noop]                          Pull then push (warn if conflict)",
             "  abort                                 Cancel merge in progress",
-            "  status [-v|-vv] | <commit>            Dashboard with commit details",
-            "  diff [-lb|-rb] [<file...>|<glob>]     Compare working files to local/remote branch",
+            "  status [-v|-vv] [<commit|glob|*>]     Dashboard with repo/commit/file details",
+            "  diff [-lb|-rb] [<commit|glob|*>]      Compare working files to local/remote branch",
             "  log [-v|-vv] [-graph]                 Creation+commit history, graph optional",
             "  help [-v|-vv]                         Usage help"
         ));
@@ -52,19 +52,18 @@ public class HelpCommand implements Command {
                 "  Use 'create' to specify the root directory for a new local repository and",
                 "  its associated branch (default: 'main'). This is also where your workspace",
                 "  files live. Use 'local' instead to switch the local repo and its",
-                "  associated branch, old or new (default: 'main').",
+                "  associated branch (default: 'main').",
                 "",
                 "  Changes in the workspace exist only in the file system. To record them",
                 "  in the local repository, you must 'commit' them.",
                 "",
                 "  Optionally use 'remote' to specify an existing remote repository and its",
-                "  associated branch, old or new (default: 'main'). You can then 'pull'",
-                "  and merge remote changes into the local repo and 'push' local commits",
-                "  to the remote repository.",
+                "  associated branch (default: 'main'). You can then 'pull' and merge remote",
+                "  changes into the local repo and 'push' local commits to the remote repository.",
                 "",
-                "  Use 'status' anytime to see the current state of your workspace and",
-                "  repositories, and 'diff' to compare workspace changes with the local",
-                "  or remote repository branch."
+                "  Use 'status' anytime to see the current state of your workspace, files and",
+                "  repositories, 'diff' to compare workspace changes with the local or remote",
+                "  repository branch, and 'log' to view the commit history."
             ));
         }
 
