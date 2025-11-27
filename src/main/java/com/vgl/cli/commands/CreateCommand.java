@@ -14,13 +14,17 @@ public class CreateCommand implements Command {
         String path = vgl.getLocalDir(); // Default to .vgl state
         String branch = vgl.getLocalBranch(); // Default to .vgl state
 
-        if (!args.isEmpty()) {
-            path = args.get(0);
-            if (args.contains("-b")) {
-                int index = args.indexOf("-b");
-                if (index + 1 < args.size()) {
-                    branch = args.get(index + 1);
-                }
+        // Parse arguments
+        int bIndex = args.indexOf("-b");
+        if (bIndex != -1 && bIndex + 1 < args.size()) {
+            branch = args.get(bIndex + 1);
+        }
+        
+        // Get path from first non-flag argument
+        for (String arg : args) {
+            if (!arg.equals("-b") && !arg.equals(branch)) {
+                path = arg;
+                break;
             }
         }
 
