@@ -8,7 +8,9 @@ import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.api.errors.NoHeadException;
 
 import java.nio.file.Paths;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 public class StatusCommand implements Command {
     @Override public String name() { return "status"; }
@@ -127,11 +129,15 @@ public class StatusCommand implements Command {
 
                 if (veryVerbose) {
                     System.out.println("-- Tracked Files:");
-                    status.getChanged().forEach(p -> System.out.println("  M " + p));
-                    status.getModified().forEach(p -> System.out.println("  M " + p));
-                    status.getAdded().forEach(p -> System.out.println("  A " + p));
-                    status.getRemoved().forEach(p -> System.out.println("  D " + p));
-                    status.getMissing().forEach(p -> System.out.println("  D " + p + " (missing)"));
+                    // Use a set to avoid duplicates
+                    Set<String> trackedFiles = new LinkedHashSet<>();
+                    status.getChanged().forEach(p -> trackedFiles.add("M " + p));
+                    status.getModified().forEach(p -> trackedFiles.add("M " + p));
+                    status.getAdded().forEach(p -> trackedFiles.add("A " + p));
+                    status.getRemoved().forEach(p -> trackedFiles.add("D " + p));
+                    status.getMissing().forEach(p -> trackedFiles.add("D " + p + " (missing)"));
+                    trackedFiles.forEach(f -> System.out.println("  " + f));
+                    
                     System.out.println("-- Untracked Files:");
                     status.getUntracked().forEach(p -> System.out.println("  ? " + p));
                 }
