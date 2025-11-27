@@ -1,18 +1,13 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.Utils;
-import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.Status;
-import org.eclipse.jgit.diff.DiffEntry;
-import org.eclipse.jgit.diff.DiffFormatter;
-import org.eclipse.jgit.lib.ObjectId;
-import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.treewalk.CanonicalTreeParser;
-
-import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.revwalk.RevCommit;
+
+import com.vgl.cli.Utils;
 
 public class CommitCommand implements Command {
     @Override public String name(){ return "commit"; }
@@ -29,7 +24,9 @@ public class CommitCommand implements Command {
             return 1;
         }
 
-        try (Git git = (Utils.openGit() != null ? Utils.openGit() : Git.open(new java.io.File(".")))) {
+        Git maybe = Utils.openGit();
+        if (maybe == null) maybe = Git.open(new java.io.File("."));
+        try (Git git = maybe) {
             if (git == null) return 1;
 
             // Stage everything: additions and modifications
