@@ -9,64 +9,70 @@ public class HelpCommand implements Command {
     @Override public int run(List<String> args) {
         StringBuilder helpText = new StringBuilder();
         helpText.append(String.join("\n",
-            "Voodoo Gitless  (" + Utils.versionFromRuntime() + ") -- Git for mortals",
+            "Voodoo Gitless (" + Utils.versionFromRuntime() + ") -- Git for mortals",
+            "",
             "Commands:",
-            "  create [<dir>] [-b <branch>]          Create local repo (warn if exists or nested), set local",
-            "  checkout <url> [-b <branch>]          Create/clone local repo+branch from remote, set local/remote",
-            "  local [<dir>] [-b <branch>]           Set local repo+branch (warn if missing or nested)",
-            "  remote [<url>] [-b <branch>]          Set remote repo+branch (warn if missing)",
-            "  track <glob...> | untrack <glob...>   File control (uses .gitignore rules)",
-            "  commit \"msg\" | -new \"new msg\"         New commit / modify last message (pre-push)",
-            "  restore -lb|-rb [<commit|glob|*>]     Restore working files from local/remote branch",
-            "  pull [-noop]                          Merge remote into working files",
-            "  push [-noop]                          Replace remote with committed local files (warn if conflict)",
-            "  checkin -draft|-final                 Push + PR intent (prints URL template)",
-            "  sync [-noop]                          Pull then push (warn if conflict)",
-            "  abort                                 Cancel merge in progress",
-            "  status [-v|-vv] [<commit|glob|*>]     Dashboard with repo/commit/file details",
-            "  diff [-lb|-rb] [<commit|glob|*>]      Compare working files to local/remote branch",
-            "  log [-v|-vv] [-graph]                 Creation+commit history, graph optional",
-            "  help [-v|-vv]                         Usage help"
+            "  create [DIR] [-b BRANCH]              Create local repo, set as current workspace",
+            "  checkout URL [-b BRANCH]              Clone remote repo+branch, set as current workspace",
+            "  local [DIR] [-b BRANCH]               Switch to existing local repo+branch",
+            "  remote [URL] [-b BRANCH]              Configure remote repo+branch for push/pull",
+            "",
+            "  track GLOB... | untrack GLOB...       Add/remove files from version control",
+            "  commit \"MESSAGE\" | -new \"MESSAGE\"     Commit changes / amend last commit message",
+            "  restore -lb|-rb [COMMIT|GLOB|*]       Revert working files to saved state",
+            "",
+            "  pull [-noop]                          Fetch and merge remote changes",
+            "  push [-noop]                          Upload committed changes to remote",
+            "  sync [-noop]                          Pull then push (shortcut)",
+            "  checkin -draft|-final                 Push and generate PR URL",
+            "  abort                                 Cancel ongoing merge",
+            "",
+            "  status [-v|-vv] [COMMIT|GLOB|*]       Show workspace/repo/file status",
+            "  diff [-lb|-rb] [COMMIT|GLOB|*]        Compare working files with saved versions",
+            "  log [-v|-vv] [-graph]                 Show commit history",
+            "  help [-v|-vv]                         Show this help"
         ));
 
         if (args.contains("-v") || args.contains("-vv")) {
-            helpText.append("\nFlags:\n");
+            helpText.append("\n\nFlags:\n");
             helpText.append(String.join("\n",
-                "  -b <branch>      Specify branch name",
-                "  -noop            No-op / dry run (no local/remote changes)",
-                "  -v|-vv           Verbose and very verbose info",
-                "  <commit>         Commit ID",
-                "  <glob>           Expands wildcard patterns into matching filenames",
-                "      *.log        -> app.log build.log",
-                "      file?.txt    -> file1.txt fileA.txt",
-                "      [A-Z]*       -> Docs Makefile README",
-                "      **/*.py      -> main.py lib/util.py",
-                "      *.{png,jpg}  -> cat.png dog.jpg",
-                "      \"*.md\"       -> *.md"
+                "  -b BRANCH        Branch name (default: main)",
+                "  -lb, -rb         Compare with local or remote branch",
+                "  -noop            Dry run without making changes",
+                "  -v, -vv          Verbose output with increasing detail",
+                "",
+                "Glob Patterns:",
+                "  *.log            All .log files              → app.log, build.log",
+                "  file?.txt        Single-char wildcard        → file1.txt, fileA.txt",
+                "  **/*.py          Recursive subdirectories    → main.py, lib/util.py",
+                "  *.{png,jpg}      Multiple extensions         → cat.png, dog.jpg"
             ));
         }
 
         if (args.contains("-vv")) {
-            helpText.append("\nOverview:\n");
+            helpText.append("\n\nOverview:\n");
             helpText.append(String.join("\n",
-                "  Use 'create' to specify the root directory for a new local repository and",
-                "  its associated branch (default: 'main'). This is also where your workspace",
-                "  files live. Use 'local' instead to switch the local repo and its associated",
-                "  branch (default: 'main'). Changes in the workspace exist only in the file",
-                "  system. To record them, you must 'commit' them to the local repository.",
+                "  Working Locally:",
+                "    Use 'create' to make a new local repository in a directory (or 'local' to",
+                "    switch to an existing one). Your workspace is where your working files live.",
+                "    Changes you make exist only in the workspace until you 'commit' them to the",
+                "    local repository's branch (default: main). This records a snapshot you can",
+                "    return to later. You can work entirely locally without any remote setup.",
                 "",
-                "  Optionally use 'remote' to specify an existing remote repository and its",
-                "  associated branch (default: 'main'). You can then 'pull' and merge remote",
-                "  changes into the local repo and 'push' local commits to the remote repository.",
+                "  Adding Remote Collaboration (Optional):",
+                "    Use 'remote' to configure a remote repository URL for cloud backup and team",
+                "    collaboration. Then 'push' sends your local commits to the remote and 'pull'",
+                "    fetches and merges remote changes. Use 'sync' to do both. The 'checkout'",
+                "    command combines cloning a remote repository with local setup. For team work,",
+                "    use 'checkin' to push and create a pull request (PR), which gives teammates",
+                "    a web form to review your changes before merging.",
                 "",
-                "  For shortcuts use 'checkout' to create/clone a remote repository, 'sync' to",
-                "  pull and then push any changes, and 'checkin' to push and then issue a remote",
-                "  pull request (PR).",
-                "",
-                "  Use 'status' anytime to see the current state of your workspace, files and",
-                "  repositories, 'diff' to compare workspace changes with the local or remote",
-                "  repository branch, 'restore' to undo workspace changes, and 'log' to view the",
-                "  commit history."
+                "  Inspecting Your Work:",
+                "    Use 'status' to see your current workspace state, uncommitted changes, and",
+                "    repository configuration. Use 'diff' to review actual file changes compared",
+                "    to your local or remote branch. Use 'log' to view the commit history. The",
+                "    'restore' command undoes workspace changes, returning files to their last",
+                "    committed state."
             ));
         }
 
