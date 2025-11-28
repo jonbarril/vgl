@@ -103,7 +103,7 @@ public class CommitMessageTest {
             // Verify history
             Iterable<RevCommit> logs = git.log().call();
             long count = 0;
-            for (RevCommit c : logs) {
+            for (@SuppressWarnings("unused") RevCommit c : logs) {
                 count++;
             }
             
