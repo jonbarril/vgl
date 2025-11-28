@@ -71,9 +71,6 @@ public class LogCommandTest {
     @Test
     public void logOnEmptyRepoReturnsNothing(@TempDir Path tempDir) throws Exception {
         try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
-            // Try to get log on repo with no commits
-            Iterable<RevCommit> logs = git.log().call();
-            
             // This will throw NoHeadException in real usage, but test repo state
             assertThat(git.getRepository().resolve("HEAD")).isNull();
         } catch (org.eclipse.jgit.api.errors.NoHeadException e) {
