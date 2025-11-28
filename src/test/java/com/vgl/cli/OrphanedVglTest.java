@@ -4,9 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.eclipse.jgit.api.Git;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -38,7 +36,7 @@ public class OrphanedVglTest {
             
             // Verify both exist
             assertThat(Files.exists(vglFile)).isTrue();
-            assertThat(Files.exists(tempDir.resolve(".git"))).isTrue();
+            assertThat(git.getRepository().getDirectory().exists()).isTrue();
         }
     }
     
@@ -58,7 +56,7 @@ public class OrphanedVglTest {
             System.setOut(new PrintStream(output));
             
             // Try to create VglCli - should detect orphaned .vgl
-            VglCli vgl = new VglCli();
+            new VglCli();
             
             // In non-interactive mode, should auto-delete
             // Verify warning was shown
