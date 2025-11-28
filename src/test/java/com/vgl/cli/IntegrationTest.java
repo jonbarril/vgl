@@ -39,14 +39,10 @@ public class IntegrationTest {
     }
 
     private static ProcessResult runVgl(Path workingDir, String... args) throws Exception {
-        System.out.print(".");
-        System.out.flush();
         return runVglWithInput(workingDir, null, args);
     }
 
     private static ProcessResult runVglWithInput(Path workingDir, String input, String... args) throws Exception {
-        System.out.print(".");
-        System.out.flush();
         List<String> command = new ArrayList<>();
         command.add(vglCommand);
         command.addAll(Arrays.asList(args));
@@ -91,7 +87,7 @@ public class IntegrationTest {
 
     @Test
     void statusShowsCommitMessagesWithVerbose(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "statusShowsCommitMessagesWithVerbose]");
+        System.out.print("\n" + getTestProgress() + "statusShowsCommitMessagesWithVerbose]...");
         // Create repo and commit
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -101,12 +97,12 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("first commit message");
         assertThat(result.output).containsPattern("[0-9a-f]{7}"); // commit hash
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
     void statusVeryVerboseShowsAllTrackedFiles(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "statusVeryVerboseShowsAllTrackedFiles]");
+        System.out.print("\n" + getTestProgress() + "statusVeryVerboseShowsAllTrackedFiles]...");
         // Create repo with files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("file1.txt"), "content1");
@@ -118,12 +114,12 @@ public class IntegrationTest {
         assertThat(result.output).contains("-- Tracked Files:");
         assertThat(result.output).contains("file1.txt");
         assertThat(result.output).contains("file2.txt");
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
     void statusFiltersByFileName(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "statusFiltersByFileName]");
+        System.out.print("\n" + getTestProgress() + "statusFiltersByFileName]...");
         // Create repo with multiple files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.java"), "java");
@@ -143,7 +139,7 @@ public class IntegrationTest {
 
     @Test
     void statusFiltersWithGlobPattern(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "statusFiltersWithGlobPattern]");
+        System.out.print("\n" + getTestProgress() + "statusFiltersWithGlobPattern]...");
         // Create repo with multiple files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("file1.java"), "java1");
@@ -166,7 +162,7 @@ public class IntegrationTest {
 
     @Test
     void diffShowsChangesWithGlobPattern(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "diffShowsChangesWithGlobPattern]");
+        System.out.print("\n" + getTestProgress() + "diffShowsChangesWithGlobPattern]...");
         // Create repo with files
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.java"), "original java");
@@ -186,7 +182,7 @@ public class IntegrationTest {
 
     @Test
     void restoreAsksForConfirmationAndDefaults(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "restoreAsksForConfirmationAndDefaults]");
+        System.out.print("\n" + getTestProgress() + "restoreAsksForConfirmationAndDefaults]...");
         // Create repo with file
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "original");
@@ -205,7 +201,7 @@ public class IntegrationTest {
 
     @Test
     void restoreRestoresFileWithConfirmation(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "restoreRestoresFileWithConfirmation]");
+        System.out.print("\n" + getTestProgress() + "restoreRestoresFileWithConfirmation]...");
         // Create repo with file
         runVgl(tmp, "create", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "original");
@@ -224,7 +220,7 @@ public class IntegrationTest {
 
     @Test
     void localSwitchesBranches(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "localSwitchesBranches]");
+        System.out.print("\n" + getTestProgress() + "localSwitchesBranches]...");
         // Create repo with two branches
         runVgl(tmp, "create", tmp.toString(), "-b", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -242,7 +238,7 @@ public class IntegrationTest {
 
     @Test
     void localWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "localWarnsAboutUncommittedChanges]");
+        System.out.print("\n" + getTestProgress() + "localWarnsAboutUncommittedChanges]...");
         // Create repo with two branches
         runVgl(tmp, "create", tmp.toString(), "-b", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -263,7 +259,7 @@ public class IntegrationTest {
 
     @Test
     void createCommandCreatesNewBranch(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "createCommandCreatesNewBranch]");
+        System.out.print("\n" + getTestProgress() + "createCommandCreatesNewBranch]...");
         // Create repo
         runVgl(tmp, "create", tmp.toString(), "-b", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -279,7 +275,7 @@ public class IntegrationTest {
 
     @Test
     void checkoutCreatesVglConfig(@TempDir Path tmp) throws Exception {
-        System.out.println("\n" + getTestProgress() + "checkoutCreatesVglConfig]");
+        System.out.print("\n" + getTestProgress() + "checkoutCreatesVglConfig]...");
         // Create a source repo to clone from
         Path sourceRepo = tmp.resolve("source");
         Files.createDirectories(sourceRepo);
