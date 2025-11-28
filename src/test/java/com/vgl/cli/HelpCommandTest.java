@@ -36,14 +36,15 @@ public class HelpCommandTest {
         String out = run("help", "-v");
         assertThat(out).contains("Flags:");
         assertThat(out).contains("-noop");
-        assertThat(out).contains("<glob>");
+        assertThat(out).contains("Glob Patterns:");
     }
 
     @Test
     void veryVerboseIncludesOverview() throws Exception {
         String out = run("help", "-vv");
         assertThat(out).contains("Overview:");
-        assertThat(out).contains("Use 'create' to specify");
-        assertThat(out).contains("Use 'status' anytime");
+        assertThat(out).contains("Working Locally:");
+        assertThat(out).contains("Use 'create' to make a new local repository");
+        assertThat(out).contains("Inspecting Your Work:");
     }
 }
