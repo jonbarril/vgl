@@ -134,7 +134,7 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("test.java");
         assertThat(result.output).doesNotContain("test.txt");
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
@@ -157,7 +157,7 @@ public class IntegrationTest {
         assertThat(result.output).contains("file1.java");
         assertThat(result.output).contains("file2.java");
         assertThat(result.output).doesNotContain("file.txt");
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
@@ -177,7 +177,7 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("test.java");
         assertThat(result.output).doesNotContain("test.txt");
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
@@ -196,7 +196,7 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("Continue? (y/N):");
         assertThat(result.output).containsAnyOf("cancelled", "Cancelled");
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
@@ -215,7 +215,7 @@ public class IntegrationTest {
         runVglWithInput(tmp, "y\n", "restore", "test.txt");
 
         assertThat(Files.readString(tmp.resolve("test.txt"))).isEqualTo("original");
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
@@ -233,7 +233,7 @@ public class IntegrationTest {
 
         ProcessResult result = runVgl(tmp, "status");
         assertThat(result.output).containsPattern("LOCAL.*:main");
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
@@ -254,7 +254,7 @@ public class IntegrationTest {
 
         assertThat(result.output).contains("uncommitted changes");
         assertThat(result.output).contains("Continue? (y/N):");
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
@@ -270,7 +270,7 @@ public class IntegrationTest {
 
         ProcessResult result = runVgl(tmp, "status");
         assertThat(result.output).containsPattern("LOCAL.*:feature");
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 
     @Test
@@ -296,7 +296,7 @@ public class IntegrationTest {
         assertThat(Files.exists(clonedRepo.resolve(".vgl"))).isTrue();
         assertThat(Files.exists(clonedRepo.resolve(".git"))).isTrue();
         assertThat(Files.exists(clonedRepo.resolve("test.txt"))).isTrue();
-        System.out.println(" ✓");
+        System.out.println(" PASSED");
     }
 }
 

@@ -38,8 +38,9 @@ tasks.test {
     
     // Show test output in real-time
     testLogging {
-        events("passed", "skipped", "failed", "standardOut", "standardError")
+        events("standardOut")
         showStandardStreams = true
+        showExceptions = false
     }
 }
 
