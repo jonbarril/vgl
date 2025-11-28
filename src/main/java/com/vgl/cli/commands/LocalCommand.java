@@ -45,17 +45,14 @@ public class LocalCommand implements Command {
             return 1;
         }
 
-        @SuppressWarnings("resource")
-        Git git = Git.open(dir.toFile());
-        
-        // Verify the branch exists (if any branches exist at all)
-        List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
+        try (Git git = Git.open(dir.toFile())) {
+            // Verify the branch exists (if any branches exist at all)
+            List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
         if (!branches.isEmpty()) {
             boolean branchExists = branches.stream()
                 .anyMatch(ref -> ref.getName().equals("refs/heads/" + finalBranch));
             
             if (!branchExists) {
-                git.close();
                 System.out.println("Warning: Branch '" + finalBranch + "' does not exist in local repository: " + dir);
                 System.out.println("Create the branch with: vgl create -b " + finalBranch);
                 return 1;
@@ -105,7 +102,6 @@ public class LocalCommand implements Command {
             }
             
             if (!response.equals("y") && !response.equals("yes")) {
-                git.close();
                 System.out.println("Branch switch cancelled.");
                 return 0;
             }
@@ -116,12 +112,11 @@ public class LocalCommand implements Command {
             git.checkout().setName(finalBranch).call();
         }
         
-        git.close();
-        
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(finalBranch);
         vgl.save();
         System.out.println("Switched to local repository: " + dir + " on branch '" + branch + "'.");
         return 0;
+        }
     }
 }
