@@ -87,6 +87,18 @@ public class CheckoutCommand implements Command {
         
         // Create .vgl config for the cloned repository
         VglCli vgl = new VglCli();
+        
+        // Save current state as jump state before cloning
+        String currentDir = vgl.getLocalDir();
+        String currentBranch = vgl.getLocalBranch();
+        String currentRemoteUrl = vgl.getRemoteUrl();
+        String currentRemoteBranch = vgl.getRemoteBranch();
+        
+        vgl.setJumpLocalDir(currentDir);
+        vgl.setJumpLocalBranch(currentBranch);
+        vgl.setJumpRemoteUrl(currentRemoteUrl);
+        vgl.setJumpRemoteBranch(currentRemoteBranch);
+        
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(branch);
         vgl.setRemoteUrl(url);

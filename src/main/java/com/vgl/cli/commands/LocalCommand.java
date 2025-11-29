@@ -112,6 +112,17 @@ public class LocalCommand implements Command {
             git.checkout().setName(finalBranch).call();
         }
         
+        // Save current state as jump state before switching
+        String currentDir = vgl.getLocalDir();
+        String currentBranch = vgl.getLocalBranch();
+        String currentRemoteUrl = vgl.getRemoteUrl();
+        String currentRemoteBranch = vgl.getRemoteBranch();
+        
+        vgl.setJumpLocalDir(currentDir);
+        vgl.setJumpLocalBranch(currentBranch);
+        vgl.setJumpRemoteUrl(currentRemoteUrl);
+        vgl.setJumpRemoteBranch(currentRemoteBranch);
+        
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(finalBranch);
         vgl.save();

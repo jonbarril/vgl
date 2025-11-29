@@ -17,6 +17,7 @@ public class VglCli {
         register(new CheckoutCommand());
         register(new LocalCommand());
         register(new RemoteCommand());
+        register(new JumpCommand());
         register(new TrackCommand());
         register(new UntrackCommand());
         register(new CommitCommand());
@@ -167,5 +168,61 @@ public class VglCli {
 
     public void setRemoteBranch(String branch) {
         config.setProperty("remote.branch", branch);
+    }
+
+    // Jump state management - stores previous context for toggle
+    public String getJumpLocalDir() {
+        return config.getProperty("jump.local.dir", null);
+    }
+
+    public void setJumpLocalDir(String dir) {
+        if (dir != null) {
+            config.setProperty("jump.local.dir", dir);
+        } else {
+            config.remove("jump.local.dir");
+        }
+    }
+
+    public String getJumpLocalBranch() {
+        return config.getProperty("jump.local.branch", null);
+    }
+
+    public void setJumpLocalBranch(String branch) {
+        if (branch != null) {
+            config.setProperty("jump.local.branch", branch);
+        } else {
+            config.remove("jump.local.branch");
+        }
+    }
+
+    public String getJumpRemoteUrl() {
+        return config.getProperty("jump.remote.url", null);
+    }
+
+    public void setJumpRemoteUrl(String url) {
+        if (url != null) {
+            config.setProperty("jump.remote.url", url);
+        } else {
+            config.remove("jump.remote.url");
+        }
+    }
+
+    public String getJumpRemoteBranch() {
+        return config.getProperty("jump.remote.branch", null);
+    }
+
+    public void setJumpRemoteBranch(String branch) {
+        if (branch != null) {
+            config.setProperty("jump.remote.branch", branch);
+        } else {
+            config.remove("jump.remote.branch");
+        }
+    }
+
+    /**
+     * Check if jump state exists (at least one jump property is set)
+     */
+    public boolean hasJumpState() {
+        return getJumpLocalDir() != null || getJumpLocalBranch() != null;
     }
 }

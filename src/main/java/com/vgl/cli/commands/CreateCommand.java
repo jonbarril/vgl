@@ -143,6 +143,17 @@ public class CreateCommand implements Command {
             return 1;
         }
 
+        // Save current state as jump state before creating/switching
+        String currentDir = vgl.getLocalDir();
+        String currentBranch = vgl.getLocalBranch();
+        String currentRemoteUrl = vgl.getRemoteUrl();
+        String currentRemoteBranch = vgl.getRemoteBranch();
+        
+        vgl.setJumpLocalDir(currentDir);
+        vgl.setJumpLocalBranch(currentBranch);
+        vgl.setJumpRemoteUrl(currentRemoteUrl);
+        vgl.setJumpRemoteBranch(currentRemoteBranch);
+
         // Set the new repo/branch as current
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(finalBranch);
