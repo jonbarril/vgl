@@ -28,13 +28,13 @@ public class CommitAndDiffTest {
     @Test
     public void commitPrintsShortId_andDiffShowsChanges(@TempDir Path tmp) throws Exception {
         // Create a new repository
-        new VglCli().run(new String[]{"create", tmp.toString()});
+        new VglCli().run(new String[]{"create", "-lr", tmp.toString()});
 
         // Create a file and commit it (no need to call track - auto-tracked)
         Path file = tmp.resolve("a.txt");
         Files.writeString(file, "hello\n");
-        new VglCli().run(new String[]{"local", tmp.toString()});
-        new VglCli().run(new String[]{"remote", "origin"});
+        new VglCli().run(new String[]{"local", "-lr", tmp.toString()});
+        new VglCli().run(new String[]{"remote", "-rr", "https://example.com/repo.git"});
         String oldUserDir = System.getProperty("user.dir");
         System.setProperty("user.dir", tmp.toString());
         String commitOutput;
