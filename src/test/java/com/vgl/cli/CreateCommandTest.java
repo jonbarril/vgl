@@ -2,8 +2,6 @@ package com.vgl.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -20,9 +18,8 @@ public class CreateCommandTest {
     public void createNewRepository(@TempDir Path tempDir) throws Exception {
         Path newRepo = tempDir.resolve("myrepo");
         
-        try (Git git = Git.init().setDirectory(newRepo.toFile()).call()) {
-            // No-op, just need to run VGL create
-        }
+        Git git = Git.init().setDirectory(newRepo.toFile()).call();
+        git.close();
         
         // Should create repo with default main branch
         assertThat(Files.exists(newRepo.resolve(".git"))).isTrue();
