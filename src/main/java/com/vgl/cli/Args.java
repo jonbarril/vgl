@@ -2,7 +2,7 @@
 package com.vgl.cli;
 import java.util.*;
 
-class Args {
+public class Args {
   final String cmd; 
   final List<String> rest;
   

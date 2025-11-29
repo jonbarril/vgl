@@ -14,10 +14,14 @@ public class VglCli {
         loadConfig();
         register(new HelpCommand());
         register(new CreateCommand());
+        register(new DeleteCommand());
         register(new CheckoutCommand());
         register(new LocalCommand());
         register(new RemoteCommand());
+        register(new SwitchCommand());
         register(new JumpCommand());
+        register(new SplitCommand());
+        register(new MergeCommand());
         register(new TrackCommand());
         register(new UntrackCommand());
         register(new CommitCommand());
