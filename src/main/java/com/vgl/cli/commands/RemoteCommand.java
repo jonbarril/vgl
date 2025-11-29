@@ -20,28 +20,11 @@ public class RemoteCommand implements Command {
         String url = vgl.getRemoteUrl(); // Default to .vgl state
         String branch = vgl.getRemoteBranch(); // Default to .vgl state
 
-        // Try new syntax first
         String newRemoteUrl = Args.getFlag(args, "-rr");
         String newRemoteBranch = Args.getFlag(args, "-rb");
         
         if (newRemoteUrl != null) url = newRemoteUrl;
         if (newRemoteBranch != null) branch = newRemoteBranch;
-        
-        // Fall back to old syntax
-        if (newRemoteUrl == null && newRemoteBranch == null) {
-            int bIndex = args.indexOf("-b");
-            if (bIndex != -1 && bIndex + 1 < args.size()) {
-                branch = args.get(bIndex + 1);
-            }
-            
-            // Get URL from first non-flag argument
-            for (String arg : args) {
-                if (!arg.equals("-b") && !arg.equals(branch)) {
-                    url = arg;
-                    break;
-                }
-            }
-        }
 
         // Fallback to "main" branch if not set
         if (branch == null || branch.isBlank()) branch = "main";

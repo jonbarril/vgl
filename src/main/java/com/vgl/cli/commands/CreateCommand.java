@@ -12,40 +12,22 @@ public class CreateCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         VglCli vgl = new VglCli();
-        String path = vgl.getLocalDir();
-        String branch = vgl.getLocalBranch();
-
-        // Parse new flags first
+        
+        // Parse new flags
         String newLocalRepo = Args.getFlag(args, "-lr");
         String newLocalBranch = Args.getFlag(args, "-lb");
         boolean createBothBranches = Args.hasFlag(args, "-bb");
         
-        // If new flags present, use them
-        if (newLocalRepo != null) path = newLocalRepo;
-        if (newLocalBranch != null) branch = newLocalBranch;
+        // Handle -bb flag
         if (createBothBranches) {
             String branchName = Args.getFlag(args, "-bb");
-            if (branchName != null) branch = branchName;
+            if (branchName != null) newLocalBranch = branchName;
         }
         
-        // Fall back to old syntax for backward compatibility
-        boolean usingNewSyntax = newLocalRepo != null || newLocalBranch != null || createBothBranches;
-        if (!usingNewSyntax) {
-            int bIndex = args.indexOf("-b");
-            boolean branchSpecified = bIndex != -1;
-            if (branchSpecified && bIndex + 1 < args.size()) {
-                branch = args.get(bIndex + 1);
-            }
-            
-            // Get path from first non-flag argument (old positional syntax)
-            for (String arg : args) {
-                if (!arg.equals("-b") && !arg.equals(branch)) {
-                    path = arg;
-                    break;
-                }
-            }
-        }
-
+        // Use defaults from VGL config
+        String path = newLocalRepo != null ? newLocalRepo : vgl.getLocalDir();
+        String branch = newLocalBranch != null ? newLocalBranch : vgl.getLocalBranch();
+        
         // Fallback to current working directory and "main" branch if not set
         if (path == null || path.isBlank()) path = ".";
         if (branch == null || branch.isBlank()) branch = "main";
@@ -53,8 +35,8 @@ public class CreateCommand implements Command {
         final String finalBranch = branch;
         final boolean pushToRemote = createBothBranches;
         
-        // Determine if branch was explicitly specified (new or old syntax)
-        boolean branchSpecified = newLocalBranch != null || createBothBranches || args.indexOf("-b") != -1;
+        // Determine if branch was explicitly specified
+        boolean branchSpecified = newLocalBranch != null || createBothBranches;
 
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir)) Files.createDirectories(dir);
@@ -171,11 +153,11 @@ public class CreateCommand implements Command {
                 }
             }
         }
-        // Case 3: .git exists but no -b specified - ERROR
+        // Case 3: .git exists but no -lb or -bb specified - ERROR
         else {
             System.err.println("Error: Repository already exists at " + dir);
-            System.err.println("To create a new branch, use: vgl create -b <branch>");
-            System.err.println("To switch to an existing branch, use: vgl local -b <branch>");
+            System.err.println("To create a new branch, use: vgl create -lb BRANCH");
+            System.err.println("To switch to an existing branch, use: vgl switch -lb BRANCH");
             return 1;
         }
 

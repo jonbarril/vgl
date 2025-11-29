@@ -13,43 +13,21 @@ public class CheckoutCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         if (args.isEmpty()) {
-            System.out.println("Usage: vgl checkout <url> [-b <branch>] [<directory>]");
-            System.out.println("   or: vgl checkout -rr URL [-rb BRANCH] [-lr DIR]");
+            System.out.println("Usage: vgl checkout -rr URL [-rb BRANCH] [-lr DIR]");
             return 1;
         }
 
-        // Try new syntax first
         String remoteUrl = Args.getFlag(args, "-rr");
         String remoteBranch = Args.getFlag(args, "-rb");
         String localDir = Args.getFlag(args, "-lr");
         
-        // Fall back to old syntax
-        String branch = remoteBranch != null ? remoteBranch : "main";
-        String url = remoteUrl;
-        
-        if (url == null) {
-            // Old syntax: parse arguments
-            int bIndex = args.indexOf("-b");
-            if (bIndex != -1 && bIndex + 1 < args.size()) {
-                branch = args.get(bIndex + 1);
-            }
-            
-            // Get URL from first non-flag argument
-            for (String arg : args) {
-                if (!arg.equals("-b") && !arg.equals(branch) && !arg.equals(localDir)) {
-                    url = arg;
-                    break;
-                }
-            }
-        }
-        
-        if (url == null) {
-            System.out.println("Usage: vgl checkout <url> [-b <branch>]");
-            System.out.println("   or: vgl checkout -rr URL [-rb BRANCH] [-lr DIR]");
+        if (remoteUrl == null) {
+            System.out.println("Usage: vgl checkout -rr URL [-rb BRANCH] [-lr DIR]");
             return 1;
         }
 
-        String repoName = url.replaceAll(".*/", "").replaceAll("\\.git$", "");
+        String branch = remoteBranch != null ? remoteBranch : "main";
+        String repoName = remoteUrl.replaceAll(".*/", "").replaceAll("\\.git$", "");
         String targetDir = localDir != null ? localDir : repoName;
         Path dir = Paths.get(targetDir).toAbsolutePath().normalize();
         
@@ -95,7 +73,7 @@ public class CheckoutCommand implements Command {
             }
         }
 
-        Git git = Git.cloneRepository().setURI(url).setDirectory(dir.toFile()).setBranch("refs/heads/" + branch).call();
+        Git git = Git.cloneRepository().setURI(remoteUrl).setDirectory(dir.toFile()).setBranch("refs/heads/" + branch).call();
         git.close();
         
         // Create .vgl config for the cloned repository
@@ -114,11 +92,11 @@ public class CheckoutCommand implements Command {
         
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(branch);
-        vgl.setRemoteUrl(url);
+        vgl.setRemoteUrl(remoteUrl);
         vgl.setRemoteBranch(branch);
         vgl.save();
         
-        System.out.println("Cloned remote repository: " + url + " to local directory: " + dir + " on branch '" + branch + "'.");
+        System.out.println("Cloned remote repository: " + remoteUrl + " to local directory: " + dir + " on branch '" + branch + "'.");
         return 0;
     }
 }

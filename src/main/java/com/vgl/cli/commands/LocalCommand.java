@@ -20,28 +20,11 @@ public class LocalCommand implements Command {
         String path = vgl.getLocalDir(); // Default to .vgl state
         String branch = vgl.getLocalBranch(); // Default to .vgl state
 
-        // Try new syntax first
         String newLocalDir = Args.getFlag(args, "-lr");
         String newLocalBranch = Args.getFlag(args, "-lb");
         
         if (newLocalDir != null) path = newLocalDir;
         if (newLocalBranch != null) branch = newLocalBranch;
-        
-        // Fall back to old syntax
-        if (newLocalDir == null && newLocalBranch == null) {
-            int bIndex = args.indexOf("-b");
-            if (bIndex != -1 && bIndex + 1 < args.size()) {
-                branch = args.get(bIndex + 1);
-            }
-            
-            // Get path from first non-flag argument
-            for (String arg : args) {
-                if (!arg.equals("-b") && !arg.equals(branch)) {
-                    path = arg;
-                    break;
-                }
-            }
-        }
 
         // Fallback to current working directory and "main" branch if not set
         if (path == null || path.isBlank()) path = ".";
@@ -64,7 +47,7 @@ public class LocalCommand implements Command {
             
             if (!branchExists) {
                 System.out.println("Warning: Branch '" + finalBranch + "' does not exist in local repository: " + dir);
-                System.out.println("Create the branch with: vgl create -b " + finalBranch);
+                System.out.println("Create the branch with: vgl create -lb " + finalBranch);
                 return 1;
             }
         }
