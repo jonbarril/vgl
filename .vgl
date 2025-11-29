@@ -1,4 +1,4 @@
 #VGL Configuration
 #Sat Nov 29 16:17:43 CST 2025
 remote.branch=main
-remote.url=origin
+remote.url=https\://example.com/repo.git
