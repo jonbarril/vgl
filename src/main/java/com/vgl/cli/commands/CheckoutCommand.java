@@ -1,5 +1,6 @@
 package com.vgl.cli.commands;
 
+import com.vgl.cli.Args;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;
@@ -12,33 +13,45 @@ public class CheckoutCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         if (args.isEmpty()) {
-            System.out.println("Usage: vgl checkout <url> -b <branch>");
+            System.out.println("Usage: vgl checkout <url> [-b <branch>] [<directory>]");
+            System.out.println("   or: vgl checkout -rr URL [-rb BRANCH] [-lr DIR]");
             return 1;
         }
 
-        // Parse arguments
-        String branch = "main";
-        int bIndex = args.indexOf("-b");
-        if (bIndex != -1 && bIndex + 1 < args.size()) {
-            branch = args.get(bIndex + 1);
-        }
+        // Try new syntax first
+        String remoteUrl = Args.getFlag(args, "-rr");
+        String remoteBranch = Args.getFlag(args, "-rb");
+        String localDir = Args.getFlag(args, "-lr");
         
-        // Get URL from first non-flag argument
-        String url = null;
-        for (String arg : args) {
-            if (!arg.equals("-b") && !arg.equals(branch)) {
-                url = arg;
-                break;
+        // Fall back to old syntax
+        String branch = remoteBranch != null ? remoteBranch : "main";
+        String url = remoteUrl;
+        
+        if (url == null) {
+            // Old syntax: parse arguments
+            int bIndex = args.indexOf("-b");
+            if (bIndex != -1 && bIndex + 1 < args.size()) {
+                branch = args.get(bIndex + 1);
+            }
+            
+            // Get URL from first non-flag argument
+            for (String arg : args) {
+                if (!arg.equals("-b") && !arg.equals(branch) && !arg.equals(localDir)) {
+                    url = arg;
+                    break;
+                }
             }
         }
         
         if (url == null) {
-            System.out.println("Usage: vgl checkout <url> -b <branch>");
+            System.out.println("Usage: vgl checkout <url> [-b <branch>]");
+            System.out.println("   or: vgl checkout -rr URL [-rb BRANCH] [-lr DIR]");
             return 1;
         }
 
         String repoName = url.replaceAll(".*/", "").replaceAll("\\.git$", "");
-        Path dir = Paths.get(repoName).toAbsolutePath().normalize();
+        String targetDir = localDir != null ? localDir : repoName;
+        Path dir = Paths.get(targetDir).toAbsolutePath().normalize();
         
         // Check if directory already exists
         if (Files.exists(dir) && Files.list(dir).findAny().isPresent()) {

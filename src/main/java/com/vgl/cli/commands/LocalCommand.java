@@ -1,5 +1,6 @@
 package com.vgl.cli.commands;
 
+import com.vgl.cli.Args;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;
@@ -19,17 +20,26 @@ public class LocalCommand implements Command {
         String path = vgl.getLocalDir(); // Default to .vgl state
         String branch = vgl.getLocalBranch(); // Default to .vgl state
 
-        // Parse arguments
-        int bIndex = args.indexOf("-b");
-        if (bIndex != -1 && bIndex + 1 < args.size()) {
-            branch = args.get(bIndex + 1);
-        }
+        // Try new syntax first
+        String newLocalDir = Args.getFlag(args, "-lr");
+        String newLocalBranch = Args.getFlag(args, "-lb");
         
-        // Get path from first non-flag argument
-        for (String arg : args) {
-            if (!arg.equals("-b") && !arg.equals(branch)) {
-                path = arg;
-                break;
+        if (newLocalDir != null) path = newLocalDir;
+        if (newLocalBranch != null) branch = newLocalBranch;
+        
+        // Fall back to old syntax
+        if (newLocalDir == null && newLocalBranch == null) {
+            int bIndex = args.indexOf("-b");
+            if (bIndex != -1 && bIndex + 1 < args.size()) {
+                branch = args.get(bIndex + 1);
+            }
+            
+            // Get path from first non-flag argument
+            for (String arg : args) {
+                if (!arg.equals("-b") && !arg.equals(branch)) {
+                    path = arg;
+                    break;
+                }
             }
         }
 

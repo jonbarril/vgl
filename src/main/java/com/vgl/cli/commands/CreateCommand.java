@@ -1,5 +1,6 @@
 package com.vgl.cli.commands;
 
+import com.vgl.cli.Args;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 
@@ -14,18 +15,34 @@ public class CreateCommand implements Command {
         String path = vgl.getLocalDir();
         String branch = vgl.getLocalBranch();
 
-        // Parse arguments
-        int bIndex = args.indexOf("-b");
-        boolean branchSpecified = bIndex != -1;
-        if (branchSpecified && bIndex + 1 < args.size()) {
-            branch = args.get(bIndex + 1);
+        // Parse new flags first
+        String newLocalRepo = Args.getFlag(args, "-lr");
+        String newLocalBranch = Args.getFlag(args, "-lb");
+        boolean createBothBranches = Args.hasFlag(args, "-bb");
+        
+        // If new flags present, use them
+        if (newLocalRepo != null) path = newLocalRepo;
+        if (newLocalBranch != null) branch = newLocalBranch;
+        if (createBothBranches) {
+            String branchName = Args.getFlag(args, "-bb");
+            if (branchName != null) branch = branchName;
         }
         
-        // Get path from first non-flag argument
-        for (String arg : args) {
-            if (!arg.equals("-b") && !arg.equals(branch)) {
-                path = arg;
-                break;
+        // Fall back to old syntax for backward compatibility
+        boolean usingNewSyntax = newLocalRepo != null || newLocalBranch != null || createBothBranches;
+        if (!usingNewSyntax) {
+            int bIndex = args.indexOf("-b");
+            boolean branchSpecified = bIndex != -1;
+            if (branchSpecified && bIndex + 1 < args.size()) {
+                branch = args.get(bIndex + 1);
+            }
+            
+            // Get path from first non-flag argument (old positional syntax)
+            for (String arg : args) {
+                if (!arg.equals("-b") && !arg.equals(branch)) {
+                    path = arg;
+                    break;
+                }
             }
         }
 
@@ -34,6 +51,10 @@ public class CreateCommand implements Command {
         if (branch == null || branch.isBlank()) branch = "main";
         
         final String finalBranch = branch;
+        final boolean pushToRemote = createBothBranches;
+        
+        // Determine if branch was explicitly specified (new or old syntax)
+        boolean branchSpecified = newLocalBranch != null || createBothBranches || args.indexOf("-b") != -1;
 
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir)) Files.createDirectories(dir);
@@ -133,6 +154,21 @@ public class CreateCommand implements Command {
                 
                 // Checkout the new branch
                 git.checkout().setName(finalBranch).call();
+                
+                // If -bb flag, push to remote
+                if (pushToRemote) {
+                    String remoteUrlForPush = vgl.getRemoteUrl();
+                    if (remoteUrlForPush == null || remoteUrlForPush.isBlank()) {
+                        System.out.println("Warning: No remote configured. Cannot create remote branch.");
+                        System.out.println("Use 'vgl switch -rr URL' to configure a remote first.");
+                    } else {
+                        git.push()
+                            .setRemote("origin")
+                            .add(finalBranch)
+                            .call();
+                        System.out.println("Pushed branch '" + finalBranch + "' to remote.");
+                    }
+                }
             }
         }
         // Case 3: .git exists but no -b specified - ERROR
