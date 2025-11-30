@@ -16,8 +16,6 @@ public class VglCli {
         register(new CreateCommand());
         register(new DeleteCommand());
         register(new CheckoutCommand());
-        register(new LocalCommand());
-        register(new RemoteCommand());
         register(new SwitchCommand());
         register(new JumpCommand());
         register(new SplitCommand());
