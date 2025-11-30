@@ -25,32 +25,56 @@ public class DeleteCommand implements Command {
     public int run(List<String> args) throws Exception {
         VglCli vgl = new VglCli();
         
-        // Parse flags
+        // Check for -rr flag (TBD feature)
+        if (Args.hasFlag(args, "-rr")) {
+            System.out.println("Warning: Deleting remote repositories is not yet implemented.");
+            System.out.println("For now, use your repository hosting tools (GitHub, GitLab, etc.).");
+            return 1;
+        }
+        
+        // Parse flags - may have values or be flags-only (use switch state)
+        boolean hasLrFlag = Args.hasFlag(args, "-lr");
+        boolean hasLbFlag = Args.hasFlag(args, "-lb");
+        boolean hasRbFlag = Args.hasFlag(args, "-rb");
+        boolean hasBbFlag = Args.hasFlag(args, "-bb");
+        
         String localRepo = Args.getFlag(args, "-lr");
         String localBranch = Args.getFlag(args, "-lb");
         String remoteBranch = Args.getFlag(args, "-rb");
-        boolean deleteBoth = Args.hasFlag(args, "-bb");
+        String bothBranch = Args.getFlag(args, "-bb");
         
-        if (localRepo == null && localBranch == null && remoteBranch == null && !deleteBoth) {
-            System.out.println("Usage: vgl delete -lr DIR | -lb BRANCH | -rb BRANCH | -bb BRANCH");
+        if (!hasLrFlag && !hasLbFlag && !hasRbFlag && !hasBbFlag) {
+            System.out.println("Usage: vgl delete [-lr [DIR]] [-lb [BRANCH]] [-rb [BRANCH]] | [-bb [BRANCH]]");
             System.out.println("Examples:");
-            System.out.println("  vgl delete -lr ../oldproject    Delete entire local repository");
-            System.out.println("  vgl delete -lb oldbranch        Delete local branch");
-            System.out.println("  vgl delete -rb oldbranch        Delete remote branch");
-            System.out.println("  vgl delete -bb oldbranch        Delete both local and remote branch");
+            System.out.println("  vgl delete -lr              Delete local repository from switch state");
+            System.out.println("  vgl delete -lr ../old       Delete specified local repository");
+            System.out.println("  vgl delete -lb              Delete local branch from switch state");
+            System.out.println("  vgl delete -lb oldbranch    Delete specified local branch");
+            System.out.println("  vgl delete -bb              Delete both branches from switch state");
             return 1;
         }
         
         // Handle -bb flag: delete both local and remote branch
-        if (deleteBoth) {
-            String branch = Args.getFlag(args, "-bb");
-            if (branch == null) {
-                System.out.println("Error: -bb requires a branch name.");
-                System.out.println("Usage: vgl delete -bb BRANCH");
-                return 1;
+        if (hasBbFlag) {
+            if (bothBranch == null) {
+                // Use switch state branches
+                localBranch = vgl.getLocalBranch();
+                remoteBranch = vgl.getRemoteBranch();
+            } else {
+                localBranch = bothBranch;
+                remoteBranch = bothBranch;
             }
-            localBranch = branch;
-            remoteBranch = branch;
+        }
+        
+        // Default to switch state if flags present but no values
+        if (hasLrFlag && localRepo == null) {
+            localRepo = vgl.getLocalDir();
+        }
+        if (hasLbFlag && localBranch == null) {
+            localBranch = vgl.getLocalBranch();
+        }
+        if (hasRbFlag && remoteBranch == null) {
+            remoteBranch = vgl.getRemoteBranch();
         }
         
         // Delete local repository
