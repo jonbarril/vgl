@@ -89,7 +89,7 @@ public class IntegrationTest {
     void statusShowsCommitMessagesWithVerbose(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "statusShowsCommitMessagesWithVerbose]...");
         // Create repo and commit
-        runVgl(tmp, "create", tmp.toString());
+        runVgl(tmp, "create", "-lr", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "content");
         runVgl(tmp, "commit", "first commit message");
 
@@ -104,7 +104,7 @@ public class IntegrationTest {
     void statusVeryVerboseShowsAllTrackedFiles(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "statusVeryVerboseShowsAllTrackedFiles]...");
         // Create repo with files
-        runVgl(tmp, "create", tmp.toString());
+        runVgl(tmp, "create", "-lr", tmp.toString());
         Files.writeString(tmp.resolve("file1.txt"), "content1");
         Files.writeString(tmp.resolve("file2.txt"), "content2");
         runVgl(tmp, "commit", "initial");
@@ -121,7 +121,7 @@ public class IntegrationTest {
     void statusFiltersByFileName(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "statusFiltersByFileName]...");
         // Create repo with multiple files
-        runVgl(tmp, "create", tmp.toString());
+        runVgl(tmp, "create", "-lr", tmp.toString());
         Files.writeString(tmp.resolve("test.java"), "java");
         Files.writeString(tmp.resolve("test.txt"), "txt");
         runVgl(tmp, "commit", "initial");
@@ -141,7 +141,7 @@ public class IntegrationTest {
     void statusFiltersWithGlobPattern(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "statusFiltersWithGlobPattern]...");
         // Create repo with multiple files
-        runVgl(tmp, "create", tmp.toString());
+        runVgl(tmp, "create", "-lr", tmp.toString());
         Files.writeString(tmp.resolve("file1.java"), "java1");
         Files.writeString(tmp.resolve("file2.java"), "java2");
         Files.writeString(tmp.resolve("file.txt"), "txt");
@@ -164,7 +164,7 @@ public class IntegrationTest {
     void diffShowsChangesWithGlobPattern(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "diffShowsChangesWithGlobPattern]...");
         // Create repo with files
-        runVgl(tmp, "create", tmp.toString());
+        runVgl(tmp, "create", "-lr", tmp.toString());
         Files.writeString(tmp.resolve("test.java"), "original java");
         Files.writeString(tmp.resolve("test.txt"), "original txt");
         runVgl(tmp, "commit", "initial");
@@ -184,7 +184,7 @@ public class IntegrationTest {
     void restoreAsksForConfirmationAndDefaults(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "restoreAsksForConfirmationAndDefaults]...");
         // Create repo with file
-        runVgl(tmp, "create", tmp.toString());
+        runVgl(tmp, "create", "-lr", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "original");
         runVgl(tmp, "commit", "initial");
 
@@ -203,7 +203,7 @@ public class IntegrationTest {
     void restoreRestoresFileWithConfirmation(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "restoreRestoresFileWithConfirmation]...");
         // Create repo with file
-        runVgl(tmp, "create", tmp.toString());
+        runVgl(tmp, "create", "-lr", tmp.toString());
         Files.writeString(tmp.resolve("test.txt"), "original");
         runVgl(tmp, "commit", "initial");
 
@@ -261,12 +261,12 @@ public class IntegrationTest {
     void createCommandCreatesNewBranch(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "createCommandCreatesNewBranch]...");
         // Create repo
-        runVgl(tmp, "create", tmp.toString(), "-b", "main");
+        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
         runVgl(tmp, "commit", "initial");
 
         // Create new branch
-        runVgl(tmp, "create", tmp.toString(), "-b", "feature");
+        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "feature");
 
         ProcessResult result = runVgl(tmp, "status");
         assertThat(result.output).containsPattern("LOCAL.*:feature");
@@ -299,4 +299,5 @@ public class IntegrationTest {
         System.out.println(" PASSED");
     }
 }
+
 
