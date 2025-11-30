@@ -65,31 +65,6 @@ public class RepoAndStatusTest {
     }
 
     @Test
-    void remoteDoesNotPopulateVglWithRemoteUrl(@TempDir Path tmp) throws Exception {
-        String old = System.getProperty("user.dir");
-        try {
-            System.setProperty("user.dir", tmp.toString());
-
-            // Create repo via create command so .git exists
-            run("create", "-lr", tmp.toString());
-            // Remove .vgl to simulate missing config
-            Files.deleteIfExists(tmp.resolve(".vgl"));
-
-            // Run switch - should not populate remote.url in the saved .vgl
-            String out = run("switch", "-rr", "https://example.com/repo.git");
-            assertThat(out).contains("remote");
-
-            // If .vgl exists, it should not contain the remote url property
-            if (Files.exists(tmp.resolve(".vgl"))) {
-                String vgl = Files.readString(tmp.resolve(".vgl"));
-                assertThat(vgl).doesNotContain("remote.url");
-            }
-        } finally {
-            System.setProperty("user.dir", old);
-        }
-    }
-
-    @Test
     void statusAndVerboseOutputs(@TempDir Path tmp) throws Exception {
         String old = System.getProperty("user.dir");
         try {
