@@ -51,7 +51,13 @@ public class HelpCommand implements Command {
                 "  -rb BRANCH       Remote branch name (default:'main')",
                 "  -bb BRANCH       Both local and remote branchnames (default:'main')",
                 "  -noop            Dry run without making changes",
-                "  -v, -vv          Verbose output with increasing detail"
+                "  -v, -vv          Verbose output with increasing detail",
+                "",
+                "Glob Patterns:",
+                "  *.log            All .log files              → app.log, build.log",
+                "  file?.txt        Single-char wildcard        → file1.txt, fileA.txt",
+                "  **/*.py          Recursive subdirectories    → main.py, lib/util.py",
+                "  *.{png,jpg}      Multiple extensions         → cat.png, dog.jpg"
             ));
         }
 
