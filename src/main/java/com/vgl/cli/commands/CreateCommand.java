@@ -186,6 +186,9 @@ public class CreateCommand implements Command {
         vgl.setLocalBranch(finalBranch);
         vgl.save();
 
+        // Print switch state feedback
+        System.out.println("Switched to: " + dir + " on branch '" + finalBranch + "'");
+
         return 0;
     }
 }
