@@ -298,6 +298,26 @@ public class IntegrationTest {
         assertThat(Files.exists(clonedRepo.resolve("test.txt"))).isTrue();
         System.out.println(" PASSED");
     }
+
+    @Test
+    void bbFlagSwitchesBothBranches(@TempDir Path tmp) throws Exception {
+        System.out.print("\n" + getTestProgress() + "bbFlagSwitchesBothBranches]...");
+        // Create repo with two branches
+        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main");
+        Files.writeString(tmp.resolve("test.txt"), "content");
+        runVgl(tmp, "commit", "initial");
+        runVgl(tmp, "create", "-lb", "develop");
+        
+        // Set a remote for testing
+        runVgl(tmp, "switch", "-rr", "https://example.com/repo.git", "-rb", "main");
+        
+        // Switch both local and remote branches to develop using -bb
+        ProcessResult result = runVgl(tmp, "switch", "-bb", "develop");
+        
+        assertThat(result.exitCode).isEqualTo(0);
+        assertThat(result.output).contains("develop");
+        System.out.println(" PASSED");
+    }
 }
 
 

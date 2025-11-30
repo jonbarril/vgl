@@ -27,6 +27,16 @@ public class SwitchCommand implements Command {
         String newLocalBranch = Args.getFlag(args, "-lb");
         String newRemoteUrl = Args.getFlag(args, "-rr");
         String newRemoteBranch = Args.getFlag(args, "-rb");
+        boolean bothBranches = Args.hasFlag(args, "-bb");
+        
+        // Handle -bb flag (switch both local and remote to same branch)
+        if (bothBranches) {
+            String branchName = Args.getFlag(args, "-bb");
+            if (branchName != null) {
+                newLocalBranch = branchName;
+                newRemoteBranch = branchName;
+            }
+        }
         
         // Get current state
         String currentLocalDir = vgl.getLocalDir();
@@ -39,10 +49,11 @@ public class SwitchCommand implements Command {
         boolean switchingRemote = newRemoteUrl != null || newRemoteBranch != null;
         
         if (!switchingLocal && !switchingRemote) {
-            System.out.println("Usage: vgl switch [-lr DIR] [-lb BRANCH] [-rr URL] [-rb BRANCH]");
+            System.out.println("Usage: vgl switch [-lr DIR] [-lb BRANCH] [-bb BRANCH] [-rr URL] [-rb BRANCH]");
             System.out.println("Examples:");
             System.out.println("  vgl switch -lr ../other -lb develop    Switch to different repo and branch");
             System.out.println("  vgl switch -lb feature                  Switch branch in current repo");
+            System.out.println("  vgl switch -bb develop                  Switch both local and remote to develop");
             System.out.println("  vgl switch -rr https://... -rb main     Configure remote");
             return 1;
         }
