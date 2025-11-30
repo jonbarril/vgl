@@ -15,13 +15,16 @@ public class CommitCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         String msg;
+        boolean amend = false;
         List<String> rest = new ArrayList<>(args);
-        if (!rest.isEmpty() && "-m".equals(rest.get(0)) && rest.size() >= 2) {
+        
+        if (!rest.isEmpty() && ("-new".equals(rest.get(0)) || "-add".equals(rest.get(0))) && rest.size() >= 2) {
+            amend = true;
             msg = rest.get(1);
         } else if (!rest.isEmpty()) {
             msg = rest.get(0);
         } else {
-            System.out.println("Usage: vgl commit \"msg\" | -m \"new msg\"");
+            System.out.println("Usage: vgl commit \"msg\" | [-new|-add] \"msg\"");
             return 1;
         }
 
@@ -66,6 +69,7 @@ public class CommitCommand implements Command {
 
             RevCommit rc = git.commit()
                     .setMessage(msg)
+                    .setAmend(amend)
                     .call();
 
             // First line: exactly 7-char short SHA
