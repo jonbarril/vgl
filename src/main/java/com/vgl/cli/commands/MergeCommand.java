@@ -25,8 +25,23 @@ public class MergeCommand implements Command {
         VglCli vgl = new VglCli();
         
         // Parse flags
+        String sourceRepo = Args.getFlag(args, "-lr");
         String sourceBranch = Args.getFlag(args, "-lb");
         String remoteBranch = Args.getFlag(args, "-rb");
+        boolean deleteBranch = Args.hasFlag(args, "-del");
+        
+        // Check for TBD features
+        if (sourceRepo != null) {
+            System.out.println("Warning: merge -lr REPO is not yet implemented.");
+            System.out.println("Currently merge only works with branches, not repositories.");
+            return 1;
+        }
+        
+        if (deleteBranch) {
+            System.out.println("Warning: merge -del is not yet implemented.");
+            System.out.println("Use 'vgl delete -lb BRANCH' after merge to delete the branch.");
+            return 1;
+        }
         
         if (sourceBranch == null && remoteBranch == null) {
             System.out.println("Usage: vgl merge -lb BRANCH | -rb BRANCH");

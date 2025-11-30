@@ -16,7 +16,16 @@ public class CreateCommand implements Command {
         // Parse new flags
         String newLocalRepo = Args.getFlag(args, "-lr");
         String newLocalBranch = Args.getFlag(args, "-lb");
+        String newRemoteUrl = Args.getFlag(args, "-rr");
+        String newRemoteBranch = Args.getFlag(args, "-rb");
         boolean createBothBranches = Args.hasFlag(args, "-bb");
+        
+        // Check for TBD feature: create with remote
+        if (newRemoteUrl != null || newRemoteBranch != null) {
+            System.out.println("Warning: create [-rr URL][-rb BRANCH] is not yet implemented.");
+            System.out.println("Use 'vgl checkout -rr URL -rb BRANCH' to clone from remote instead.");
+            return 1;
+        }
         
         // Handle -bb flag
         if (createBothBranches) {

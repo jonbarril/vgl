@@ -23,9 +23,18 @@ public class SplitCommand implements Command {
         VglCli vgl = new VglCli();
         
         // Parse flags
+        String newRepo = Args.getFlag(args, "-lr");
         String newBranch = Args.getFlag(args, "-lb");
         String sourceBranch = Args.getFlag(args, "-from");
         boolean createRemote = Args.hasFlag(args, "-bb");
+        
+        // Check for TBD feature: split repository
+        if (newRepo != null) {
+            System.out.println("Warning: split -lr REPO is not yet implemented.");
+            System.out.println("Currently split only creates branches, not repositories.");
+            System.out.println("Use 'vgl create -lr REPO' to create a new repository instead.");
+            return 1;
+        }
         
         if (newBranch == null) {
             System.out.println("Usage: vgl split -lb BRANCH [-from BRANCH] [-bb]");
