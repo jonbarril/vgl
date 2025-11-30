@@ -222,14 +222,14 @@ public class IntegrationTest {
     void localSwitchesBranches(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "localSwitchesBranches]...");
         // Create repo with two branches
-        runVgl(tmp, "create", tmp.toString(), "-b", "main");
+        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
         runVgl(tmp, "commit", "initial");
 
-        runVgl(tmp, "create", tmp.toString(), "-b", "develop");
+        runVgl(tmp, "create", "-lb", "develop");
 
         // Switch to main
-        runVgl(tmp, "local", tmp.toString(), "-b", "main");
+        runVgl(tmp, "switch", "-lb", "main");
 
         ProcessResult result = runVgl(tmp, "status");
         assertThat(result.output).containsPattern("LOCAL.*:main");
@@ -240,17 +240,17 @@ public class IntegrationTest {
     void localWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "localWarnsAboutUncommittedChanges]...");
         // Create repo with two branches
-        runVgl(tmp, "create", tmp.toString(), "-b", "main");
+        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
         runVgl(tmp, "commit", "initial");
 
-        runVgl(tmp, "create", tmp.toString(), "-b", "develop");
+        runVgl(tmp, "create", "-lb", "develop");
 
         // Make uncommitted changes
         Files.writeString(tmp.resolve("test.txt"), "modified");
 
         // Try to switch - should warn
-        ProcessResult result = runVglWithInput(tmp, "n\n", "local", tmp.toString(), "-b", "main");
+        ProcessResult result = runVglWithInput(tmp, "n\n", "switch", "-lb", "main");
 
         assertThat(result.output).contains("uncommitted changes");
         assertThat(result.output).contains("Continue? (y/N):");
