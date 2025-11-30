@@ -100,6 +100,17 @@ public class SwitchCommand implements Command {
                             if (hasChanges) {
                                 System.out.println("Warning: You have uncommitted changes in current workspace.");
                                 System.out.println("Commit or restore them before switching to avoid confusion.");
+                                System.out.print("Continue? (y/N): ");
+                                
+                                String response;
+                                try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
+                                    response = scanner.nextLine().trim().toLowerCase();
+                                }
+                                
+                                if (!response.equals("y") && !response.equals("yes")) {
+                                    System.out.println("Switch cancelled.");
+                                    return 0;
+                                }
                             }
                         }
                     }
