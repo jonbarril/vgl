@@ -279,7 +279,7 @@ public class IntegrationTest {
         // Create a source repo to clone from
         Path sourceRepo = tmp.resolve("source");
         Files.createDirectories(sourceRepo);
-        runVgl(sourceRepo, "create", sourceRepo.toString(), "-b", "main");
+        runVgl(sourceRepo, "create", "-lr", sourceRepo.toString(), "-lb", "main");
         Files.writeString(sourceRepo.resolve("test.txt"), "content");
         runVgl(sourceRepo, "commit", "initial");
 
@@ -289,7 +289,7 @@ public class IntegrationTest {
         
         // Use file:// URL for local clone
         String fileUrl = "file:///" + sourceRepo.toString().replace("\\", "/");
-        runVgl(targetDir.getParent(), "checkout", fileUrl, "-b", "main");
+        runVgl(targetDir.getParent(), "checkout", "-rr", fileUrl, "-rb", "main");
 
         // Verify .vgl was created in the cloned directory
         Path clonedRepo = targetDir.getParent().resolve("source");
