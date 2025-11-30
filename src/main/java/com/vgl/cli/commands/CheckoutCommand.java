@@ -12,23 +12,42 @@ public class CheckoutCommand implements Command {
     @Override public String name(){ return "checkout"; }
 
     @Override public int run(List<String> args) throws Exception {
-        if (args.isEmpty()) {
-            System.out.println("Usage: vgl checkout -rr URL [-rb BRANCH] [-lr DIR]");
-            return 1;
-        }
-
+        VglCli vgl = new VglCli();
+        
+        // Parse flags - use switch state as defaults
+        boolean hasRrFlag = Args.hasFlag(args, "-rr");
+        boolean hasRbFlag = Args.hasFlag(args, "-rb");
+        
         String remoteUrl = Args.getFlag(args, "-rr");
         String remoteBranch = Args.getFlag(args, "-rb");
-        String localDir = Args.getFlag(args, "-lr");
         
-        if (remoteUrl == null) {
-            System.out.println("Usage: vgl checkout -rr URL [-rb BRANCH] [-lr DIR]");
+        if (!hasRrFlag && !hasRbFlag) {
+            System.out.println("Usage: vgl checkout [-rr [URL]] [-rb [BRANCH]]");
+            System.out.println("Examples:");
+            System.out.println("  vgl checkout -rr URL -rb main   Clone remote URL/branch into switch state");
+            System.out.println("  vgl checkout -rb feature        Clone switch state remote/branch");
             return 1;
         }
-
+        
+        // Default to switch state if flags present but no values
+        if (hasRrFlag && remoteUrl == null) {
+            remoteUrl = vgl.getRemoteUrl();
+        }
+        if (hasRbFlag && remoteBranch == null) {
+            remoteBranch = vgl.getRemoteBranch();
+        }
+        
+        // Validate remote URL
+        if (remoteUrl == null || remoteUrl.isBlank()) {
+            System.out.println("Error: No remote URL specified and none in switch state.");
+            System.out.println("Use 'vgl checkout -rr URL' or configure remote with 'vgl switch -rr URL'.");
+            return 1;
+        }
+        
         String branch = remoteBranch != null ? remoteBranch : "main";
-        String repoName = remoteUrl.replaceAll(".*/", "").replaceAll("\\.git$", "");
-        String targetDir = localDir != null ? localDir : repoName;
+        
+        // Clone into switch state local directory
+        String targetDir = vgl.getLocalDir();
         Path dir = Paths.get(targetDir).toAbsolutePath().normalize();
         
         // Check if directory already exists
@@ -76,10 +95,7 @@ public class CheckoutCommand implements Command {
         Git git = Git.cloneRepository().setURI(remoteUrl).setDirectory(dir.toFile()).setBranch("refs/heads/" + branch).call();
         git.close();
         
-        // Create .vgl config for the cloned repository
-        VglCli vgl = new VglCli();
-        
-        // Save current state as jump state before cloning
+        // Save current state as jump state before updating switch state
         String currentDir = vgl.getLocalDir();
         String currentBranch = vgl.getLocalBranch();
         String currentRemoteUrl = vgl.getRemoteUrl();
@@ -96,7 +112,8 @@ public class CheckoutCommand implements Command {
         vgl.setRemoteBranch(branch);
         vgl.save();
         
-        System.out.println("Cloned remote repository: " + remoteUrl + " to local directory: " + dir + " on branch '" + branch + "'.");
+        System.out.println("Cloned " + remoteUrl + " (branch '" + branch + "') into " + dir);
+        System.out.println("Switched to: " + dir + " on branch '" + branch + "'");
         return 0;
     }
 }
