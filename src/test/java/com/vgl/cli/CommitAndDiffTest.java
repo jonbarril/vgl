@@ -33,8 +33,8 @@ public class CommitAndDiffTest {
         // Create a file and commit it (no need to call track - auto-tracked)
         Path file = tmp.resolve("a.txt");
         Files.writeString(file, "hello\n");
-        new VglCli().run(new String[]{"local", "-lr", tmp.toString()});
-        new VglCli().run(new String[]{"remote", "-rr", "https://example.com/repo.git"});
+        new VglCli().run(new String[]{"switch", "-lr", tmp.toString()});
+        new VglCli().run(new String[]{"switch", "-rr", "https://example.com/repo.git"});
         String oldUserDir = System.getProperty("user.dir");
         System.setProperty("user.dir", tmp.toString());
         String commitOutput;

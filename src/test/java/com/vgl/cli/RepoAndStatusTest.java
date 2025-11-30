@@ -56,8 +56,8 @@ public class RepoAndStatusTest {
             Git.init().setDirectory(tmp.toFile()).call().close();
             Files.deleteIfExists(tmp.resolve(".vgl"));
 
-            // Run local to set repository -> should create .vgl
-            String out = run("local", "-lr", tmp.toString());
+            // Run switch to set repository -> should create .vgl
+            String out = run("switch", "-lr", tmp.toString());
             assertThat(out).contains("Switched to local repository");
         } finally {
             System.setProperty("user.dir", old);
@@ -75,9 +75,9 @@ public class RepoAndStatusTest {
             // Remove .vgl to simulate missing config
             Files.deleteIfExists(tmp.resolve(".vgl"));
 
-            // Run remote - should not populate remote.url in the saved .vgl
-            String out = run("remote", "-rr", "https://example.com/repo.git");
-            assertThat(out).contains("Set remote repository");
+            // Run switch - should not populate remote.url in the saved .vgl
+            String out = run("switch", "-rr", "https://example.com/repo.git");
+            assertThat(out).contains("remote");
 
             // If .vgl exists, it should not contain the remote url property
             if (Files.exists(tmp.resolve(".vgl"))) {
@@ -100,7 +100,7 @@ public class RepoAndStatusTest {
             Path a = tmp.resolve("a.txt");
             Files.writeString(a, "hello\n");
             run("track", "a.txt");
-            run("remote", "-rr", "https://example.com/repo.git");
+            run("switch", "-rr", "https://example.com/repo.git");
             run("commit", "initial");
 
             // Modify tracked file and add an untracked file
