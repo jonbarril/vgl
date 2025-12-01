@@ -9,8 +9,8 @@ import java.nio.file.Paths;
 import java.util.List;
 
 /**
- * SplitCommand creates a new branch and switches to it.
- * Like 'git checkout -b' but with VGL's simplified syntax.
+ * SplitCommand creates branches in either direction.
+ * Supports -into (create new from switch state) and -from (create new from specified source).
  */
 public class SplitCommand implements Command {
     @Override
@@ -22,31 +22,65 @@ public class SplitCommand implements Command {
     public int run(List<String> args) throws Exception {
         VglCli vgl = new VglCli();
         
-        // Parse flags
-        String newRepo = Args.getFlag(args, "-lr");
-        String newBranch = Args.getFlag(args, "-lb");
-        String sourceBranch = Args.getFlag(args, "-from");
-        boolean createRemote = Args.hasFlag(args, "-bb");
+        // Parse direction flags
+        boolean splitInto = Args.hasFlag(args, "-into");
+        boolean splitFrom = Args.hasFlag(args, "-from");
         
-        // Check for TBD feature: split repository
-        if (newRepo != null) {
-            System.out.println("Warning: split -lr REPO is not yet implemented.");
-            System.out.println("Currently split only creates branches, not repositories.");
-            System.out.println("Use 'vgl create -lr REPO' to create a new repository instead.");
-            return 1;
-        }
+        // Parse target/source flags
+        String localDir = Args.getFlag(args, "-lr");
+        String localBranch = Args.getFlag(args, "-lb");
+        String remoteUrl = Args.getFlag(args, "-rr");
+        String remoteBranch = Args.getFlag(args, "-rb");
+        String bothBranch = Args.getFlag(args, "-bb");
         
-        if (newBranch == null) {
-            System.out.println("Usage: vgl split -lb BRANCH [-from BRANCH] [-bb]");
+        // Validate direction
+        if (!splitInto && !splitFrom) {
+            System.out.println("Usage: vgl split -into|-from [-lr [DIR]] [-lb [BRANCH]] [-rr [URL]] [-rb [BRANCH]] [-bb [BRANCH]]");
             System.out.println("Examples:");
-            System.out.println("  vgl split -lb feature              Create and switch to 'feature' from current");
-            System.out.println("  vgl split -lb hotfix -from main    Create 'hotfix' from 'main' branch");
-            System.out.println("  vgl split -lb feature -bb          Create locally and push to remote");
+            System.out.println("  vgl split -into -lb feature    Create 'feature' branch from switch state");
+            System.out.println("  vgl split -from -lb develop    Create switch state branch from 'develop'");
+            System.out.println("  vgl split -into -bb feature    Create feature locally and push to remote");
             return 1;
         }
         
-        String localDir = vgl.getLocalDir();
-        Path dir = Paths.get(localDir).toAbsolutePath().normalize();
+        if (splitInto && splitFrom) {
+            System.out.println("Error: Cannot specify both -into and -from.");
+            return 1;
+        }
+        
+        // Apply switch state defaults
+        String switchLocalDir = vgl.getLocalDir();
+        String switchLocalBranch = vgl.getLocalBranch();
+        String switchRemoteUrl = vgl.getRemoteUrl();
+        String switchRemoteBranch = vgl.getRemoteBranch();
+        
+        // Handle -bb flag (both branches with same name)
+        if (bothBranch != null) {
+            if (localBranch != null || remoteBranch != null) {
+                System.out.println("Error: Cannot specify -bb with -lb or -rb.");
+                return 1;
+            }
+            localBranch = bothBranch;
+            remoteBranch = bothBranch;
+        }
+        
+        // Apply defaults for unspecified values
+        if (localDir != null && localDir.isEmpty()) {
+            localDir = switchLocalDir;
+        }
+        if (localBranch != null && localBranch.isEmpty()) {
+            localBranch = switchLocalBranch;
+        }
+        if (remoteUrl != null && remoteUrl.isEmpty()) {
+            remoteUrl = switchRemoteUrl;
+        }
+        if (remoteBranch != null && remoteBranch.isEmpty()) {
+            remoteBranch = switchRemoteBranch;
+        }
+        
+        // Determine working directory
+        String workingDir = (localDir != null) ? localDir : switchLocalDir;
+        Path dir = Paths.get(workingDir).toAbsolutePath().normalize();
         
         if (!Files.exists(dir.resolve(".git"))) {
             System.out.println("Error: No Git repository found at: " + dir);
@@ -55,32 +89,7 @@ public class SplitCommand implements Command {
         }
         
         try (Git git = Git.open(dir.toFile())) {
-            // Check if branch already exists
-            List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
-            boolean branchExists = branches.stream()
-                .anyMatch(ref -> ref.getName().equals("refs/heads/" + newBranch));
-            
-            if (branchExists) {
-                System.out.println("Warning: Branch '" + newBranch + "' already exists.");
-                System.out.println("Use 'vgl switch -lb " + newBranch + "' to switch to it.");
-                return 0;
-            }
-            
-            // If source branch specified, verify it exists
-            if (sourceBranch != null) {
-                boolean sourceExists = branches.stream()
-                    .anyMatch(ref -> ref.getName().equals("refs/heads/" + sourceBranch));
-                
-                if (!sourceExists) {
-                    System.out.println("Error: Source branch '" + sourceBranch + "' does not exist.");
-                    System.out.println("Available branches:");
-                    branches.forEach(ref -> System.out.println("  " + ref.getName().replace("refs/heads/", "")));
-                    return 1;
-                }
-                
-                // Checkout source branch first
-                git.checkout().setName(sourceBranch).call();
-            }
+            String currentBranch = git.getRepository().getBranch();
             
             // Check for uncommitted changes
             org.eclipse.jgit.api.Status status = git.status().call();
@@ -93,49 +102,123 @@ public class SplitCommand implements Command {
             }
             
             // Save current state as jump state
-            String currentBranch = git.getRepository().getBranch();
-            vgl.setJumpLocalDir(localDir);
+            vgl.setJumpLocalDir(workingDir);
             vgl.setJumpLocalBranch(currentBranch);
             vgl.setJumpRemoteUrl(vgl.getRemoteUrl());
             vgl.setJumpRemoteBranch(vgl.getRemoteBranch());
-            
-            // Create and checkout new branch
-            git.checkout()
-                .setCreateBranch(true)
-                .setName(newBranch)
-                .call();
-            
-            vgl.setLocalBranch(newBranch);
             vgl.save();
             
-            System.out.println("Switched to: " + localDir + ":" + newBranch + 
-                (sourceBranch != null ? " (from '" + sourceBranch + "')" : ""));
+            String sourceBranchName;
+            String newBranchName;
+            boolean useRemote = false;
             
-            // If -bb flag, push to remote
-            if (createRemote) {
-                String remoteUrl = vgl.getRemoteUrl();
-                if (remoteUrl == null || remoteUrl.isBlank()) {
+            if (splitInto) {
+                // Split INTO new branch FROM switch state (current branch)
+                sourceBranchName = currentBranch;
+                
+                if (localBranch == null) {
+                    System.out.println("Error: Must specify -lb with -into.");
+                    return 1;
+                }
+                
+                newBranchName = localBranch;
+                
+                // Check if branch already exists
+                List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
+                boolean branchExists = branches.stream()
+                    .anyMatch(ref -> ref.getName().equals("refs/heads/" + newBranchName));
+                
+                if (branchExists) {
+                    System.out.println("Warning: Branch '" + newBranchName + "' already exists.");
+                    System.out.println("Use 'vgl switch -lb " + newBranchName + "' to switch to it.");
+                    return 0;
+                }
+            } else {
+                // Split FROM specified source INTO new branch at switch state
+                if (localBranch == null) {
+                    System.out.println("Error: Must specify -lb with -from (source branch).");
+                    return 1;
+                }
+                
+                sourceBranchName = localBranch;
+                
+                // Use switch state branch name or a derived name
+                newBranchName = switchLocalBranch;
+                
+                if (remoteBranch != null) {
+                    // Clone from remote branch
+                    String effectiveRemoteUrl = (remoteUrl != null) ? remoteUrl : switchRemoteUrl;
+                    if (effectiveRemoteUrl == null || effectiveRemoteUrl.isBlank()) {
+                        System.out.println("Error: No remote configured.");
+                        System.out.println("Use 'vgl switch -rr URL' to configure a remote first.");
+                        return 1;
+                    }
+                    
+                    System.out.println("Fetching from remote...");
+                    git.fetch().setRemote("origin").call();
+                    
+                    sourceBranchName = "origin/" + remoteBranch;
+                    useRemote = true;
+                } else {
+                    // Verify local source branch exists
+                    List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
+                    boolean branchExists = branches.stream()
+                        .anyMatch(ref -> ref.getName().equals("refs/heads/" + sourceBranchName));
+                    
+                    if (!branchExists) {
+                        System.out.println("Error: Source branch '" + sourceBranchName + "' does not exist.");
+                        System.out.println("Available branches:");
+                        branches.forEach(ref -> System.out.println("  " + ref.getName().replace("refs/heads/", "")));
+                        return 1;
+                    }
+                }
+                
+                // Checkout source branch first
+                if (!useRemote) {
+                    git.checkout().setName(sourceBranchName).call();
+                }
+            }
+            
+            // Create and checkout new branch
+            // Create and checkout new branch
+            System.out.println("Creating branch '" + newBranchName + "' from '" + sourceBranchName + "'...");
+            
+            git.checkout()
+                .setCreateBranch(true)
+                .setName(newBranchName)
+                .setStartPoint(sourceBranchName)
+                .call();
+            
+            vgl.setLocalBranch(newBranchName);
+            vgl.save();
+            
+            System.out.println("Switched to: " + workingDir + ":" + newBranchName);
+            
+            // If -bb flag or remote specified, push to remote
+            if (bothBranch != null || remoteBranch != null) {
+                String effectiveRemoteUrl = (remoteUrl != null) ? remoteUrl : switchRemoteUrl;
+                if (effectiveRemoteUrl == null || effectiveRemoteUrl.isBlank()) {
                     System.out.println("Warning: No remote configured. Cannot create remote branch.");
                     System.out.println("Use 'vgl switch -rr URL' to configure a remote first.");
                 } else {
                     // Push to remote
                     git.push()
                         .setRemote("origin")
-                        .add(newBranch)
+                        .add(newBranchName)
                         .call();
                     
                     // Set up tracking
                     git.branchCreate()
-                        .setName(newBranch)
+                        .setName(newBranchName)
                         .setUpstreamMode(org.eclipse.jgit.api.CreateBranchCommand.SetupUpstreamMode.SET_UPSTREAM)
-                        .setStartPoint("origin/" + newBranch)
+                        .setStartPoint("origin/" + newBranchName)
                         .setForce(true)
                         .call();
                     
-                    vgl.setRemoteBranch(newBranch);
+                    vgl.setRemoteBranch(newBranchName);
                     vgl.save();
                     
-                    System.out.println("Pushed branch '" + newBranch + "' to remote.");
+                    System.out.println("Pushed branch '" + newBranchName + "' to remote.");
                 }
             }
         }
