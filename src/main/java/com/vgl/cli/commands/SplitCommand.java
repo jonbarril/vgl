@@ -108,8 +108,8 @@ public class SplitCommand implements Command {
             vgl.setLocalBranch(newBranch);
             vgl.save();
             
-            System.out.println("Created and switched to branch '" + newBranch + "'" + 
-                (sourceBranch != null ? " from '" + sourceBranch + "'" : "") + ".");
+            System.out.println("Switched to: " + localDir + ":" + newBranch + 
+                (sourceBranch != null ? " (from '" + sourceBranch + "')" : ""));
             
             // If -bb flag, push to remote
             if (createRemote) {

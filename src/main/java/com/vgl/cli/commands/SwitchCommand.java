@@ -166,12 +166,12 @@ public class SwitchCommand implements Command {
         
         // Print confirmation
         if (switchingLocal && switchingRemote) {
-            System.out.println("Switched to: " + newLocalDir + " on branch '" + finalNewLocalBranch + "'");
-            System.out.println("Remote: " + newRemoteUrl + " on branch '" + newRemoteBranch + "'");
+            System.out.println("Switched to: " + newLocalDir + ":" + finalNewLocalBranch);
+            System.out.println("Remote: " + newRemoteUrl + ":" + newRemoteBranch);
         } else if (switchingLocal) {
-            System.out.println("Switched to: " + newLocalDir + " on branch '" + finalNewLocalBranch + "'");
+            System.out.println("Switched to: " + newLocalDir + ":" + finalNewLocalBranch);
         } else {
-            System.out.println("Configured remote: " + newRemoteUrl + " on branch '" + newRemoteBranch + "'");
+            System.out.println("Configured remote: " + newRemoteUrl + ":" + newRemoteBranch);
         }
         
         return 0;

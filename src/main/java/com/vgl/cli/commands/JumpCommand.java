@@ -105,7 +105,7 @@ public class JumpCommand implements Command {
 
         vgl.save();
 
-        System.out.println("Jumped to: " + jumpLocalDir + " on branch '" + jumpLocalBranch + "'.");
+        System.out.println("Jumped to: " + jumpLocalDir + ":" + jumpLocalBranch);
         return 0;
     }
 }

@@ -113,7 +113,7 @@ public class CheckoutCommand implements Command {
         vgl.save();
         
         System.out.println("Cloned " + remoteUrl + " (branch '" + branch + "') into " + dir);
-        System.out.println("Switched to: " + dir + " on branch '" + branch + "'");
+        System.out.println("Switched to: " + dir + ":" + branch);
         return 0;
     }
 }
