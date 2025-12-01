@@ -161,12 +161,13 @@ public class SplitCommand implements Command {
                     useRemote = true;
                 } else {
                     // Verify local source branch exists
+                    final String sourceToCheck = sourceBranchName;
                     List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
                     boolean branchExists = branches.stream()
-                        .anyMatch(ref -> ref.getName().equals("refs/heads/" + sourceBranchName));
+                        .anyMatch(ref -> ref.getName().equals("refs/heads/" + sourceToCheck));
                     
                     if (!branchExists) {
-                        System.out.println("Error: Source branch '" + sourceBranchName + "' does not exist.");
+                        System.out.println("Error: Source branch '" + sourceToCheck + "' does not exist.");
                         System.out.println("Available branches:");
                         branches.forEach(ref -> System.out.println("  " + ref.getName().replace("refs/heads/", "")));
                         return 1;

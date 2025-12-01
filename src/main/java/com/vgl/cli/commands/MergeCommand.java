@@ -117,7 +117,6 @@ public class MergeCommand implements Command {
             
             String sourceBranchName;
             String targetBranchName;
-            boolean useRemote = false;
             
             if (mergeFrom) {
                 // Merge FROM specified source INTO switch state (current branch)
@@ -136,26 +135,26 @@ public class MergeCommand implements Command {
                     git.fetch().setRemote("origin").call();
                     
                     sourceBranchName = "origin/" + remoteBranch;
-                    useRemote = true;
                 } else if (localBranch != null) {
                     // Merge from local branch
+                    final String sourceBranch = localBranch;
                     List<Ref> branches = git.branchList().call();
                     boolean branchExists = branches.stream()
-                        .anyMatch(ref -> ref.getName().equals("refs/heads/" + localBranch));
+                        .anyMatch(ref -> ref.getName().equals("refs/heads/" + sourceBranch));
                     
                     if (!branchExists) {
-                        System.out.println("Error: Branch '" + localBranch + "' does not exist.");
+                        System.out.println("Error: Branch '" + sourceBranch + "' does not exist.");
                         System.out.println("Available branches:");
                         branches.forEach(ref -> System.out.println("  " + ref.getName().replace("refs/heads/", "")));
                         return 1;
                     }
                     
-                    if (localBranch.equals(currentBranch)) {
-                        System.out.println("Error: Cannot merge branch '" + localBranch + "' into itself.");
+                    if (sourceBranch.equals(currentBranch)) {
+                        System.out.println("Error: Cannot merge branch '" + sourceBranch + "' into itself.");
                         return 1;
                     }
                     
-                    sourceBranchName = localBranch;
+                    sourceBranchName = sourceBranch;
                 } else {
                     System.out.println("Error: Must specify -lb or -rb with -from.");
                     return 1;
