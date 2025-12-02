@@ -193,7 +193,11 @@ public class VglCli {
     }
 
     public void setRemoteUrl(String url) {
-        config.setProperty("remote.url", (url != null && !url.isEmpty()) ? url : "");
+        if (url != null && !url.isEmpty()) {
+            config.setProperty("remote.url", url);
+        } else {
+            config.remove("remote.url");
+        }
     }
 
     public String getRemoteBranch() {
@@ -202,7 +206,11 @@ public class VglCli {
     }
 
     public void setRemoteBranch(String branch) {
-        config.setProperty("remote.branch", (branch != null && !branch.isEmpty()) ? branch : "");
+        if (branch != null && !branch.isEmpty()) {
+            config.setProperty("remote.branch", branch);
+        } else {
+            config.remove("remote.branch");
+        }
     }
 
     // Jump state management - stores previous context for toggle
@@ -217,7 +225,7 @@ public class VglCli {
             String absolutePath = Paths.get(dir).toAbsolutePath().normalize().toString();
             config.setProperty("jump.local.dir", absolutePath);
         } else {
-            config.setProperty("jump.local.dir", "");
+            config.remove("jump.local.dir");
         }
     }
 
@@ -227,7 +235,11 @@ public class VglCli {
     }
 
     public void setJumpLocalBranch(String branch) {
-        config.setProperty("jump.local.branch", (branch != null && !branch.isEmpty()) ? branch : "");
+        if (branch != null && !branch.isEmpty()) {
+            config.setProperty("jump.local.branch", branch);
+        } else {
+            config.remove("jump.local.branch");
+        }
     }
 
     public String getJumpRemoteUrl() {
@@ -236,7 +248,11 @@ public class VglCli {
     }
 
     public void setJumpRemoteUrl(String url) {
-        config.setProperty("jump.remote.url", (url != null && !url.isEmpty()) ? url : "");
+        if (url != null && !url.isEmpty()) {
+            config.setProperty("jump.remote.url", url);
+        } else {
+            config.remove("jump.remote.url");
+        }
     }
 
     public String getJumpRemoteBranch() {
@@ -245,7 +261,11 @@ public class VglCli {
     }
 
     public void setJumpRemoteBranch(String branch) {
-        config.setProperty("jump.remote.branch", (branch != null && !branch.isEmpty()) ? branch : "");
+        if (branch != null && !branch.isEmpty()) {
+            config.setProperty("jump.remote.branch", branch);
+        } else {
+            config.remove("jump.remote.branch");
+        }
     }
 
     /**
