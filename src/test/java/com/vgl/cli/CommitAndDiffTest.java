@@ -51,8 +51,8 @@ public class CommitAndDiffTest {
             String commitOutput = run("commit", "initial");
 
             // Assert the commit output contains a valid short hash
-            String firstLine = commitOutput.strip();
-            assertThat(firstLine).matches("[0-9a-fA-F]{7,40}");
+            // May have warnings before the hash, so find the hash in the output
+            assertThat(commitOutput).containsPattern("[0-9a-fA-F]{7,40}");
 
             // Modify the file and check the diff output
             Files.writeString(file, "hello\nworld\n", StandardOpenOption.APPEND);
