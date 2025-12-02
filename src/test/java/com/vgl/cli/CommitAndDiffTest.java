@@ -4,75 +4,35 @@ import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.io.*;
 import java.nio.file.*;
 
 public class CommitAndDiffTest {
 
-    private static String run(String... args) throws Exception {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream oldOut = System.out;
-        PrintStream oldErr = System.err;
-        try {
-            PrintStream ps = new PrintStream(baos, true, "UTF-8");
-            System.setOut(ps);
-            System.setErr(ps);
-            new VglCli().run(args);
-            return baos.toString("UTF-8");
-        } finally {
-            System.setOut(oldOut);
-            System.setErr(oldErr);
-        }
-    }
-
     @Test
     public void commitPrintsShortId_andDiffShowsChanges(@TempDir Path tmp) throws Exception {
-        String oldUserDir = System.getProperty("user.dir");
-        try {
-            // Set working directory to temp for entire test
-            System.setProperty("user.dir", tmp.toString());
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            // Create repository and commit a file
+            repo.runCommand("create", "-lr", tmp.toString());
             
-            // Create a new repository directly in the temp directory
-            run("create", "-lr", tmp.toString());
-            
-            // Configure git user for this repo
-            ProcessBuilder pb = new ProcessBuilder("git", "config", "user.email", "test@test.com");
-            pb.directory(tmp.toFile());
-            pb.start().waitFor();
-            pb = new ProcessBuilder("git", "config", "user.name", "Test User");
-            pb.directory(tmp.toFile());
-            pb.start().waitFor();
-
-            // Create a file and commit it (track command stages the file)
-            Path file = tmp.resolve("a.txt");
-            Files.writeString(file, "hello\n");
-            run("track", "a.txt");
-            String commitOutput = run("commit", "initial");
+            repo.writeFile("a.txt", "hello\n");
+            repo.gitAdd("a.txt");
+            String commitOutput = repo.runCommand("commit", "initial");
 
             // Assert the commit output contains a valid short hash
-            // May have warnings before the hash, so find the hash in the output
             assertThat(commitOutput).containsPattern("[0-9a-fA-F]{7,40}");
 
             // Modify the file and check the diff output
-            Files.writeString(file, "hello\nworld\n", StandardOpenOption.APPEND);
-            String diffOutput = run("diff");
+            repo.writeFile("a.txt", "hello\nworld\n");
+            String diffOutput = repo.runCommand("diff");
             
-            // Local diff output should show changes, but some environments may
-            // produce no output (JGit/status differences). Accept null/blank but
-            // prefer a non-blank result when available.
             assertThat(diffOutput).isNotNull();
 
             // Check the diff output with the -rb flag (should default to -lb)
-            String diffRemoteOutput = run("diff", "-rb");
+            String diffRemoteOutput = repo.runCommand("diff", "-rb");
             
-            // Remote diff output may be empty in some environments (no remote configured
-            // or JGit behavior differences). Accept either a non-blank output or an
-            // explicit "No remote connected." / placeholder message.
             assertThat(diffRemoteOutput).isNotNull();
             String dr = diffRemoteOutput.strip();
             assertThat(dr.isEmpty() || dr.contains("(remote diff)") || dr.contains("No remote connected.")).isTrue();
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
         }
     }
 }

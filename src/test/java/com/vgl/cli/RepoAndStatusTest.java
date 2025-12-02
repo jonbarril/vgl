@@ -10,8 +10,10 @@ public class RepoAndStatusTest {
 
     @Test
     void createMakesGitAndVgl_butNoGitignore(@TempDir Path tmp) throws Exception {
-        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+        // Use createDir instead of createRepo since we're testing the create command
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createDir(tmp)) {
             String out = repo.runCommand("create", "-lr", tmp.toString());
+            
             assertThat(Files.exists(tmp.resolve(".git"))).isTrue();
             assertThat(Files.exists(tmp.resolve(".gitignore"))).isTrue();
             assertThat(out).contains("Created new local repository");
@@ -34,9 +36,9 @@ public class RepoAndStatusTest {
             repo.runCommand("create", "-lr", tmp.toString());
             
             repo.writeFile("a.txt", "hello\n");
-            repo.runCommand("track", "a.txt");
+            repo.gitAdd("a.txt");
+            repo.gitCommit("initial");
             repo.runCommand("switch", "-rr", "https://example.com/repo.git");
-            repo.runCommand("commit", "initial");
             
             // Modify tracked file and add an untracked file
             repo.writeFile("a.txt", "hello\nworld\n");
