@@ -36,130 +36,30 @@ public class StatusCommand implements Command {
             }
         }
 
-        // Helper to truncate path/URL with ellipsis from the middle
-        java.util.function.BiFunction<String, Integer, String> truncatePath = (path, maxLen) -> {
-            if (path.length() <= maxLen) return path;
-            int leftLen = (maxLen - 3) / 2;
-            int rightLen = maxLen - 3 - leftLen;
-            return path.substring(0, leftLen) + "..." + path.substring(path.length() - rightLen);
-        };
-        
-        // Determine path formatting based on verbosity (always use :: separator)
-        String separator = " :: ";
-        int maxPathLen = 35; // Only used for basic mode
-        
         // Get jump state values
-        String jumpLocalDir = vgl.getJumpLocalDir();
-        String jumpLocalBranch = vgl.getJumpLocalBranch();
-        String jumpRemoteUrl = vgl.getJumpRemoteUrl();
-        String jumpRemoteBranch = vgl.getJumpRemoteBranch();
-        boolean hasLocalJump = jumpLocalDir != null && !jumpLocalDir.isEmpty() && 
-                               jumpLocalBranch != null && !jumpLocalBranch.isEmpty();
-        boolean hasRemoteJump = jumpRemoteUrl != null && !jumpRemoteUrl.isEmpty() &&
-                                jumpRemoteBranch != null && !jumpRemoteBranch.isEmpty();
         
-        // Calculate column alignment for basic status only (find longest path/URL)
-        int maxFirstColLen = 0;
-        if (!verbose && !veryVerbose) {
-            if (hasLocalRepo) {
-                String displayDir = truncatePath.apply(localDir, maxPathLen);
-                maxFirstColLen = Math.max(maxFirstColLen, displayDir.length());
-                if (hasLocalJump) {
-                    String jumpDisplayDir = jumpLocalDir.equals(localDir) ? "(same)" : truncatePath.apply(jumpLocalDir, maxPathLen);
-                    maxFirstColLen = Math.max(maxFirstColLen, jumpDisplayDir.length());
-                }
-            }
-            if (!remoteUrl.equals("none")) {
-                String displayUrl = truncatePath.apply(remoteUrl, maxPathLen);
-                maxFirstColLen = Math.max(maxFirstColLen, displayUrl.length());
-                if (hasRemoteJump) {
-                    String jumpDisplayUrl;
-                    if (jumpRemoteUrl.equals(remoteUrl)) {
-                        jumpDisplayUrl = "(same)";
-                    } else {
-                        jumpDisplayUrl = truncatePath.apply(jumpRemoteUrl, maxPathLen);
-                    }
-                    maxFirstColLen = Math.max(maxFirstColLen, jumpDisplayUrl.length());
-                }
-            }
-        }
+        // Print switch state (LOCAL and REMOTE, current and jump) using consolidated method
+        com.vgl.cli.Utils.printSwitchState(vgl, verbose || veryVerbose);
         
-        // Report LOCAL with current and jump state
-        if (hasLocalRepo) {
-            System.out.println("LOCAL");
-            
-            if (!verbose && !veryVerbose) {
-                // Basic mode: truncate and align
-                String displayDir = truncatePath.apply(localDir, maxPathLen);
-                String padding = " ".repeat(maxFirstColLen - displayDir.length());
-                System.out.println("@ " + displayDir + padding + separator + localBranch);
-                
-                if (hasLocalJump) {
-                    String jumpDisplayDir = jumpLocalDir.equals(localDir) ? "(same)" : truncatePath.apply(jumpLocalDir, maxPathLen);
-                    String jumpPadding = " ".repeat(maxFirstColLen - jumpDisplayDir.length());
-                    System.out.println("<< " + jumpDisplayDir + jumpPadding + separator + jumpLocalBranch);
-                }
-            } else {
-                // Verbose mode: full paths, no alignment or truncation
-                System.out.println("@ " + localDir + separator + localBranch);
-                
-                if (hasLocalJump) {
-                    String jumpDisplayDir = jumpLocalDir.equals(localDir) ? "(same)" : jumpLocalDir;
-                    System.out.println("<< " + jumpDisplayDir + separator + jumpLocalBranch);
-                }
-            }
-            
-            // Show all branches in -vv mode
-            if (veryVerbose) {
-                try (Git git = Git.open(Paths.get(localDir).toFile())) {
-                    List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
-                    if (!branches.isEmpty()) {
-                        for (org.eclipse.jgit.lib.Ref ref : branches) {
-                            String branchName = ref.getName().replaceFirst("refs/heads/", "");
-                            if (branchName.equals(localBranch)) {
-                                System.out.println("  * " + branchName);
-                            } else {
-                                System.out.println("    " + branchName);
-                            }
+        // Show all LOCAL branches in -vv mode
+        if (veryVerbose && hasLocalRepo) {
+            try (Git git = Git.open(Paths.get(localDir).toFile())) {
+                List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
+                if (!branches.isEmpty()) {
+                    for (org.eclipse.jgit.lib.Ref ref : branches) {
+                        String branchName = ref.getName().replaceFirst("refs/heads/", "");
+                        if (branchName.equals(localBranch)) {
+                            System.out.println("  * " + branchName);
+                        } else {
+                            System.out.println("    " + branchName);
                         }
                     }
                 }
             }
-        } else {
-            System.out.println("LOCAL");
-            System.out.println("  (none)");
-        }
-
-        // Report REMOTE with current and jump state
-        if (!remoteUrl.equals("none")) {
-            System.out.println("REMOTE");
-            
-            if (!verbose && !veryVerbose) {
-                // Basic mode: truncate and align
-                String displayUrl = truncatePath.apply(remoteUrl, maxPathLen);
-                String padding = " ".repeat(maxFirstColLen - displayUrl.length());
-                System.out.println("@ " + displayUrl + padding + separator + remoteBranch);
-                
-                if (hasRemoteJump) {
-                    String jumpDisplayUrl = jumpRemoteUrl.equals(remoteUrl) ? "(same)" : truncatePath.apply(jumpRemoteUrl, maxPathLen);
-                    String jumpPadding = " ".repeat(maxFirstColLen - jumpDisplayUrl.length());
-                    System.out.println("<< " + jumpDisplayUrl + jumpPadding + separator + jumpRemoteBranch);
-                }
-            } else {
-                // Verbose mode: full paths, no alignment or truncation
-                System.out.println("@ " + remoteUrl + separator + remoteBranch);
-                
-                if (hasRemoteJump) {
-                    String jumpDisplayUrl = jumpRemoteUrl.equals(remoteUrl) ? "(same)" : jumpRemoteUrl;
-                    System.out.println("<< " + jumpDisplayUrl + separator + jumpRemoteBranch);
-                }
-            }
-        } else {
-            System.out.println("REMOTE");
-            System.out.println("  (none)");
         }
         
-        if (veryVerbose && hasLocalRepo && !remoteUrl.equals("none")) {
+        // Show all REMOTE branches in -vv mode
+        if (veryVerbose && hasLocalRepo && remoteUrl != null && !remoteUrl.isEmpty()) {
             try (Git git = Git.open(Paths.get(localDir).toFile())) {
                 List<org.eclipse.jgit.lib.Ref> remoteBranches = git.branchList()
                     .setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE).call();
@@ -184,7 +84,7 @@ public class StatusCommand implements Command {
                 
                 // Check sync state with remote
                 System.out.print("STATE  ");
-                boolean hasRemote = !remoteUrl.equals("none");
+                boolean hasRemote = remoteUrl != null && !remoteUrl.isEmpty();
                 
                 if (!hasRemote) {
                     System.out.print("(local only)");

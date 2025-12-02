@@ -67,53 +67,92 @@ public final class Utils {
 
     /**
      * Print consistent switch state showing LOCAL and REMOTE, current and jump.
-     * Uses compact format: section header on same line as first value.
+     * Uses compact format with truncated paths (non-verbose).
      */
     public static void printSwitchState(com.vgl.cli.VglCli vgl) {
+        printSwitchState(vgl, false);
+    }
+
+    /**
+     * Print consistent switch state showing LOCAL and REMOTE, current and jump.
+     * Uses compact format: section header on same line as first value.
+     * @param vgl The VglCli instance
+     * @param verbose If true, show full paths; if false, truncate with ellipsis
+     */
+    public static void printSwitchState(com.vgl.cli.VglCli vgl, boolean verbose) {
         String localDir = vgl.getLocalDir();
         String localBranch = vgl.getLocalBranch();
         String remoteUrl = vgl.getRemoteUrl();
         String remoteBranch = vgl.getRemoteBranch();
         String jumpLocalDir = vgl.getJumpLocalDir();
         String jumpLocalBranch = vgl.getJumpLocalBranch();
+        String jumpRemoteUrl = vgl.getJumpRemoteUrl();
+        String jumpRemoteBranch = vgl.getJumpRemoteBranch();
         
         String separator = " :: ";
+        int maxPathLen = 35;
         
-        // LOCAL current
-        System.out.println("LOCAL  " + localDir + separator + localBranch);
+        // Truncation helper
+        java.util.function.BiFunction<String, Integer, String> truncatePath = (path, maxLen) -> {
+            if (verbose || path.length() <= maxLen) return path;
+            int leftLen = (maxLen - 3) / 2;
+            int rightLen = maxLen - 3 - leftLen;
+            return path.substring(0, leftLen) + "..." + path.substring(path.length() - rightLen);
+        };
         
-        // LOCAL jump
+        // Calculate display strings for LOCAL
+        String displayLocalDir = truncatePath.apply(localDir, maxPathLen);
+        String displayJumpDir = "(none)";
         if (jumpLocalDir != null && !jumpLocalDir.isEmpty()) {
             if (jumpLocalDir.equals(localDir)) {
-                System.out.println("       (same)" + separator + jumpLocalBranch);
+                displayJumpDir = "(same)";
             } else {
-                System.out.println("       " + jumpLocalDir + separator + jumpLocalBranch);
+                displayJumpDir = truncatePath.apply(jumpLocalDir, maxPathLen);
             }
-        } else {
-            System.out.println("       (none)" + separator + "(none)");
         }
         
-        // REMOTE current
-        if (remoteUrl != null && !remoteUrl.isEmpty()) {
-            System.out.println("REMOTE " + remoteUrl + separator + remoteBranch);
-        } else {
-            System.out.println("REMOTE (none)" + separator + "(none)");
-        }
+        // Calculate display strings for REMOTE
+        boolean hasRemote = (remoteUrl != null && !remoteUrl.isEmpty());
+        boolean hasJumpRemote = (jumpRemoteUrl != null && !jumpRemoteUrl.isEmpty());
         
-        // REMOTE jump
-        if (jumpLocalDir != null && !jumpLocalDir.isEmpty()) {
-            if (jumpLocalDir.equals(localDir)) {
-                System.out.println("       (same)" + separator + remoteBranch);
+        String displayRemoteUrl = hasRemote ? truncatePath.apply(remoteUrl, maxPathLen) : "(none)";
+        
+        String displayJumpRemote = "(none)";
+        if (hasJumpRemote) {
+            // Only show "(same)" if current also has a remote and they match
+            if (hasRemote && jumpRemoteUrl.equals(remoteUrl)) {
+                displayJumpRemote = "(same)";
             } else {
-                // Different directory - show same remote for now
-                if (remoteUrl != null && !remoteUrl.isEmpty()) {
-                    System.out.println("       " + remoteUrl + separator + remoteBranch);
-                } else {
-                    System.out.println("       (none)" + separator + "(none)");
-                }
+                displayJumpRemote = truncatePath.apply(jumpRemoteUrl, maxPathLen);
             }
-        } else {
-            System.out.println("       (none)" + separator + "(none)");
         }
+        // else: no jump remote, display stays "(none)"
+        
+        // Find longest path/URL for alignment
+        int maxLen = Math.max(
+            Math.max(displayLocalDir.length(), displayJumpDir.length()),
+            Math.max(displayRemoteUrl.length(), displayJumpRemote.length())
+        );
+        
+        // Print with padding to align separators
+        System.out.println("LOCAL  " + padRight(displayLocalDir, maxLen) + separator + localBranch);
+        
+        String jumpBranch = (jumpLocalBranch != null && !jumpLocalBranch.isEmpty()) ? jumpLocalBranch : "(none)";
+        System.out.println("       " + padRight(displayJumpDir, maxLen) + separator + jumpBranch);
+        
+        // REMOTE: if no remote URL, branch must be (none)
+        String currentRemoteBranch = hasRemote ? remoteBranch : "(none)";
+        System.out.println("REMOTE " + padRight(displayRemoteUrl, maxLen) + separator + currentRemoteBranch);
+        
+        // REMOTE jump: if no jump remote URL, branch must be (none)
+        String jumpRemoteBranchDisplay = hasJumpRemote ? jumpRemoteBranch : "(none)";
+        System.out.println("       " + padRight(displayJumpRemote, maxLen) + separator + jumpRemoteBranchDisplay);
+    }
+    
+    /**
+     * Pad string with spaces on the right to reach target length.
+     */
+    private static String padRight(String str, int length) {
+        return String.format("%-" + length + "s", str);
     }
 }

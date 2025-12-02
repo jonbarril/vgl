@@ -188,70 +188,64 @@ public class VglCli {
     }
 
     public String getRemoteUrl() {
-        return config.getProperty("remote.url", null);
+        String url = config.getProperty("remote.url", null);
+        return (url == null || url.isEmpty()) ? null : url;
     }
 
     public void setRemoteUrl(String url) {
-        config.setProperty("remote.url", url);
+        config.setProperty("remote.url", (url != null && !url.isEmpty()) ? url : "");
     }
 
     public String getRemoteBranch() {
-        return config.getProperty("remote.branch", "main");
+        String branch = config.getProperty("remote.branch", null);
+        return (branch == null || branch.isEmpty()) ? null : branch;
     }
 
     public void setRemoteBranch(String branch) {
-        config.setProperty("remote.branch", branch);
+        config.setProperty("remote.branch", (branch != null && !branch.isEmpty()) ? branch : "");
     }
 
     // Jump state management - stores previous context for toggle
     public String getJumpLocalDir() {
-        return config.getProperty("jump.local.dir", null);
+        String dir = config.getProperty("jump.local.dir", null);
+        return (dir == null || dir.isEmpty()) ? null : dir;
     }
 
     public void setJumpLocalDir(String dir) {
-        if (dir != null) {
+        if (dir != null && !dir.isEmpty()) {
             // Always store absolute paths
             String absolutePath = Paths.get(dir).toAbsolutePath().normalize().toString();
             config.setProperty("jump.local.dir", absolutePath);
         } else {
-            config.remove("jump.local.dir");
+            config.setProperty("jump.local.dir", "");
         }
     }
 
     public String getJumpLocalBranch() {
-        return config.getProperty("jump.local.branch", null);
+        String branch = config.getProperty("jump.local.branch", null);
+        return (branch == null || branch.isEmpty()) ? null : branch;
     }
 
     public void setJumpLocalBranch(String branch) {
-        if (branch != null) {
-            config.setProperty("jump.local.branch", branch);
-        } else {
-            config.remove("jump.local.branch");
-        }
+        config.setProperty("jump.local.branch", (branch != null && !branch.isEmpty()) ? branch : "");
     }
 
     public String getJumpRemoteUrl() {
-        return config.getProperty("jump.remote.url", null);
+        String url = config.getProperty("jump.remote.url", null);
+        return (url == null || url.isEmpty()) ? null : url;
     }
 
     public void setJumpRemoteUrl(String url) {
-        if (url != null) {
-            config.setProperty("jump.remote.url", url);
-        } else {
-            config.remove("jump.remote.url");
-        }
+        config.setProperty("jump.remote.url", (url != null && !url.isEmpty()) ? url : "");
     }
 
     public String getJumpRemoteBranch() {
-        return config.getProperty("jump.remote.branch", null);
+        String branch = config.getProperty("jump.remote.branch", null);
+        return (branch == null || branch.isEmpty()) ? null : branch;
     }
 
     public void setJumpRemoteBranch(String branch) {
-        if (branch != null) {
-            config.setProperty("jump.remote.branch", branch);
-        } else {
-            config.remove("jump.remote.branch");
-        }
+        config.setProperty("jump.remote.branch", (branch != null && !branch.isEmpty()) ? branch : "");
     }
 
     /**
