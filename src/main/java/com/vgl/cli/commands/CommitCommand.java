@@ -1,5 +1,8 @@
 package com.vgl.cli.commands;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +70,38 @@ public class CommitCommand implements Command {
                 return 1;
             }
 
+            // Check for unresolved conflict markers
+            List<String> filesWithConflicts = new ArrayList<>();
+            Path repoRoot = git.getRepository().getWorkTree().toPath();
+            
+            // Check all files that will be committed
+            for (String file : s.getAdded()) {
+                if (hasConflictMarkers(repoRoot.resolve(file))) {
+                    filesWithConflicts.add(file);
+                }
+            }
+            for (String file : s.getChanged()) {
+                if (hasConflictMarkers(repoRoot.resolve(file))) {
+                    filesWithConflicts.add(file);
+                }
+            }
+            for (String file : s.getModified()) {
+                if (hasConflictMarkers(repoRoot.resolve(file))) {
+                    filesWithConflicts.add(file);
+                }
+            }
+            
+            if (!filesWithConflicts.isEmpty()) {
+                System.out.println("Error: The following files contain unresolved conflict markers:");
+                filesWithConflicts.forEach(f -> System.out.println("  " + f));
+                System.out.println("\nConflict markers look like:");
+                System.out.println("  " + "<".repeat(7) + " HEAD");
+                System.out.println("  " + "=".repeat(7));
+                System.out.println("  " + ">".repeat(7) + " branch-name");
+                System.out.println("\nEdit these files to resolve conflicts before committing.");
+                return 1;
+            }
+
             RevCommit rc = git.commit()
                     .setMessage(msg)
                     .setAmend(amend)
@@ -77,6 +112,20 @@ public class CommitCommand implements Command {
             System.out.println(short7);
 
             return 0;
+        }
+    }
+
+    private boolean hasConflictMarkers(Path file) {
+        try {
+            if (!Files.exists(file) || !Files.isRegularFile(file)) {
+                return false;
+            }
+            String content = Files.readString(file);
+            return content.contains("<<<<<<<") || content.contains(">>>>>>>") || 
+                   (content.contains("=======") && (content.contains("<<<<<<<") || content.contains(">>>>>>>")));
+        } catch (IOException e) {
+            // If we can't read the file, don't block the commit
+            return false;
         }
     }
 }

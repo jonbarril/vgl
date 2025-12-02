@@ -222,8 +222,7 @@ public class MergeCommand implements Command {
                     result.getConflicts().keySet().forEach(f -> System.out.println("  " + f));
                     System.out.println("\nResolve conflicts manually, then:");
                     System.out.println("  1. Edit the files to resolve conflicts");
-                    System.out.println("  2. Use 'vgl track' to mark files as resolved");
-                    System.out.println("  3. Use 'vgl commit \"Merge message\"' to complete the merge");
+                    System.out.println("  2. Use 'vgl commit \"Merge message\"' to complete the merge");
                     System.out.println("  OR use 'vgl abort' to cancel the merge");
                     return 1;
                     
