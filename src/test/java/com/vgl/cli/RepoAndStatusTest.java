@@ -72,6 +72,15 @@ public class RepoAndStatusTest {
 
             // Create repo and commit a tracked file
             run("create", "-lr", tmp.toString());
+            
+            // Configure git user for commits
+            ProcessBuilder pb = new ProcessBuilder("git", "config", "user.email", "test@test.com");
+            pb.directory(tmp.toFile());
+            pb.start().waitFor();
+            pb = new ProcessBuilder("git", "config", "user.name", "Test User");
+            pb.directory(tmp.toFile());
+            pb.start().waitFor();
+            
             Path a = tmp.resolve("a.txt");
             Files.writeString(a, "hello\n");
             run("track", "a.txt");
