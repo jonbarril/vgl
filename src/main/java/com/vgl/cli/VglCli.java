@@ -87,8 +87,6 @@ public class VglCli {
         // Search upward for .vgl file (like git searches for .git)
         Path configPath = findConfigFile();
         if (configPath != null && Files.exists(configPath)) {
-            configFilePath = configPath; // Remember where we found it
-            
             // Check if .git exists alongside .vgl
             Path vglDir = configPath.getParent();
             if (!Files.exists(vglDir.resolve(".git"))) {
@@ -150,22 +148,17 @@ public class VglCli {
     }
 
     private void saveConfig() {
-        // Use the path where we found .vgl, or fall back to local.dir
-        Path savePath;
-        if (configFilePath != null) {
-            savePath = configFilePath;
-        } else {
-            String localDir = getLocalDir();
-            savePath = Paths.get(localDir).resolve(CONFIG_FILE);
-        }
+        // Always save to the local.dir location
+        String localDir = getLocalDir();
+        Path savePath = Paths.get(localDir).resolve(CONFIG_FILE);
         
         // Make sure the directory exists and has .git
         Path saveDir = savePath.getParent();
         Path gitDir = saveDir.resolve(".git");
+        
         if (Files.exists(gitDir)) {
             try (OutputStream out = Files.newOutputStream(savePath)) {
                 config.store(out, "VGL Configuration");
-                configFilePath = savePath; // Remember for next save
             } catch (IOException e) {
                 System.err.println("Warning: Failed to save configuration file.");
             }
