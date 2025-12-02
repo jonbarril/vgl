@@ -188,7 +188,8 @@ public class CreateCommand implements Command {
         vgl.save();
 
         // Print switch state feedback
-        Utils.printSwitchState(dir.toString(), finalBranch);
+        System.out.println("Created.");
+        Utils.printSwitchState(vgl);
 
         return 0;
     }

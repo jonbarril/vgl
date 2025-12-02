@@ -106,7 +106,8 @@ public class JumpCommand implements Command {
 
         vgl.save();
 
-        Utils.printJumpState(jumpLocalDir, jumpLocalBranch);
+        System.out.println("Jumped to previous state.");
+        Utils.printSwitchState(vgl);
         return 0;
     }
 }

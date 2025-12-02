@@ -165,15 +165,9 @@ public class SwitchCommand implements Command {
         
         vgl.save();
         
-        // Print confirmation
-        if (switchingLocal && switchingRemote) {
-            Utils.printSwitchState(newLocalDir, finalNewLocalBranch);
-            System.out.println("Remote: " + newRemoteUrl + " :: " + newRemoteBranch);
-        } else if (switchingLocal) {
-            Utils.printSwitchState(newLocalDir, finalNewLocalBranch);
-        } else {
-            System.out.println("Configured remote: " + newRemoteUrl + " :: " + newRemoteBranch);
-        }
+        // Print confirmation with full 4-line state
+        System.out.println("Switched.");
+        Utils.printSwitchState(vgl);
         
         return 0;
     }

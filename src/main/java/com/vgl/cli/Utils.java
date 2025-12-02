@@ -66,18 +66,54 @@ public final class Utils {
     }
 
     /**
-     * Print consistent switch state feedback message.
-     * Format: "@ DIR :: BRANCH"
+     * Print consistent switch state showing LOCAL and REMOTE, current and jump.
+     * Uses compact format: section header on same line as first value.
      */
-    public static void printSwitchState(String dir, String branch) {
-        System.out.println("@ " + dir + " :: " + branch);
-    }
-
-    /**
-     * Print consistent jump state feedback message.
-     * Format: "← DIR :: BRANCH"
-     */
-    public static void printJumpState(String dir, String branch) {
-        System.out.println("← " + dir + " :: " + branch);
+    public static void printSwitchState(com.vgl.cli.VglCli vgl) {
+        String localDir = vgl.getLocalDir();
+        String localBranch = vgl.getLocalBranch();
+        String remoteUrl = vgl.getRemoteUrl();
+        String remoteBranch = vgl.getRemoteBranch();
+        String jumpLocalDir = vgl.getJumpLocalDir();
+        String jumpLocalBranch = vgl.getJumpLocalBranch();
+        
+        String separator = " :: ";
+        
+        // LOCAL current
+        System.out.println("LOCAL  " + localDir + separator + localBranch);
+        
+        // LOCAL jump
+        if (jumpLocalDir != null && !jumpLocalDir.isEmpty()) {
+            if (jumpLocalDir.equals(localDir)) {
+                System.out.println("       (same)" + separator + jumpLocalBranch);
+            } else {
+                System.out.println("       " + jumpLocalDir + separator + jumpLocalBranch);
+            }
+        } else {
+            System.out.println("       (none)" + separator + "(none)");
+        }
+        
+        // REMOTE current
+        if (remoteUrl != null && !remoteUrl.isEmpty()) {
+            System.out.println("REMOTE " + remoteUrl + separator + remoteBranch);
+        } else {
+            System.out.println("REMOTE (none)" + separator + "(none)");
+        }
+        
+        // REMOTE jump
+        if (jumpLocalDir != null && !jumpLocalDir.isEmpty()) {
+            if (jumpLocalDir.equals(localDir)) {
+                System.out.println("       (same)" + separator + remoteBranch);
+            } else {
+                // Different directory - show same remote for now
+                if (remoteUrl != null && !remoteUrl.isEmpty()) {
+                    System.out.println("       " + remoteUrl + separator + remoteBranch);
+                } else {
+                    System.out.println("       (none)" + separator + "(none)");
+                }
+            }
+        } else {
+            System.out.println("       (none)" + separator + "(none)");
+        }
     }
 }

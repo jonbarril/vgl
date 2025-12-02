@@ -237,7 +237,9 @@ public class MergeCommand implements Command {
             
             // Print switch state feedback
             String finalBranch = git.getRepository().getBranch();
-            Utils.printSwitchState(workingDir, finalBranch);
+            vgl.setLocalBranch(finalBranch);
+            System.out.println("Merged.");
+            Utils.printSwitchState(vgl);
         }
         
         return 0;

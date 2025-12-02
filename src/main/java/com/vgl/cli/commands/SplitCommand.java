@@ -194,7 +194,8 @@ public class SplitCommand implements Command {
             vgl.setLocalBranch(newBranchName);
             vgl.save();
             
-            Utils.printSwitchState(workingDir, newBranchName);
+            System.out.println("Split branch created.");
+            Utils.printSwitchState(vgl);
             
             // If -bb flag or remote specified, push to remote
             if (bothBranch != null || remoteBranch != null) {
