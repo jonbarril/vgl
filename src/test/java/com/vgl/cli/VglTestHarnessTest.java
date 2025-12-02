@@ -27,6 +27,7 @@ public class VglTestHarnessTest {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             // user.dir should be set to repo path
             assertThat(System.getProperty("user.dir")).isEqualTo(tmp.toString());
+            assertThat(repo.getPath()).isEqualTo(tmp);
         }
         
         // user.dir should be restored after close
@@ -143,9 +144,11 @@ public class VglTestHarnessTest {
         
         try (VglTestHarness.VglTestRepo r1 = VglTestHarness.createRepo(repo1)) {
             assertThat(System.getProperty("user.dir")).isEqualTo(repo1.toString());
+            assertThat(r1.getPath()).isEqualTo(repo1);
             
             try (VglTestHarness.VglTestRepo r2 = VglTestHarness.createRepo(repo2)) {
                 assertThat(System.getProperty("user.dir")).isEqualTo(repo2.toString());
+                assertThat(r2.getPath()).isEqualTo(repo2);
             }
             
             // After inner close, should be back to repo1

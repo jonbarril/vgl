@@ -9,7 +9,6 @@ public class VglCli {
     private static final String CONFIG_FILE = ".vgl";
     private final Map<String, Command> cmds = new LinkedHashMap<>();
     private final Properties config = new Properties();
-    private Path configFilePath = null; // Remember where we found .vgl
 
     public VglCli() {
         loadConfig();
