@@ -148,15 +148,19 @@ public class VglCli {
     }
 
     private void saveConfig() {
-        // Always save to the local.dir location
+        // Find the git root for local.dir and save .vgl there
         String localDir = getLocalDir();
-        Path savePath = Paths.get(localDir).resolve(CONFIG_FILE);
+        Path localPath = Paths.get(localDir).toAbsolutePath().normalize();
         
-        // Make sure the directory exists and has .git
-        Path saveDir = savePath.getParent();
-        Path gitDir = saveDir.resolve(".git");
+        // Search upward from local.dir to find .git
+        Path gitRoot = localPath;
+        while (gitRoot != null && !Files.exists(gitRoot.resolve(".git"))) {
+            gitRoot = gitRoot.getParent();
+        }
         
-        if (Files.exists(gitDir)) {
+        if (gitRoot != null) {
+            // Save .vgl alongside .git
+            Path savePath = gitRoot.resolve(CONFIG_FILE);
             try (OutputStream out = Files.newOutputStream(savePath)) {
                 config.store(out, "VGL Configuration");
             } catch (IOException e) {
