@@ -80,7 +80,15 @@ public class StatusCommand implements Command {
         if (hasLocalRepo) {
             try (Git git = Git.open(Paths.get(localDir).toFile())) {
                 // Get working tree status
-                Status status = git.status().call();
+                Status status;
+                try {
+                    status = git.status().call();
+                } catch (Exception e) {
+                    // Handle unborn branch or invalid repository state
+                    System.err.println("Warning: Cannot read repository status.");
+                    System.err.println("Repository may be in an invalid state or branch may be unborn.");
+                    return 1;
+                }
                 
                 // Check sync state with remote
                 System.out.print("STATE  ");
