@@ -247,7 +247,7 @@ public class StatusCommand implements Command {
                                 }
                                 
                                 if (!filesToPush.isEmpty()) {
-                                    System.out.println("-- Files to Push:");
+                                    System.out.println("-- Files to Commit/Push:");
                                     filesToPush.forEach((path, statusLetter) -> 
                                         System.out.println("  " + statusLetter + " " + path));
                                 }
@@ -295,7 +295,7 @@ public class StatusCommand implements Command {
                                 }
                                 
                                 if (!filesToPull.isEmpty()) {
-                                    System.out.println("-- Files to Pull:");
+                                    System.out.println("-- Files to Pull/Merge:");
                                     filesToPull.forEach((path, statusLetter) -> 
                                         System.out.println("  " + statusLetter + " " + path));
                                 }
@@ -308,6 +308,7 @@ public class StatusCommand implements Command {
                     // Show current working tree files - only in very verbose mode
                     if (veryVerbose) {
                         System.out.println("-- Tracked Files:");
+                        
                         try {
                             org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
                             org.eclipse.jgit.lib.ObjectId headId = git.getRepository().resolve("HEAD^{tree}");
@@ -321,6 +322,7 @@ public class StatusCommand implements Command {
                                     if (!filters.isEmpty() && !matchesAnyFilter(path, filters)) {
                                         continue;
                                     }
+                                    // Just show filename, no status prefix
                                     System.out.println("  " + path);
                                     hasTracked = true;
                                 }
@@ -408,7 +410,7 @@ public class StatusCommand implements Command {
                         if (ignoredFiles.isEmpty()) {
                             System.out.println("  (none)");
                         } else {
-                            ignoredFiles.forEach(p -> System.out.println("  ! " + p));
+                            ignoredFiles.forEach(p -> System.out.println("  " + p));
                         }
                     } catch (Exception e) {
                         System.out.println("  (error detecting ignored files)");
