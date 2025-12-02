@@ -27,55 +27,45 @@ public class CommitAndDiffTest {
 
     @Test
     public void commitPrintsShortId_andDiffShowsChanges(@TempDir Path tmp) throws Exception {
-        // Create a new repository
-        new VglCli().run(new String[]{"create", "-lr", tmp.toString()});
-
-        // Create a file and commit it (no need to call track - auto-tracked)
-        Path file = tmp.resolve("a.txt");
-        Files.writeString(file, "hello\n");
-        new VglCli().run(new String[]{"switch", "-lr", tmp.toString()});
-        new VglCli().run(new String[]{"switch", "-rr", "https://example.com/repo.git"});
         String oldUserDir = System.getProperty("user.dir");
-        System.setProperty("user.dir", tmp.toString());
-        String commitOutput;
         try {
-            commitOutput = run("commit", "initial");
+            // Set working directory to temp for entire test
+            System.setProperty("user.dir", tmp.toString());
+            
+            // Create a new repository
+            new VglCli().run(new String[]{"create", "-lr", tmp.toString()});
+
+            // Create a file and commit it (no need to call track - auto-tracked)
+            Path file = tmp.resolve("a.txt");
+            Files.writeString(file, "hello\n");
+            new VglCli().run(new String[]{"switch", "-lr", tmp.toString()});
+            new VglCli().run(new String[]{"switch", "-rr", "https://example.com/repo.git"});
+            String commitOutput = run("commit", "initial");
+
+            // Assert the commit output contains a valid short hash
+            String firstLine = commitOutput.strip();
+            assertThat(firstLine).matches("[0-9a-fA-F]{7,40}");
+
+            // Modify the file and check the diff output
+            Files.writeString(file, "hello\nworld\n", StandardOpenOption.APPEND);
+            String diffOutput = run("diff");
+            
+            // Local diff output should show changes, but some environments may
+            // produce no output (JGit/status differences). Accept null/blank but
+            // prefer a non-blank result when available.
+            assertThat(diffOutput).isNotNull();
+
+            // Check the diff output with the -rb flag (should default to -lb)
+            String diffRemoteOutput = run("diff", "-rb");
+            
+            // Remote diff output may be empty in some environments (no remote configured
+            // or JGit behavior differences). Accept either a non-blank output or an
+            // explicit "No remote connected." / placeholder message.
+            assertThat(diffRemoteOutput).isNotNull();
+            String dr = diffRemoteOutput.strip();
+            assertThat(dr.isEmpty() || dr.contains("(remote diff)") || dr.contains("No remote connected.")).isTrue();
         } finally {
             System.setProperty("user.dir", oldUserDir);
         }
-
-        // Assert the commit output contains a valid short hash
-        String firstLine = commitOutput.strip();
-        assertThat(firstLine).matches("[0-9a-fA-F]{7,40}");
-
-        // Modify the file and check the diff output
-        Files.writeString(file, "hello\nworld\n", StandardOpenOption.APPEND);
-        // Run diff in the repo directory so Utils.openGit() finds the repo
-        System.setProperty("user.dir", tmp.toString());
-        String diffOutput;
-        try {
-            diffOutput = run("diff");
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
-        }
-        // Local diff output should show changes, but some environments may
-        // produce no output (JGit/status differences). Accept null/blank but
-        // prefer a non-blank result when available.
-        assertThat(diffOutput).isNotNull();
-
-        // Check the diff output with the -rb flag (should default to -lb)
-        System.setProperty("user.dir", tmp.toString());
-        String diffRemoteOutput;
-        try {
-            diffRemoteOutput = run("diff", "-rb");
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
-        }
-        // Remote diff output may be empty in some environments (no remote configured
-        // or JGit behavior differences). Accept either a non-blank output or an
-        // explicit "No remote connected." / placeholder message.
-        assertThat(diffRemoteOutput).isNotNull();
-        String dr = diffRemoteOutput.strip();
-        assertThat(dr.isEmpty() || dr.contains("(remote diff)") || dr.contains("No remote connected.")).isTrue();
     }
 }
