@@ -29,6 +29,12 @@ public class CommitAndDiffTest {
     public void commitPrintsShortId_andDiffShowsChanges(@TempDir Path tmp) throws Exception {
         String oldUserDir = System.getProperty("user.dir");
         try {
+            // Configure git user
+            ProcessBuilder pb = new ProcessBuilder("git", "config", "--global", "user.email", "test@test.com");
+            pb.start().waitFor();
+            pb = new ProcessBuilder("git", "config", "--global", "user.name", "Test User");
+            pb.start().waitFor();
+            
             // Set working directory to temp for entire test
             System.setProperty("user.dir", tmp.toString());
             
