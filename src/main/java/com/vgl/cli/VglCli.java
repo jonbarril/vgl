@@ -9,6 +9,7 @@ public class VglCli {
     private static final String CONFIG_FILE = ".vgl";
     private final Map<String, Command> cmds = new LinkedHashMap<>();
     private final Properties config = new Properties();
+    private Path configFilePath = null; // Remember where we found .vgl
 
     public VglCli() {
         loadConfig();
@@ -65,12 +66,30 @@ public class VglCli {
         return Files.exists(Paths.get(localDir).resolve(".git"));
     }
 
+    /**
+     * Search upward from current directory for .vgl file (like git searches for .git)
+     */
+    private Path findConfigFile() {
+        Path current = Paths.get(".").toAbsolutePath().normalize();
+        while (current != null) {
+            Path configPath = current.resolve(CONFIG_FILE);
+            if (Files.exists(configPath)) {
+                return configPath;
+            }
+            current = current.getParent();
+        }
+        return null; // Not found
+    }
+
     private void loadConfig() {
-        // Check for .vgl in current directory
-        Path configPath = Paths.get(CONFIG_FILE);
-        if (Files.exists(configPath)) {
+        // Search upward for .vgl file (like git searches for .git)
+        Path configPath = findConfigFile();
+        if (configPath != null && Files.exists(configPath)) {
+            configFilePath = configPath; // Remember where we found it
+            
             // Check if .git exists alongside .vgl
-            if (!Files.exists(Paths.get(".git"))) {
+            Path vglDir = configPath.getParent();
+            if (!Files.exists(vglDir.resolve(".git"))) {
                 // Orphaned .vgl file - .git was deleted or moved
                 System.err.println("Warning: Found .vgl but no .git directory.");
                 System.err.println("The .git repository may have been deleted or moved.");
@@ -122,11 +141,21 @@ public class VglCli {
     }
 
     private void saveConfig() {
-        String localDir = getLocalDir();
-        if (Files.exists(Paths.get(localDir).resolve(".git"))) {
-            Path configPath = Paths.get(localDir).resolve(CONFIG_FILE);
-            try (OutputStream out = Files.newOutputStream(configPath)) {
+        // Use the path where we found .vgl, or fall back to local.dir
+        Path savePath;
+        if (configFilePath != null) {
+            savePath = configFilePath;
+        } else {
+            String localDir = getLocalDir();
+            savePath = Paths.get(localDir).resolve(CONFIG_FILE);
+        }
+        
+        // Make sure the directory exists and has .git
+        Path saveDir = savePath.getParent();
+        if (Files.exists(saveDir.resolve(".git"))) {
+            try (OutputStream out = Files.newOutputStream(savePath)) {
                 config.store(out, "VGL Configuration");
+                configFilePath = savePath; // Remember for next save
             } catch (IOException e) {
                 System.err.println("Warning: Failed to save configuration file.");
             }
@@ -145,7 +174,9 @@ public class VglCli {
     }
 
     public void setLocalDir(String dir) {
-        config.setProperty("local.dir", dir);
+        // Always store absolute paths
+        String absolutePath = Paths.get(dir).toAbsolutePath().normalize().toString();
+        config.setProperty("local.dir", absolutePath);
     }
 
     public String getLocalBranch() {
@@ -179,7 +210,9 @@ public class VglCli {
 
     public void setJumpLocalDir(String dir) {
         if (dir != null) {
-            config.setProperty("jump.local.dir", dir);
+            // Always store absolute paths
+            String absolutePath = Paths.get(dir).toAbsolutePath().normalize().toString();
+            config.setProperty("jump.local.dir", absolutePath);
         } else {
             config.remove("jump.local.dir");
         }

@@ -65,12 +65,7 @@ public class StatusCommand implements Command {
                 String displayDir = truncatePath.apply(localDir, maxPathLen);
                 maxFirstColLen = Math.max(maxFirstColLen, displayDir.length());
                 if (hasLocalJump) {
-                    String jumpDisplayDir;
-                    if (jumpLocalDir.equals(localDir.toString())) {
-                        jumpDisplayDir = "(same)";
-                    } else {
-                        jumpDisplayDir = truncatePath.apply(jumpLocalDir, maxPathLen);
-                    }
+                    String jumpDisplayDir = jumpLocalDir.equals(localDir) ? "(same)" : truncatePath.apply(jumpLocalDir, maxPathLen);
                     maxFirstColLen = Math.max(maxFirstColLen, jumpDisplayDir.length());
                 }
             }
@@ -100,17 +95,17 @@ public class StatusCommand implements Command {
                 System.out.println("@ " + displayDir + padding + separator + localBranch);
                 
                 if (hasLocalJump) {
-                    String jumpDisplayDir = jumpLocalDir.equals(localDir.toString()) ? "(same)" : truncatePath.apply(jumpLocalDir, maxPathLen);
+                    String jumpDisplayDir = jumpLocalDir.equals(localDir) ? "(same)" : truncatePath.apply(jumpLocalDir, maxPathLen);
                     String jumpPadding = " ".repeat(maxFirstColLen - jumpDisplayDir.length());
-                    System.out.println("← " + jumpDisplayDir + jumpPadding + separator + jumpLocalBranch);
+                    System.out.println("<< " + jumpDisplayDir + jumpPadding + separator + jumpLocalBranch);
                 }
             } else {
                 // Verbose mode: full paths, no alignment or truncation
                 System.out.println("@ " + localDir + separator + localBranch);
                 
                 if (hasLocalJump) {
-                    String jumpDisplayDir = jumpLocalDir.equals(localDir.toString()) ? "(same)" : jumpLocalDir;
-                    System.out.println("← " + jumpDisplayDir + separator + jumpLocalBranch);
+                    String jumpDisplayDir = jumpLocalDir.equals(localDir) ? "(same)" : jumpLocalDir;
+                    System.out.println("<< " + jumpDisplayDir + separator + jumpLocalBranch);
                 }
             }
             
@@ -148,7 +143,7 @@ public class StatusCommand implements Command {
                 if (hasRemoteJump) {
                     String jumpDisplayUrl = jumpRemoteUrl.equals(remoteUrl) ? "(same)" : truncatePath.apply(jumpRemoteUrl, maxPathLen);
                     String jumpPadding = " ".repeat(maxFirstColLen - jumpDisplayUrl.length());
-                    System.out.println("← " + jumpDisplayUrl + jumpPadding + separator + jumpRemoteBranch);
+                    System.out.println("<< " + jumpDisplayUrl + jumpPadding + separator + jumpRemoteBranch);
                 }
             } else {
                 // Verbose mode: full paths, no alignment or truncation
@@ -156,7 +151,7 @@ public class StatusCommand implements Command {
                 
                 if (hasRemoteJump) {
                     String jumpDisplayUrl = jumpRemoteUrl.equals(remoteUrl) ? "(same)" : jumpRemoteUrl;
-                    System.out.println("← " + jumpDisplayUrl + separator + jumpRemoteBranch);
+                    System.out.println("<< " + jumpDisplayUrl + separator + jumpRemoteBranch);
                 }
             }
         } else {
