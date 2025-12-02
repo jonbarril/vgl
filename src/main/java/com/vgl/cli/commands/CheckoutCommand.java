@@ -1,6 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
+import com.vgl.cli.Utils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;
@@ -113,7 +114,7 @@ public class CheckoutCommand implements Command {
         vgl.save();
         
         System.out.println("Cloned " + remoteUrl + " (branch '" + branch + "') into " + dir);
-        System.out.println("Switched to: " + dir + ":" + branch);
+        Utils.printSwitchState(dir.toString(), branch);
         return 0;
     }
 }

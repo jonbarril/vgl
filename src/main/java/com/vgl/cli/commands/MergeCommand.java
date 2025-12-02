@@ -1,6 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
+import com.vgl.cli.Utils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult;
@@ -236,7 +237,7 @@ public class MergeCommand implements Command {
             
             // Print switch state feedback
             String finalBranch = git.getRepository().getBranch();
-            System.out.println("Switched to: " + workingDir + ":" + finalBranch);
+            Utils.printSwitchState(workingDir, finalBranch);
         }
         
         return 0;

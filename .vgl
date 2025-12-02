@@ -1,4 +1,10 @@
 #VGL Configuration
-#Mon Dec 01 18:07:05 CST 2025
+#Mon Dec 01 18:28:26 CST 2025
+jump.local.branch=main
+jump.local.dir=.
+jump.remote.branch=main
+jump.remote.url=https\://example.com/repo.git
+local.branch=refactor-flags
+local.dir=C\:\\Users\\jonb\\vscode-workspace\\vgl
 remote.branch=main
 remote.url=https\://example.com/repo.git

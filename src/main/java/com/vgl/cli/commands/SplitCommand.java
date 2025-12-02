@@ -1,6 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
+import com.vgl.cli.Utils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;
@@ -193,7 +194,7 @@ public class SplitCommand implements Command {
             vgl.setLocalBranch(newBranchName);
             vgl.save();
             
-            System.out.println("Switched to: " + workingDir + ":" + newBranchName);
+            Utils.printSwitchState(workingDir, newBranchName);
             
             // If -bb flag or remote specified, push to remote
             if (bothBranch != null || remoteBranch != null) {

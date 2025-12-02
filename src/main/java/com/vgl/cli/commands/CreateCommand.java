@@ -1,6 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
+import com.vgl.cli.Utils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 
@@ -187,7 +188,7 @@ public class CreateCommand implements Command {
         vgl.save();
 
         // Print switch state feedback
-        System.out.println("Switched to: " + dir + ":" + finalBranch);
+        Utils.printSwitchState(dir.toString(), finalBranch);
 
         return 0;
     }

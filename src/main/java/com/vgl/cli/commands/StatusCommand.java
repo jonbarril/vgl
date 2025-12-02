@@ -36,11 +36,17 @@ public class StatusCommand implements Command {
             }
         }
 
-        // Helper to truncate path with ellipsis if too long
-        java.util.function.BiFunction<String, Integer, String> formatPath = (path, maxLen) -> {
+        // Helper to truncate path/URL with ellipsis from the middle
+        java.util.function.BiFunction<String, Integer, String> truncatePath = (path, maxLen) -> {
             if (path.length() <= maxLen) return path;
-            return "..." + path.substring(path.length() - maxLen + 3);
+            int leftLen = (maxLen - 3) / 2;
+            int rightLen = maxLen - 3 - leftLen;
+            return path.substring(0, leftLen) + "..." + path.substring(path.length() - rightLen);
         };
+        
+        // Determine path formatting based on verbosity (always use :: separator)
+        String separator = " :: ";
+        int maxPathLen = (verbose || veryVerbose) ? Integer.MAX_VALUE : 35;
         
         // Report LOCAL with current and jump state
         String jumpLocalDir = vgl.getJumpLocalDir();
@@ -49,13 +55,22 @@ public class StatusCommand implements Command {
                           jumpLocalBranch != null && !jumpLocalBranch.isEmpty();
         
         if (hasLocalRepo) {
-            // Format paths for display (truncate if too long)
-            String currentDisplay = formatPath.apply(localDir, 50) + ":" + localBranch;
-            System.out.println("LOCAL   " + currentDisplay);
+            String displayDir = truncatePath.apply(localDir, maxPathLen);
             
-            if (hasJump) {
-                String jumpDisplay = formatPath.apply(jumpLocalDir, 50) + ":" + jumpLocalBranch;
+            // Show same directory as "." for brevity
+            if (hasJump && jumpLocalDir.equals(localDir)) {
+                String currentDisplay = displayDir + separator + localBranch;
+                String jumpDisplay = "." + separator + jumpLocalBranch;
+                System.out.println("LOCAL   " + currentDisplay);
                 System.out.println("        " + jumpDisplay + " (jump)");
+            } else if (hasJump) {
+                String currentDisplay = displayDir + separator + localBranch;
+                String jumpDisplayDir = truncatePath.apply(jumpLocalDir, maxPathLen);
+                String jumpDisplay = jumpDisplayDir + separator + jumpLocalBranch;
+                System.out.println("LOCAL   " + currentDisplay);
+                System.out.println("        " + jumpDisplay + " (jump)");
+            } else {
+                System.out.println("LOCAL   " + displayDir + separator + localBranch);
             }
             
             // Show all branches in -vv mode
@@ -79,7 +94,13 @@ public class StatusCommand implements Command {
         }
 
         // Report REMOTE
-        System.out.println("REMOTE  " + (!remoteUrl.equals("none") ? remoteUrl + ":" + remoteBranch : "(none)"));
+        if (!remoteUrl.equals("none")) {
+            String displayUrl = truncatePath.apply(remoteUrl, maxPathLen);
+            System.out.println("REMOTE  " + displayUrl + separator + remoteBranch);
+        } else {
+            System.out.println("REMOTE  (none)");
+        }
+        
         if (veryVerbose && hasLocalRepo && !remoteUrl.equals("none")) {
             try (Git git = Git.open(Paths.get(localDir).toFile())) {
                 List<org.eclipse.jgit.lib.Ref> remoteBranches = git.branchList()

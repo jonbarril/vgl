@@ -64,4 +64,19 @@ public final class Utils {
         }
         return new ArrayList<>(out);
     }
+
+    /**
+     * Print consistent switch state feedback message.
+     * Format: "Switched to: DIR :: BRANCH" or "Jumped to: DIR :: BRANCH"
+     */
+    public static void printSwitchState(String dir, String branch) {
+        System.out.println("Switched to: " + dir + " :: " + branch);
+    }
+
+    /**
+     * Print consistent jump state feedback message.
+     */
+    public static void printJumpState(String dir, String branch) {
+        System.out.println("Jumped to: " + dir + " :: " + branch);
+    }
 }

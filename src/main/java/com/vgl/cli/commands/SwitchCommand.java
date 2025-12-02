@@ -1,6 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
+import com.vgl.cli.Utils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;
@@ -166,12 +167,12 @@ public class SwitchCommand implements Command {
         
         // Print confirmation
         if (switchingLocal && switchingRemote) {
-            System.out.println("Switched to: " + newLocalDir + ":" + finalNewLocalBranch);
-            System.out.println("Remote: " + newRemoteUrl + ":" + newRemoteBranch);
+            Utils.printSwitchState(newLocalDir, finalNewLocalBranch);
+            System.out.println("Remote: " + newRemoteUrl + " :: " + newRemoteBranch);
         } else if (switchingLocal) {
-            System.out.println("Switched to: " + newLocalDir + ":" + finalNewLocalBranch);
+            Utils.printSwitchState(newLocalDir, finalNewLocalBranch);
         } else {
-            System.out.println("Configured remote: " + newRemoteUrl + ":" + newRemoteBranch);
+            System.out.println("Configured remote: " + newRemoteUrl + " :: " + newRemoteBranch);
         }
         
         return 0;
