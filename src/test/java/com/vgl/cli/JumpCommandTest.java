@@ -52,6 +52,11 @@ class JumpCommandTest {
         VglCli vgl = new VglCli();
         vgl.setLocalDir(repo1.toString());
         vgl.setLocalBranch("main");
+        // Explicitly clear any inherited jump state
+        vgl.setJumpLocalDir(null);
+        vgl.setJumpLocalBranch(null);
+        vgl.setJumpRemoteUrl(null);
+        vgl.setJumpRemoteBranch(null);
         vgl.save();
         
         JumpCommand cmd = new JumpCommand();

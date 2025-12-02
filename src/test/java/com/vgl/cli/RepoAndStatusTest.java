@@ -58,7 +58,7 @@ public class RepoAndStatusTest {
 
             // Run switch to set repository -> should create .vgl
             String out = run("switch", "-lr", tmp.toString());
-            assertThat(out).contains("Switched to:");
+            assertThat(out).contains("Switched.");
         } finally {
             System.setProperty("user.dir", old);
         }
