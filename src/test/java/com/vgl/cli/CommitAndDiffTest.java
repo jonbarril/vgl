@@ -15,7 +15,7 @@ public class CommitAndDiffTest {
             repo.runCommand("create", "-lr", tmp.toString());
             
             repo.writeFile("a.txt", "hello\n");
-            repo.gitAdd("a.txt");
+            repo.runCommand("track", "a.txt");
             String commitOutput = repo.runCommand("commit", "initial");
 
             // Assert the commit output contains a valid short hash

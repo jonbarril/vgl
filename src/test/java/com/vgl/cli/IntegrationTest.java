@@ -130,7 +130,7 @@ public class IntegrationTest {
         Files.writeString(tmp.resolve("test.java"), "modified");
         Files.writeString(tmp.resolve("test.txt"), "modified");
 
-        ProcessResult result = runVgl(tmp, "status", "-v", "test.java");
+        ProcessResult result = runVgl(tmp, "status", "-vv", "test.java");
 
         assertThat(result.output).contains("test.java");
         assertThat(result.output).doesNotContain("test.txt");
@@ -152,7 +152,7 @@ public class IntegrationTest {
         Files.writeString(tmp.resolve("file2.java"), "modified");
         Files.writeString(tmp.resolve("file.txt"), "modified");
 
-        ProcessResult result = runVgl(tmp, "status", "-v", "*.java");
+        ProcessResult result = runVgl(tmp, "status", "-vv", "*.java");
 
         assertThat(result.output).contains("file1.java");
         assertThat(result.output).contains("file2.java");
@@ -232,7 +232,7 @@ public class IntegrationTest {
         runVgl(tmp, "switch", "-lb", "main");
 
         ProcessResult result = runVgl(tmp, "status");
-        assertThat(result.output).containsPattern("LOCAL.*:main");
+        assertThat(result.output).containsPattern("LOCAL.*::.*main");
         System.out.println(" PASSED");
     }
 
@@ -269,7 +269,7 @@ public class IntegrationTest {
         runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "feature");
 
         ProcessResult result = runVgl(tmp, "status");
-        assertThat(result.output).containsPattern("LOCAL.*:feature");
+        assertThat(result.output).containsPattern("LOCAL.*::.*feature");
         System.out.println(" PASSED");
     }
 
