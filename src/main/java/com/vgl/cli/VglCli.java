@@ -152,21 +152,30 @@ public class VglCli {
         String localDir = getLocalDir();
         Path localPath = Paths.get(localDir).toAbsolutePath().normalize();
         
+        System.err.println("DEBUG saveConfig: localDir=" + localDir);
+        System.err.println("DEBUG saveConfig: localPath=" + localPath);
+        
         // Search upward from local.dir to find .git
         Path gitRoot = localPath;
         while (gitRoot != null && !Files.exists(gitRoot.resolve(".git"))) {
+            System.err.println("DEBUG saveConfig: checking " + gitRoot + "/.git - not found");
             gitRoot = gitRoot.getParent();
         }
         
         if (gitRoot != null) {
+            System.err.println("DEBUG saveConfig: found .git at " + gitRoot);
             // Save .vgl alongside .git
             Path savePath = gitRoot.resolve(CONFIG_FILE);
+            System.err.println("DEBUG saveConfig: saving to " + savePath);
             try (OutputStream out = Files.newOutputStream(savePath)) {
                 config.store(out, "VGL Configuration");
+                System.err.println("DEBUG saveConfig: save successful");
             } catch (IOException e) {
                 System.err.println("Warning: Failed to save configuration file.");
+                e.printStackTrace();
             }
         } else {
+            System.err.println("DEBUG saveConfig: no .git found in parent tree");
             //// System.out.println("Info: No local repository found. Configuration file
             /// will not be created.");
         }
