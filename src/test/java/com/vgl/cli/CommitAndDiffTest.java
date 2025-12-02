@@ -29,17 +29,19 @@ public class CommitAndDiffTest {
     public void commitPrintsShortId_andDiffShowsChanges(@TempDir Path tmp) throws Exception {
         String oldUserDir = System.getProperty("user.dir");
         try {
-            // Configure git user
-            ProcessBuilder pb = new ProcessBuilder("git", "config", "--global", "user.email", "test@test.com");
-            pb.start().waitFor();
-            pb = new ProcessBuilder("git", "config", "--global", "user.name", "Test User");
-            pb.start().waitFor();
-            
             // Set working directory to temp for entire test
             System.setProperty("user.dir", tmp.toString());
             
             // Create a new repository directly in the temp directory
-            run("create", "-lr", ".");
+            run("create", "-lr", tmp.toString());
+            
+            // Configure git user for this repo
+            ProcessBuilder pb = new ProcessBuilder("git", "config", "user.email", "test@test.com");
+            pb.directory(tmp.toFile());
+            pb.start().waitFor();
+            pb = new ProcessBuilder("git", "config", "user.name", "Test User");
+            pb.directory(tmp.toFile());
+            pb.start().waitFor();
 
             // Create a file and commit it (track command stages the file)
             Path file = tmp.resolve("a.txt");
