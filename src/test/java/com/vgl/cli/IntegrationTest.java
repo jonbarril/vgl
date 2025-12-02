@@ -219,8 +219,8 @@ public class IntegrationTest {
     }
 
     @Test
-    void localSwitchesBranches(@TempDir Path tmp) throws Exception {
-        System.out.print("\n" + getTestProgress() + "localSwitchesBranches]...");
+    void switchSwitchesBranches(@TempDir Path tmp) throws Exception {
+        System.out.print("\n" + getTestProgress() + "switchSwitchesBranches]...");
         // Create repo with two branches
         runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");
@@ -237,8 +237,8 @@ public class IntegrationTest {
     }
 
     @Test
-    void localWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
-        System.out.print("\n" + getTestProgress() + "localWarnsAboutUncommittedChanges]...");
+    void switchWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
+        System.out.print("\n" + getTestProgress() + "switchWarnsAboutUncommittedChanges]...");
         // Create repo with two branches
         runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main");
         Files.writeString(tmp.resolve("test.txt"), "content");

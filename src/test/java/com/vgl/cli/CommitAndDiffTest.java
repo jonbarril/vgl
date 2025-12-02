@@ -38,11 +38,8 @@ public class CommitAndDiffTest {
             // Set working directory to temp for entire test
             System.setProperty("user.dir", tmp.toString());
             
-            // Create a new repository
-            new VglCli().run(new String[]{"create", "-lr", tmp.toString()});
-            
-            // Set remote before creating file
-            new VglCli().run(new String[]{"switch", "-rr", "https://example.com/repo.git"});
+            // Create a new repository directly in the temp directory
+            run("create", "-lr", ".");
 
             // Create a file and commit it (track command stages the file)
             Path file = tmp.resolve("a.txt");

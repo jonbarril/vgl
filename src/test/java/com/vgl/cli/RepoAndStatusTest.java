@@ -47,7 +47,7 @@ public class RepoAndStatusTest {
     }
 
     @Test
-    void localCreatesVglWhenMissing(@TempDir Path tmp) throws Exception {
+    void switchCreatesVglWhenMissing(@TempDir Path tmp) throws Exception {
         String old = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());

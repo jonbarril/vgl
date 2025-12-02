@@ -170,7 +170,12 @@ public class VglCli {
     }
 
     public String getLocalDir() {
-        return config.getProperty("local.dir", ".");
+        String dir = config.getProperty("local.dir", null);
+        if (dir == null || dir.isEmpty()) {
+            // Default to current directory as absolute path
+            return Paths.get(".").toAbsolutePath().normalize().toString();
+        }
+        return dir;
     }
 
     public void setLocalDir(String dir) {
