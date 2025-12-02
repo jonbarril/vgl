@@ -36,22 +36,46 @@ public class StatusCommand implements Command {
             }
         }
 
-        // Report LOCAL
-        System.out.println("LOCAL   " + (hasLocalRepo ? localDir + ":" + localBranch : "(none)"));
-        if (veryVerbose && hasLocalRepo) {
-            try (Git git = Git.open(Paths.get(localDir).toFile())) {
-                List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
-                if (!branches.isEmpty()) {
-                    for (org.eclipse.jgit.lib.Ref ref : branches) {
-                        String branchName = ref.getName().replaceFirst("refs/heads/", "");
-                        if (branchName.equals(localBranch)) {
-                            System.out.println("  * " + branchName);
-                        } else {
-                            System.out.println("    " + branchName);
+        // Helper to truncate path with ellipsis if too long
+        java.util.function.BiFunction<String, Integer, String> formatPath = (path, maxLen) -> {
+            if (path.length() <= maxLen) return path;
+            return "..." + path.substring(path.length() - maxLen + 3);
+        };
+        
+        // Report LOCAL with current and jump state
+        String jumpLocalDir = vgl.getJumpLocalDir();
+        String jumpLocalBranch = vgl.getJumpLocalBranch();
+        boolean hasJump = jumpLocalDir != null && !jumpLocalDir.isEmpty() && 
+                          jumpLocalBranch != null && !jumpLocalBranch.isEmpty();
+        
+        if (hasLocalRepo) {
+            // Format paths for display (truncate if too long)
+            String currentDisplay = formatPath.apply(localDir, 50) + ":" + localBranch;
+            System.out.println("LOCAL   " + currentDisplay);
+            
+            if (hasJump) {
+                String jumpDisplay = formatPath.apply(jumpLocalDir, 50) + ":" + jumpLocalBranch;
+                System.out.println("        " + jumpDisplay + " (jump)");
+            }
+            
+            // Show all branches in -vv mode
+            if (veryVerbose) {
+                try (Git git = Git.open(Paths.get(localDir).toFile())) {
+                    List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
+                    if (!branches.isEmpty()) {
+                        for (org.eclipse.jgit.lib.Ref ref : branches) {
+                            String branchName = ref.getName().replaceFirst("refs/heads/", "");
+                            if (branchName.equals(localBranch)) {
+                                System.out.println("  * " + branchName);
+                            } else {
+                                System.out.println("    " + branchName);
+                            }
                         }
                     }
                 }
             }
+        } else {
+            System.out.println("LOCAL   (none)");
         }
 
         // Report REMOTE
@@ -78,9 +102,6 @@ public class StatusCommand implements Command {
             try (Git git = Git.open(Paths.get(localDir).toFile())) {
                 // Get working tree status
                 Status status = git.status().call();
-                int modified = status.getChanged().size() + status.getModified().size() + status.getAdded().size() +
-                               status.getRemoved().size() + status.getMissing().size();
-                int untracked = status.getUntracked().size();
                 
                 // Check sync state with remote
                 System.out.print("STATE   ");
@@ -129,8 +150,9 @@ public class StatusCommand implements Command {
                 }
                 System.out.println();
                 
-                // Show commits subsection for -v under STATE
+                // Show commits subsection for -v
                 if (verbose || veryVerbose) {
+                    System.out.println("-- Commits:");
                     try {
                         Iterable<RevCommit> commits = git.log().setMaxCount(5).call();
                         for (RevCommit commit : commits) {
@@ -169,9 +191,26 @@ public class StatusCommand implements Command {
                     }
                 }
                 
-                System.out.printf("FILES   %d modified(tracked), %d untracked%n", modified, untracked);
+                // Count files by status
+                int numModified = status.getChanged().size() + status.getModified().size();
+                int numAdded = status.getAdded().size();
+                int numDeleted = status.getRemoved().size() + status.getMissing().size();
+                int numUntracked = status.getUntracked().size();
+                
+                // Build summary string
+                List<String> fileSummary = new java.util.ArrayList<>();
+                if (numModified > 0) fileSummary.add(numModified + "M");
+                if (numAdded > 0) fileSummary.add(numAdded + "A");
+                if (numDeleted > 0) fileSummary.add(numDeleted + "D");
+                if (numUntracked > 0) fileSummary.add(numUntracked + "?");
+                
+                if (fileSummary.isEmpty()) {
+                    System.out.println("FILES   (clean)");
+                } else {
+                    System.out.println("FILES   " + String.join(", ", fileSummary));
+                }
 
-                // For -v, show which files need push/pull
+                // For -v, show which files need push/pull under FILES section
                 if (verbose || veryVerbose) {
                     if (hasRemote) {
                         try {
@@ -201,7 +240,11 @@ public class StatusCommand implements Command {
                                             .call();
                                         
                                         for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
-                                            filesToPush.add(diff.getNewPath());
+                                            String newPath = diff.getNewPath();
+                                            // Filter out /dev/null entries
+                                            if (newPath != null && !newPath.equals("/dev/null")) {
+                                                filesToPush.add(newPath);
+                                            }
                                         }
                                         reader.close();
                                     }
@@ -233,7 +276,11 @@ public class StatusCommand implements Command {
                                             .call();
                                         
                                         for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
-                                            filesToPull.add(diff.getNewPath());
+                                            String newPath = diff.getNewPath();
+                                            // Filter out /dev/null entries
+                                            if (newPath != null && !newPath.equals("/dev/null")) {
+                                                filesToPull.add(newPath);
+                                            }
                                         }
                                         reader.close();
                                     }
@@ -248,9 +295,8 @@ public class StatusCommand implements Command {
                             // Ignore errors in detailed sync reporting
                         }
                     }
-                }
 
-                if (verbose || veryVerbose) {
+                    // Show current working tree files
                     System.out.println("-- Tracked Files:");
                     // Use a map to track each file once with its most relevant status
                     Map<String, String> trackedFiles = new LinkedHashMap<>();
