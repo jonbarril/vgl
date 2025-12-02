@@ -70,7 +70,9 @@ public class VglCli {
      * Search upward from current directory for .vgl file (like git searches for .git)
      */
     private Path findConfigFile() {
-        Path current = Paths.get(".").toAbsolutePath().normalize();
+        // Use user.dir property (respects test environment)
+        String userDir = System.getProperty("user.dir");
+        Path current = Paths.get(userDir).toAbsolutePath().normalize();
         while (current != null) {
             Path configPath = current.resolve(CONFIG_FILE);
             if (Files.exists(configPath)) {
@@ -104,13 +106,20 @@ public class VglCli {
                 if (System.console() != null) {
                     System.err.print("Delete orphaned .vgl file? (y/N): ");
                     try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
-                        String response = scanner.nextLine().trim().toLowerCase();
-                        if (response.equals("y") || response.equals("yes")) {
-                            Files.delete(configPath);
-                            System.err.println("Deleted .vgl file.");
-                            return;
+                        if (scanner.hasNextLine()) {
+                            String response = scanner.nextLine().trim().toLowerCase();
+                            if (response.equals("y") || response.equals("yes")) {
+                                Files.delete(configPath);
+                                System.err.println("Deleted .vgl file.");
+                                return;
+                            } else {
+                                System.err.println("Kept .vgl file. Remember: .vgl only works with .git");
+                            }
                         } else {
-                            System.err.println("Kept .vgl file. Remember: .vgl only works with .git");
+                            // No input available - treat as non-interactive
+                            Files.delete(configPath);
+                            System.err.println("Deleted orphaned .vgl file (non-interactive mode).");
+                            return;
                         }
                     } catch (IOException e) {
                         System.err.println("Warning: Failed to delete .vgl file.");
@@ -152,7 +161,8 @@ public class VglCli {
         
         // Make sure the directory exists and has .git
         Path saveDir = savePath.getParent();
-        if (Files.exists(saveDir.resolve(".git"))) {
+        Path gitDir = saveDir.resolve(".git");
+        if (Files.exists(gitDir)) {
             try (OutputStream out = Files.newOutputStream(savePath)) {
                 config.store(out, "VGL Configuration");
                 configFilePath = savePath; // Remember for next save
@@ -173,7 +183,9 @@ public class VglCli {
         String dir = config.getProperty("local.dir", null);
         if (dir == null || dir.isEmpty()) {
             // Default to current directory as absolute path
-            return Paths.get(".").toAbsolutePath().normalize().toString();
+            // Use user.dir property (respects test environment)
+            String userDir = System.getProperty("user.dir");
+            return Paths.get(userDir).toAbsolutePath().normalize().toString();
         }
         return dir;
     }
