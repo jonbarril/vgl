@@ -40,12 +40,14 @@ public class CommitAndDiffTest {
             
             // Create a new repository
             new VglCli().run(new String[]{"create", "-lr", tmp.toString()});
+            
+            // Set remote before creating file
+            new VglCli().run(new String[]{"switch", "-rr", "https://example.com/repo.git"});
 
-            // Create a file and commit it (no need to call track - auto-tracked)
+            // Create a file and commit it (track command stages the file)
             Path file = tmp.resolve("a.txt");
             Files.writeString(file, "hello\n");
-            new VglCli().run(new String[]{"switch", "-lr", tmp.toString()});
-            new VglCli().run(new String[]{"switch", "-rr", "https://example.com/repo.git"});
+            run("track", "a.txt");
             String commitOutput = run("commit", "initial");
 
             // Assert the commit output contains a valid short hash
