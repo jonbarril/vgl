@@ -46,31 +46,72 @@ public class StatusCommand implements Command {
         
         // Determine path formatting based on verbosity (always use :: separator)
         String separator = " :: ";
-        int maxPathLen = (verbose || veryVerbose) ? Integer.MAX_VALUE : 35;
+        int maxPathLen = 35; // Only used for basic mode
         
-        // Report LOCAL with current and jump state
+        // Get jump state values
         String jumpLocalDir = vgl.getJumpLocalDir();
         String jumpLocalBranch = vgl.getJumpLocalBranch();
-        boolean hasJump = jumpLocalDir != null && !jumpLocalDir.isEmpty() && 
-                          jumpLocalBranch != null && !jumpLocalBranch.isEmpty();
+        String jumpRemoteUrl = vgl.getJumpRemoteUrl();
+        String jumpRemoteBranch = vgl.getJumpRemoteBranch();
+        boolean hasLocalJump = jumpLocalDir != null && !jumpLocalDir.isEmpty() && 
+                               jumpLocalBranch != null && !jumpLocalBranch.isEmpty();
+        boolean hasRemoteJump = jumpRemoteUrl != null && !jumpRemoteUrl.isEmpty() &&
+                                jumpRemoteBranch != null && !jumpRemoteBranch.isEmpty();
         
+        // Calculate column alignment for basic status only (find longest path/URL)
+        int maxFirstColLen = 0;
+        if (!verbose && !veryVerbose) {
+            if (hasLocalRepo) {
+                String displayDir = truncatePath.apply(localDir, maxPathLen);
+                maxFirstColLen = Math.max(maxFirstColLen, displayDir.length());
+                if (hasLocalJump) {
+                    String jumpDisplayDir;
+                    if (jumpLocalDir.equals(localDir.toString())) {
+                        jumpDisplayDir = "(same)";
+                    } else {
+                        jumpDisplayDir = truncatePath.apply(jumpLocalDir, maxPathLen);
+                    }
+                    maxFirstColLen = Math.max(maxFirstColLen, jumpDisplayDir.length());
+                }
+            }
+            if (!remoteUrl.equals("none")) {
+                String displayUrl = truncatePath.apply(remoteUrl, maxPathLen);
+                maxFirstColLen = Math.max(maxFirstColLen, displayUrl.length());
+                if (hasRemoteJump) {
+                    String jumpDisplayUrl;
+                    if (jumpRemoteUrl.equals(remoteUrl)) {
+                        jumpDisplayUrl = "(same)";
+                    } else {
+                        jumpDisplayUrl = truncatePath.apply(jumpRemoteUrl, maxPathLen);
+                    }
+                    maxFirstColLen = Math.max(maxFirstColLen, jumpDisplayUrl.length());
+                }
+            }
+        }
+        
+        // Report LOCAL with current and jump state
         if (hasLocalRepo) {
-            String displayDir = truncatePath.apply(localDir, maxPathLen);
+            System.out.println("LOCAL");
             
-            // Show same directory as "." for brevity
-            if (hasJump && jumpLocalDir.equals(localDir)) {
-                String currentDisplay = displayDir + separator + localBranch;
-                String jumpDisplay = "." + separator + jumpLocalBranch;
-                System.out.println("LOCAL   " + currentDisplay);
-                System.out.println("        " + jumpDisplay + " (jump)");
-            } else if (hasJump) {
-                String currentDisplay = displayDir + separator + localBranch;
-                String jumpDisplayDir = truncatePath.apply(jumpLocalDir, maxPathLen);
-                String jumpDisplay = jumpDisplayDir + separator + jumpLocalBranch;
-                System.out.println("LOCAL   " + currentDisplay);
-                System.out.println("        " + jumpDisplay + " (jump)");
+            if (!verbose && !veryVerbose) {
+                // Basic mode: truncate and align
+                String displayDir = truncatePath.apply(localDir, maxPathLen);
+                String padding = " ".repeat(maxFirstColLen - displayDir.length());
+                System.out.println("@ " + displayDir + padding + separator + localBranch);
+                
+                if (hasLocalJump) {
+                    String jumpDisplayDir = jumpLocalDir.equals(localDir.toString()) ? "(same)" : truncatePath.apply(jumpLocalDir, maxPathLen);
+                    String jumpPadding = " ".repeat(maxFirstColLen - jumpDisplayDir.length());
+                    System.out.println("← " + jumpDisplayDir + jumpPadding + separator + jumpLocalBranch);
+                }
             } else {
-                System.out.println("LOCAL   " + displayDir + separator + localBranch);
+                // Verbose mode: full paths, no alignment or truncation
+                System.out.println("@ " + localDir + separator + localBranch);
+                
+                if (hasLocalJump) {
+                    String jumpDisplayDir = jumpLocalDir.equals(localDir.toString()) ? "(same)" : jumpLocalDir;
+                    System.out.println("← " + jumpDisplayDir + separator + jumpLocalBranch);
+                }
             }
             
             // Show all branches in -vv mode
@@ -90,15 +131,37 @@ public class StatusCommand implements Command {
                 }
             }
         } else {
-            System.out.println("LOCAL   (none)");
+            System.out.println("LOCAL");
+            System.out.println("  (none)");
         }
 
-        // Report REMOTE
+        // Report REMOTE with current and jump state
         if (!remoteUrl.equals("none")) {
-            String displayUrl = truncatePath.apply(remoteUrl, maxPathLen);
-            System.out.println("REMOTE  " + displayUrl + separator + remoteBranch);
+            System.out.println("REMOTE");
+            
+            if (!verbose && !veryVerbose) {
+                // Basic mode: truncate and align
+                String displayUrl = truncatePath.apply(remoteUrl, maxPathLen);
+                String padding = " ".repeat(maxFirstColLen - displayUrl.length());
+                System.out.println("@ " + displayUrl + padding + separator + remoteBranch);
+                
+                if (hasRemoteJump) {
+                    String jumpDisplayUrl = jumpRemoteUrl.equals(remoteUrl) ? "(same)" : truncatePath.apply(jumpRemoteUrl, maxPathLen);
+                    String jumpPadding = " ".repeat(maxFirstColLen - jumpDisplayUrl.length());
+                    System.out.println("← " + jumpDisplayUrl + jumpPadding + separator + jumpRemoteBranch);
+                }
+            } else {
+                // Verbose mode: full paths, no alignment or truncation
+                System.out.println("@ " + remoteUrl + separator + remoteBranch);
+                
+                if (hasRemoteJump) {
+                    String jumpDisplayUrl = jumpRemoteUrl.equals(remoteUrl) ? "(same)" : jumpRemoteUrl;
+                    System.out.println("← " + jumpDisplayUrl + separator + jumpRemoteBranch);
+                }
+            }
         } else {
-            System.out.println("REMOTE  (none)");
+            System.out.println("REMOTE");
+            System.out.println("  (none)");
         }
         
         if (veryVerbose && hasLocalRepo && !remoteUrl.equals("none")) {
@@ -125,7 +188,7 @@ public class StatusCommand implements Command {
                 Status status = git.status().call();
                 
                 // Check sync state with remote
-                System.out.print("STATE   ");
+                System.out.print("STATE  ");
                 boolean hasRemote = !remoteUrl.equals("none");
                 
                 if (!hasRemote) {
@@ -218,18 +281,14 @@ public class StatusCommand implements Command {
                 int numDeleted = status.getRemoved().size() + status.getMissing().size();
                 int numUntracked = status.getUntracked().size();
                 
-                // Build summary string
+                // Build summary string with full category names
                 List<String> fileSummary = new java.util.ArrayList<>();
-                if (numModified > 0) fileSummary.add(numModified + "M");
-                if (numAdded > 0) fileSummary.add(numAdded + "A");
-                if (numDeleted > 0) fileSummary.add(numDeleted + "D");
-                if (numUntracked > 0) fileSummary.add(numUntracked + "?");
+                fileSummary.add(numModified + " Modified");
+                fileSummary.add(numAdded + " Added");
+                fileSummary.add(numDeleted + " Deleted");
+                fileSummary.add(numUntracked + " Untracked");
                 
-                if (fileSummary.isEmpty()) {
-                    System.out.println("FILES   (clean)");
-                } else {
-                    System.out.println("FILES   " + String.join(", ", fileSummary));
-                }
+                System.out.println("FILES  " + String.join(", ", fileSummary));
 
                 // For -v, show which files need push/pull under FILES section
                 if (verbose || veryVerbose) {
@@ -245,7 +304,8 @@ public class StatusCommand implements Command {
                                     .not(remoteHead)
                                     .call();
                                 
-                                Set<String> filesToPush = new LinkedHashSet<>();
+                                // Map to track files and their status
+                                Map<String, String> filesToPush = new LinkedHashMap<>();
                                 for (RevCommit commit : commitsToPush) {
                                     // Get files changed in this commit
                                     if (commit.getParentCount() > 0) {
@@ -264,7 +324,19 @@ public class StatusCommand implements Command {
                                             String newPath = diff.getNewPath();
                                             // Filter out /dev/null entries
                                             if (newPath != null && !newPath.equals("/dev/null")) {
-                                                filesToPush.add(newPath);
+                                                // Determine status letter
+                                                String statusLetter = switch (diff.getChangeType()) {
+                                                    case ADD -> "A";
+                                                    case MODIFY -> "M";
+                                                    case DELETE -> "D";
+                                                    case RENAME -> "R";
+                                                    case COPY -> "C";
+                                                    default -> "M";
+                                                };
+                                                // Use the path from the diff (could be new or old depending on type)
+                                                String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE 
+                                                    ? diff.getOldPath() : newPath;
+                                                filesToPush.put(filePath, statusLetter);
                                             }
                                         }
                                         reader.close();
@@ -273,7 +345,8 @@ public class StatusCommand implements Command {
                                 
                                 if (!filesToPush.isEmpty()) {
                                     System.out.println("-- Files to Push:");
-                                    filesToPush.forEach(f -> System.out.println("  " + f));
+                                    filesToPush.forEach((path, statusLetter) -> 
+                                        System.out.println("  " + statusLetter + " " + path));
                                 }
                                 
                                 // Get commits to pull
@@ -282,7 +355,7 @@ public class StatusCommand implements Command {
                                     .not(localHead)
                                     .call();
                                 
-                                Set<String> filesToPull = new LinkedHashSet<>();
+                                Map<String, String> filesToPull = new LinkedHashMap<>();
                                 for (RevCommit commit : commitsToPull) {
                                     if (commit.getParentCount() > 0) {
                                         org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
@@ -300,7 +373,18 @@ public class StatusCommand implements Command {
                                             String newPath = diff.getNewPath();
                                             // Filter out /dev/null entries
                                             if (newPath != null && !newPath.equals("/dev/null")) {
-                                                filesToPull.add(newPath);
+                                                // Determine status letter
+                                                String statusLetter = switch (diff.getChangeType()) {
+                                                    case ADD -> "A";
+                                                    case MODIFY -> "M";
+                                                    case DELETE -> "D";
+                                                    case RENAME -> "R";
+                                                    case COPY -> "C";
+                                                    default -> "M";
+                                                };
+                                                String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE 
+                                                    ? diff.getOldPath() : newPath;
+                                                filesToPull.put(filePath, statusLetter);
                                             }
                                         }
                                         reader.close();
@@ -309,7 +393,8 @@ public class StatusCommand implements Command {
                                 
                                 if (!filesToPull.isEmpty()) {
                                     System.out.println("-- Files to Pull:");
-                                    filesToPull.forEach(f -> System.out.println("  " + f));
+                                    filesToPull.forEach((path, statusLetter) -> 
+                                        System.out.println("  " + statusLetter + " " + path));
                                 }
                             }
                         } catch (Exception e) {
@@ -317,85 +402,54 @@ public class StatusCommand implements Command {
                         }
                     }
 
-                    // Show current working tree files
-                    System.out.println("-- Tracked Files:");
-                    // Use a map to track each file once with its most relevant status
-                    Map<String, String> trackedFiles = new LinkedHashMap<>();
-                    
+                    // Show current working tree files - only in very verbose mode
                     if (veryVerbose) {
-                        // For -vv, show ALL tracked files (including clean ones)
+                        System.out.println("-- Tracked Files:");
                         try {
                             org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
                             org.eclipse.jgit.lib.ObjectId headId = git.getRepository().resolve("HEAD^{tree}");
                             if (headId != null) {
                                 treeWalk.addTree(headId);
                                 treeWalk.setRecursive(true);
+                                boolean hasTracked = false;
                                 while (treeWalk.next()) {
                                     String path = treeWalk.getPathString();
                                     // Apply filters if specified
                                     if (!filters.isEmpty() && !matchesAnyFilter(path, filters)) {
                                         continue;
                                     }
-                                    trackedFiles.put(path, " "); // Clean files have no status marker
+                                    System.out.println("  " + path);
+                                    hasTracked = true;
                                 }
                                 treeWalk.close();
+                                if (!hasTracked) {
+                                    System.out.println("  (none)");
+                                }
+                            } else {
+                                System.out.println("  (none)");
                             }
                         } catch (Exception e) {
-                            // If there's an error reading the tree, fall through to modified-only
+                            System.out.println("  (error reading tracked files)");
                         }
                     }
                     
-                    // Priority order: Added > Removed/Missing > Modified/Changed
-                    // These will overwrite clean file entries with status codes
-                    status.getModified().forEach(p -> {
-                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
-                            trackedFiles.put(p, "M");
+                    // Show untracked files - only in very verbose mode
+                    if (veryVerbose) {
+                        System.out.println("-- Untracked Files:");
+                        Set<String> untrackedFiles = status.getUntracked();
+                        
+                        // Apply filters if specified
+                        if (!filters.isEmpty()) {
+                            untrackedFiles = untrackedFiles.stream()
+                                .filter(p -> matchesAnyFilter(p, filters))
+                                .collect(java.util.stream.Collectors.toSet());
                         }
-                    });
-                    status.getChanged().forEach(p -> {
-                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
-                            trackedFiles.put(p, "M");
+                        
+                        if (untrackedFiles.isEmpty()) {
+                            System.out.println("  (none)");
+                        } else {
+                            untrackedFiles.forEach(p -> System.out.println("  " + p));
                         }
-                    });
-                    status.getRemoved().forEach(p -> {
-                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
-                            trackedFiles.put(p, "D");
-                        }
-                    });
-                    status.getMissing().forEach(p -> {
-                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
-                            trackedFiles.put(p, "D");
-                        }
-                    });
-                    status.getAdded().forEach(p -> {
-                        if (filters.isEmpty() || matchesAnyFilter(p, filters)) {
-                            trackedFiles.put(p, "A");
-                        }
-                    });
-                    
-                    if (trackedFiles.isEmpty()) {
-                        System.out.println("  (none)");
-                    } else {
-                        trackedFiles.forEach((file, statusCode) -> 
-                            System.out.println("  " + statusCode + " " + file));
-                    }
-                    
-                    System.out.println("-- Untracked Files:");
-                    // Exclude files that are tracked (including removed ones)
-                    Set<String> untrackedOnly = new LinkedHashSet<>(status.getUntracked());
-                    // Remove files that are marked as removed/missing from tracked - these shouldn't appear as untracked
-                    status.getRemoved().forEach(untrackedOnly::remove);
-                    status.getMissing().forEach(untrackedOnly::remove);
-                    
-                    // Apply filters if specified
-                    if (!filters.isEmpty()) {
-                        untrackedOnly.removeIf(p -> !matchesAnyFilter(p, filters));
-                    }
-                    
-                    if (untrackedOnly.isEmpty()) {
-                        System.out.println("  (none)");
-                    } else {
-                        untrackedOnly.forEach(p -> System.out.println("  ? " + p));
                     }
                 }
                 

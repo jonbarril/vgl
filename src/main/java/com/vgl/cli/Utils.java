@@ -67,16 +67,17 @@ public final class Utils {
 
     /**
      * Print consistent switch state feedback message.
-     * Format: "Switched to: DIR :: BRANCH" or "Jumped to: DIR :: BRANCH"
+     * Format: "@ DIR :: BRANCH"
      */
     public static void printSwitchState(String dir, String branch) {
-        System.out.println("Switched to: " + dir + " :: " + branch);
+        System.out.println("@ " + dir + " :: " + branch);
     }
 
     /**
      * Print consistent jump state feedback message.
+     * Format: "← DIR :: BRANCH"
      */
     public static void printJumpState(String dir, String branch) {
-        System.out.println("Jumped to: " + dir + " :: " + branch);
+        System.out.println("← " + dir + " :: " + branch);
     }
 }
