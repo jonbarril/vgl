@@ -1,10 +1,10 @@
 #VGL Configuration
 #Tue Dec 02 00:42:51 CST 2025
 jump.local.branch=main
-jump.local.dir=C\:\\Users\\jonb\\AppData\\Local\\Temp\\junit15284715536965356722
+jump.local.dir=C\:\\Users\\jonb\\AppData\\Local\\Temp\\junit2364385381183773646
 jump.remote.branch=main
-jump.remote.url=https\://example.com/repo1
+jump.remote.url=https\://example.com/repo.git
 local.branch=main
-local.dir=C\:\\Users\\jonb\\AppData\\Local\\Temp\\junit18338731748074472616
+local.dir=C\:\\Users\\jonb\\AppData\\Local\\Temp\\junit2364385381183773646
 remote.branch=main
 remote.url=https\://example.com/repo.git
