@@ -11,6 +11,9 @@ public class CommitAndDiffTest {
     @Test
     public void commitPrintsShortId_andDiffShowsChanges(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            // Create .vgl config for commit command
+            repo.runCommand("create", "-lr", tmp.toString());
+            
             repo.writeFile("a.txt", "hello\n");
             repo.runCommand("track", "a.txt");
             String commitOutput = repo.runCommand("commit", "initial");
