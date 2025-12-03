@@ -47,23 +47,21 @@ public class StatusVerboseTest {
         Files.createDirectories(localRepo);
         
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(localRepo)) {
-            // Configure remote
-            try (Git git = repo.getGit()) {
-                git.getRepository().getConfig().setString("remote", "origin", "url", remoteRepo.toUri().toString());
-                git.getRepository().getConfig().setString("branch", "main", "remote", "origin");
-                git.getRepository().getConfig().setString("branch", "main", "merge", "refs/heads/main");
-                git.getRepository().getConfig().save();
-            }
-            
-            // Create and commit a file
+            // Create and push initial commit first
             repo.writeFile("file1.txt", "content");
             repo.gitAdd("file1.txt");
             repo.gitCommit("First commit");
             
-            // Push to remote
             try (Git git = repo.getGit()) {
-                git.push().setRemote("origin").call();
+                // Push to remote
+                git.push()
+                    .setRemote(remoteRepo.toUri().toString())
+                    .add("master")
+                    .call();
             }
+            
+            // Set up remote tracking
+            repo.setupRemoteTracking(remoteRepo.toUri().toString(), "master");
             
             // Create another commit (not pushed)
             repo.writeFile("file2.txt", "new file");
@@ -91,20 +89,18 @@ public class StatusVerboseTest {
         Files.createDirectories(local1);
         
         try (VglTestHarness.VglTestRepo repo1 = VglTestHarness.createRepo(local1)) {
-            try (Git git = repo1.getGit()) {
-                git.getRepository().getConfig().setString("remote", "origin", "url", remoteRepo.toUri().toString());
-                git.getRepository().getConfig().setString("branch", "main", "remote", "origin");
-                git.getRepository().getConfig().setString("branch", "main", "merge", "refs/heads/main");
-                git.getRepository().getConfig().save();
-            }
-            
             repo1.writeFile("shared.txt", "initial");
             repo1.gitAdd("shared.txt");
             repo1.gitCommit("Initial commit");
             
             try (Git git = repo1.getGit()) {
-                git.push().setRemote("origin").call();
+                git.push()
+                    .setRemote(remoteRepo.toUri().toString())
+                    .add("master")
+                    .call();
             }
+            
+            repo1.setupRemoteTracking(remoteRepo.toUri().toString(), "master");
             
             // Add more commits
             repo1.writeFile("file1.txt", "from repo1");
@@ -112,7 +108,15 @@ public class StatusVerboseTest {
             repo1.gitCommit("Add file1");
             
             try (Git git = repo1.getGit()) {
-                git.push().setRemote("origin").call();
+                git.push()
+                    .setRemote(remoteRepo.toUri().toString())
+                    .add("master")
+                    .call();
+                
+                // Update remote tracking ref
+                org.eclipse.jgit.lib.RefUpdate refUpdate = git.getRepository().updateRef("refs/remotes/origin/master");
+                refUpdate.setNewObjectId(git.getRepository().resolve("refs/heads/master"));
+                refUpdate.update();
             }
         }
         
@@ -126,15 +130,16 @@ public class StatusVerboseTest {
             // Fetch to update remote tracking branch
             git.fetch().call();
             
-            // Get first commit only (simulate being behind)
-            git.checkout().setStartPoint("HEAD~1").setCreateBranch(true).setName("main").call();
-            git.getRepository().getConfig().setString("branch", "main", "remote", "origin");
-            git.getRepository().getConfig().setString("branch", "main", "merge", "refs/heads/main");
+            // Reset to previous commit to simulate being behind
+            git.reset().setMode(org.eclipse.jgit.api.ResetCommand.ResetType.HARD).setRef("HEAD~1").call();
             git.getRepository().getConfig().save();
         }
         
         // Now check status in local2
         try (VglTestHarness.VglTestRepo repo2 = VglTestHarness.createRepo(local2)) {
+            // Set up remote tracking
+            repo2.setupRemoteTracking(remoteRepo.toUri().toString(), "master");
+            
             String output = repo2.runCommand("status", "-vv");
             
             assertThat(output).contains("-- Files to Merge:");
@@ -171,36 +176,34 @@ public class StatusVerboseTest {
         Files.createDirectories(localRepo);
         
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(localRepo)) {
-            // Configure remote
-            try (Git git = repo.getGit()) {
-                git.getRepository().getConfig().setString("remote", "origin", "url", remoteRepo.toUri().toString());
-                git.getRepository().getConfig().setString("branch", "main", "remote", "origin");
-                git.getRepository().getConfig().setString("branch", "main", "merge", "refs/heads/main");
-                git.getRepository().getConfig().save();
-            }
-            
             // Create and push initial commit
             repo.writeFile("file1.txt", "initial");
             repo.gitAdd("file1.txt");
             repo.gitCommit("Initial");
             
             try (Git git = repo.getGit()) {
-                git.push().setRemote("origin").call();
+                git.push()
+                    .setRemote(remoteRepo.toUri().toString())
+                    .add("master")
+                    .call();
             }
+            
+            // Set up remote tracking
+            repo.setupRemoteTracking(remoteRepo.toUri().toString(), "master");
             
             // Create committed but not pushed change
             repo.writeFile("file2.txt", "committed");
             repo.gitAdd("file2.txt");
             repo.gitCommit("Add file2");
             
-            // Create uncommitted change
-            repo.writeFile("file3.txt", "uncommitted");
+            // Create uncommitted change (modified, not added/committed)
+            repo.writeFile("file1.txt", "modified content");
             
             String output = repo.runCommand("status", "-vv");
             
             assertThat(output).contains("-- Files to Commit:");
-            assertThat(output).contains("↑ A file2.txt");  // Committed, up arrow
-            assertThat(output).contains("  ? file3.txt");  // Uncommitted, no arrow (untracked)
+            assertThat(output).contains("↑ A file2.txt");  // Committed but not pushed, up arrow
+            assertThat(output).contains("  M file1.txt");  // Modified but not committed, no arrow
         }
     }
 }

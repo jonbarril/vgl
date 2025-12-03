@@ -195,6 +195,36 @@ public class VglTestHarness {
             return subdir;
         }
         
+        /**
+         * Set up a remote with proper tracking branch.
+         * Call this after the first push to ensure origin/branch refs exist.
+         */
+        public void setupRemoteTracking(String remoteUrl, String branch) throws Exception {
+            try (Git git = getGit()) {
+                // Configure remote
+                git.getRepository().getConfig().setString("remote", "origin", "url", remoteUrl);
+                git.getRepository().getConfig().setString("branch", branch, "remote", "origin");
+                git.getRepository().getConfig().setString("branch", branch, "merge", "refs/heads/" + branch);
+                git.getRepository().getConfig().save();
+                
+                // Create the remote tracking ref manually
+                org.eclipse.jgit.lib.ObjectId headId = git.getRepository().resolve("refs/heads/" + branch);
+                if (headId != null) {
+                    org.eclipse.jgit.lib.RefUpdate refUpdate = git.getRepository().updateRef("refs/remotes/origin/" + branch);
+                    refUpdate.setNewObjectId(headId);
+                    refUpdate.update();
+                }
+            }
+            
+            // Initialize VGL config with remote
+            VglCli vgl = new VglCli();
+            vgl.setLocalDir(path.toString());
+            vgl.setLocalBranch(branch);
+            vgl.setRemoteUrl(remoteUrl);
+            vgl.setRemoteBranch(branch);
+            vgl.save();
+        }
+        
         @Override
         public void close() {
             // Restore original user.dir
