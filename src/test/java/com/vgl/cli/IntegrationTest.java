@@ -109,9 +109,14 @@ public class IntegrationTest {
         Files.writeString(tmp.resolve("file2.txt"), "content2");
         runVgl(tmp, "commit", "initial");
 
+        // Modify files so they show up in verbose output
+        Files.writeString(tmp.resolve("file1.txt"), "modified1");
+        Files.writeString(tmp.resolve("file2.txt"), "modified2");
+
         ProcessResult result = runVgl(tmp, "status", "-vv");
 
-        assertThat(result.output).contains("-- Tracked Files:");
+        // After arrow feature, sections are "Files to Commit" and "Files to Merge"
+        assertThat(result.output).contains("-- Files to Commit:");
         assertThat(result.output).contains("file1.txt");
         assertThat(result.output).contains("file2.txt");
         System.out.println(" PASSED");
