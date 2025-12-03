@@ -29,7 +29,8 @@ public class TrackCommand implements Command {
 
         try (Git git = Git.open(dir.toFile())) {
             var addc = git.add();
-            for (String p : Utils.expandGlobs(args)) {
+            List<String> expanded = Utils.expandGlobs(args);
+            for (String p : expanded) {
                 addc.addFilepattern(p);
             }
             try {

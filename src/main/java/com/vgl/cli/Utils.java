@@ -45,10 +45,10 @@ public final class Utils {
 
     public static List<String> expandGlobs(List<String> globs) throws IOException {
         if (globs == null || globs.isEmpty()) return Collections.emptyList();
-        Path base = Paths.get(".").toAbsolutePath().normalize();
+        Path base = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
         Set<String> out = new LinkedHashSet<>();
         for (String g : globs) {
-            if ("*".equals(g)) {
+            if ("*".equals(g) || ".".equals(g)) {
                 try (Stream<Path> s = Files.walk(base)) {
                     s.filter(Files::isRegularFile).forEach(p -> out.add(base.relativize(p).toString().replace('\\','/')));
                 }
