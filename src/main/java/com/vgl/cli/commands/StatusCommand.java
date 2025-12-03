@@ -92,7 +92,31 @@ public class StatusCommand implements Command {
                 
                 // Check sync state with remote
                 System.out.print("STATE  ");
+                
+                // Check if remote exists in VGL config OR in Git config
                 boolean hasRemote = remoteUrl != null && !remoteUrl.isEmpty();
+                String effectiveRemoteBranch = remoteBranch;
+                
+                // If VGL doesn't have remote configured, check Git's config
+                if (!hasRemote) {
+                    try {
+                        org.eclipse.jgit.lib.StoredConfig config = git.getRepository().getConfig();
+                        String gitRemoteUrl = config.getString("remote", "origin", "url");
+                        if (gitRemoteUrl != null && !gitRemoteUrl.isEmpty()) {
+                            hasRemote = true;
+                            // Try to get the tracked branch name
+                            String currentBranch = git.getRepository().getBranch();
+                            String trackedBranch = config.getString("branch", currentBranch, "merge");
+                            if (trackedBranch != null) {
+                                effectiveRemoteBranch = trackedBranch.replaceFirst("refs/heads/", "");
+                            } else {
+                                effectiveRemoteBranch = currentBranch;  // Assume same name
+                            }
+                        }
+                    } catch (Exception e) {
+                        // Ignore errors checking Git config
+                    }
+                }
                 
                 if (!hasRemote) {
                     System.out.print("(local only)");
@@ -100,7 +124,7 @@ public class StatusCommand implements Command {
                     try {
                         // Try to get remote tracking info
                         org.eclipse.jgit.lib.ObjectId localHead = git.getRepository().resolve("HEAD");
-                        org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + remoteBranch);
+                        org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + effectiveRemoteBranch);
                         
                         if (localHead == null) {
                             System.out.print("(no commits yet)");
@@ -193,12 +217,40 @@ public class StatusCommand implements Command {
                 
                 System.out.println("FILES  " + String.join(", ", fileSummary));
 
-                // For -v, show which files need push/pull under FILES section
+                // For -v, show which files need commit and merge
                 if (verbose || veryVerbose) {
+                    // Files to Commit section - ALWAYS show (working dir changes + unpushed commits)
+                    System.out.println("-- Files to Commit:");
+                    
+                    // Start with working directory changes (modified, added, deleted)
+                    Map<String, String> filesToCommit = new LinkedHashMap<>();
+                    
+                    // Add modified files
+                    for (String path : status.getModified()) {
+                        filesToCommit.put(path, "M");
+                    }
+                    for (String path : status.getChanged()) {
+                        filesToCommit.put(path, "M");
+                    }
+                    
+                    // Add new files
+                    for (String path : status.getAdded()) {
+                        filesToCommit.put(path, "A");
+                    }
+                    
+                    // Add deleted files
+                    for (String path : status.getRemoved()) {
+                        filesToCommit.put(path, "D");
+                    }
+                    for (String path : status.getMissing()) {
+                        filesToCommit.put(path, "D");
+                    }
+                    
+                    // Add files from commits that need push (if remote exists)
                     if (hasRemote) {
                         try {
                             org.eclipse.jgit.lib.ObjectId localHead = git.getRepository().resolve("HEAD");
-                            org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + remoteBranch);
+                            org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + effectiveRemoteBranch);
                             
                             if (localHead != null && remoteHead != null && !localHead.equals(remoteHead)) {
                                 // Get commits to push
@@ -207,10 +259,7 @@ public class StatusCommand implements Command {
                                     .not(remoteHead)
                                     .call();
                                 
-                                // Map to track files and their status
-                                Map<String, String> filesToPush = new LinkedHashMap<>();
                                 for (RevCommit commit : commitsToPush) {
-                                    // Get files changed in this commit
                                     if (commit.getParentCount() > 0) {
                                         org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
                                         org.eclipse.jgit.treewalk.CanonicalTreeParser oldTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
@@ -225,9 +274,7 @@ public class StatusCommand implements Command {
                                         
                                         for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
                                             String newPath = diff.getNewPath();
-                                            // Filter out /dev/null entries
                                             if (newPath != null && !newPath.equals("/dev/null")) {
-                                                // Determine status letter
                                                 String statusLetter = switch (diff.getChangeType()) {
                                                     case ADD -> "A";
                                                     case MODIFY -> "M";
@@ -236,22 +283,67 @@ public class StatusCommand implements Command {
                                                     case COPY -> "C";
                                                     default -> "M";
                                                 };
-                                                // Use the path from the diff (could be new or old depending on type)
                                                 String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE 
                                                     ? diff.getOldPath() : newPath;
-                                                filesToPush.put(filePath, statusLetter);
+                                                // Only add if not already in working directory changes
+                                                if (!filesToCommit.containsKey(filePath)) {
+                                                    filesToCommit.put(filePath, statusLetter);
+                                                }
                                             }
                                         }
                                         reader.close();
                                     }
                                 }
-                                
-                                if (!filesToPush.isEmpty()) {
-                                    System.out.println("-- Files to Commit/Push:");
-                                    filesToPush.forEach((path, statusLetter) -> 
-                                        System.out.println("  " + statusLetter + " " + path));
-                                }
-                                
+                            }
+                        } catch (Exception e) {
+                            // Ignore errors in detailed sync reporting
+                        }
+                    }
+                    
+                    // Display files to commit with proper prefixes
+                    if (filesToCommit.isEmpty()) {
+                        if (!hasRemote) {
+                            System.out.println("  (no remote configured)");
+                        } else {
+                            System.out.println("  (none)");
+                        }
+                    } else {
+                        // First show uncommitted working directory changes (no arrow)
+                        for (Map.Entry<String, String> entry : filesToCommit.entrySet()) {
+                            String path = entry.getKey();
+                            String statusLetter = entry.getValue();
+                            
+                            // Check if this file is in working directory changes
+                            boolean isUncommitted = status.getModified().contains(path) || 
+                                                   status.getChanged().contains(path) ||
+                                                   status.getAdded().contains(path) ||
+                                                   status.getRemoved().contains(path) ||
+                                                   status.getMissing().contains(path);
+                            
+                            if (isUncommitted) {
+                                System.out.println("  " + statusLetter + " " + path);
+                            } else {
+                                // Committed but not pushed - use up arrow
+                                System.out.println("↑ " + statusLetter + " " + path);
+                            }
+                        }
+                    }
+                    
+                    // Files to Merge section - ALWAYS show
+                    System.out.println("-- Files to Merge:");
+                    
+                    if (!hasRemote) {
+                        System.out.println("  (no remote configured)");
+                    } else {
+                        try {
+                            org.eclipse.jgit.lib.ObjectId localHead = git.getRepository().resolve("HEAD");
+                            org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + effectiveRemoteBranch);
+                            
+                            if (localHead == null || remoteHead == null) {
+                                System.out.println("  (remote branch not found)");
+                            } else if (localHead.equals(remoteHead)) {
+                                System.out.println("  (none)");
+                            } else {
                                 // Get commits to pull
                                 Iterable<RevCommit> commitsToPull = git.log()
                                     .add(remoteHead)
@@ -274,9 +366,7 @@ public class StatusCommand implements Command {
                                         
                                         for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
                                             String newPath = diff.getNewPath();
-                                            // Filter out /dev/null entries
                                             if (newPath != null && !newPath.equals("/dev/null")) {
-                                                // Determine status letter
                                                 String statusLetter = switch (diff.getChangeType()) {
                                                     case ADD -> "A";
                                                     case MODIFY -> "M";
@@ -294,14 +384,16 @@ public class StatusCommand implements Command {
                                     }
                                 }
                                 
-                                if (!filesToPull.isEmpty()) {
-                                    System.out.println("-- Files to Pull/Merge:");
+                                if (filesToPull.isEmpty()) {
+                                    System.out.println("  (none)");
+                                } else {
+                                    // Use down arrow for files to merge (pull from remote)
                                     filesToPull.forEach((path, statusLetter) -> 
-                                        System.out.println("  " + statusLetter + " " + path));
+                                        System.out.println("↓ " + statusLetter + " " + path));
                                 }
                             }
                         } catch (Exception e) {
-                            // Ignore errors in detailed sync reporting
+                            System.out.println("  (error checking remote)");
                         }
                     }
 
