@@ -180,4 +180,63 @@ public class VglTestHarnessTest {
             }
         }
     }
+
+    @Test
+    void useDirForCreateCommand(@TempDir Path tmp) throws Exception {
+        // When testing the 'create' command, use createDir() not createRepo()
+        // The create command initializes .git, so starting with an existing .git causes issues
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createDir(tmp)) {
+            assertThat(Files.exists(tmp.resolve(".git"))).isFalse();
+            assertThat(Files.exists(tmp.resolve(".vgl"))).isFalse();
+            
+            // Run create command - it will initialize .git and create .vgl
+            String output = repo.runCommand("create", "-lr", tmp.toString());
+            
+            assertThat(output).contains("Created new local repository");
+            assertThat(Files.exists(tmp.resolve(".git"))).isTrue();
+            assertThat(Files.exists(tmp.resolve(".vgl"))).isTrue();
+            assertThat(Files.exists(tmp.resolve(".gitignore"))).isTrue();
+        }
+    }
+
+    @Test
+    void useRepoForOtherCommands(@TempDir Path tmp) throws Exception {
+        // When testing commands that need an existing repo, use createRepo()
+        // This pre-initializes .git so commands can run immediately
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            assertThat(Files.exists(tmp.resolve(".git"))).isTrue();
+            
+            // Write and commit a file
+            repo.writeFile("test.txt", "content");
+            repo.gitAdd("test.txt");
+            repo.gitCommit("initial");
+            
+            // Now test commands that operate on existing repos
+            String statusOutput = repo.runCommand("status");
+            assertThat(statusOutput).contains("LOCAL");
+            
+            // Modify file and test diff
+            repo.writeFile("test.txt", "modified");
+            String diffOutput = repo.runCommand("diff");
+            assertThat(diffOutput).isNotEmpty();
+        }
+    }
+
+    @Test
+    void antiPatternCreateRepoThenCreate(@TempDir Path tmp) throws Exception {
+        // ANTI-PATTERN: Don't use createRepo() followed by create command
+        // This creates .git twice and causes the create command to fail
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            // This will fail because:
+            // 1. createRepo() already initialized .git
+            // 2. create command without -lb flag finds .git exists
+            // 3. Goes to Case 3: "Repository already exists" error
+            
+            String output = repo.runCommand("create", "-lr", tmp.toString());
+            
+            // Documents the problem - create fails when .git already exists
+            assertThat(output).contains("Error: Repository already exists");
+            assertThat(Files.exists(tmp.resolve(".vgl"))).isFalse(); // .vgl not created
+        }
+    }
 }
