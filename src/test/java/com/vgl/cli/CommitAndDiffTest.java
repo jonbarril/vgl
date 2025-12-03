@@ -10,7 +10,7 @@ public class CommitAndDiffTest {
 
     @Test
     public void commitPrintsShortId_andDiffShowsChanges(@TempDir Path tmp) throws Exception {
-        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createDir(tmp)) {
             // Create repository and commit a file
             repo.runCommand("create", "-lr", tmp.toString());
             
