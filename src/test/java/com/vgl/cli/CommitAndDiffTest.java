@@ -109,4 +109,106 @@ public class CommitAndDiffTest {
             assertThat(diffOutput).contains("(no changes)");
         }
     }
+    
+    @Test
+    public void diffDefaultComparesWorkingVsLocal(@TempDir Path tmp) throws Exception {
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            repo.runCommand("create", "-lr", tmp.toString(), "-f");
+            repo.writeFile("test.txt", "committed\n");
+            repo.runCommand("track", "test.txt");
+            repo.runCommand("commit", "initial");
+            
+            repo.writeFile("test.txt", "working\n");
+            
+            // No flags should default to working vs local
+            String diffOutput = repo.runCommand("diff");
+            
+            assertThat(diffOutput).contains("MODIFIED: test.txt");
+            assertThat(diffOutput).contains("- committed");
+            assertThat(diffOutput).contains("+ working");
+        }
+    }
+    
+    @Test
+    public void diffRbComparesWorkingFilesVsRemote(@TempDir Path tmp) throws Exception {
+        Path localRepo = tmp.resolve("local");
+        Files.createDirectories(localRepo);
+        
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(localRepo)) {
+            // Create initial commit
+            repo.runCommand("create", "-lr", localRepo.toString(), "-f");
+            repo.writeFile("test.txt", "initial content\n");
+            repo.runCommand("track", "test.txt");
+            repo.runCommand("commit", "initial");
+            
+            // Set up remote repo with push and fetch
+            Path remoteRepo = tmp.resolve("remote.git");
+            VglTestHarness.setupRemoteRepo(repo, remoteRepo, "main");
+            
+            // Modify working file (not committed)
+            repo.writeFile("test.txt", "modified content\n");
+            
+            // diff -rb should show working changes vs remote
+            String diffOutput = repo.runCommand("diff", "-rb");
+            
+            assertThat(diffOutput).contains("Fetching from remote");
+            assertThat(diffOutput).contains("MODIFIED: test.txt");
+            assertThat(diffOutput).contains("- initial content");
+            assertThat(diffOutput).contains("+ modified content");
+        }
+    }
+    
+    @Test
+    public void diffLbRbComparesLocalVsRemoteBranches(@TempDir Path tmp) throws Exception {
+        Path localRepo = tmp.resolve("local");
+        Files.createDirectories(localRepo);
+        
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(localRepo)) {
+            // Create initial commit
+            repo.runCommand("create", "-lr", localRepo.toString(), "-f");
+            repo.writeFile("test.txt", "remote version\n");
+            repo.runCommand("track", "test.txt");
+            repo.runCommand("commit", "initial");
+            
+            // Set up remote repo with push and fetch
+            Path remoteRepo = tmp.resolve("remote.git");
+            VglTestHarness.setupRemoteRepo(repo, remoteRepo, "main");
+            
+            // Make local commit (ahead of remote)
+            repo.writeFile("test.txt", "local version\n");
+            repo.runCommand("commit", "update");
+            
+            // diff -lb -rb should compare local vs remote
+            String diffOutput = repo.runCommand("diff", "-lb", "-rb");
+            
+            assertThat(diffOutput).contains("Fetching from remote");
+            assertThat(diffOutput).contains("MODIFIED: test.txt");
+            assertThat(diffOutput).contains("- remote version");
+            assertThat(diffOutput).contains("+ local version");
+        }
+    }
+    
+    @Test
+    public void diffLbRbShowsNoDiffWhenInSync(@TempDir Path tmp) throws Exception {
+        Path localRepo = tmp.resolve("local");
+        Files.createDirectories(localRepo);
+        
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(localRepo)) {
+            // Create initial commit
+            repo.runCommand("create", "-lr", localRepo.toString(), "-f");
+            repo.writeFile("test.txt", "content\n");
+            repo.runCommand("track", "test.txt");
+            repo.runCommand("commit", "initial");
+            
+            // Set up remote repo with push and fetch (in sync)
+            Path remoteRepo = tmp.resolve("remote.git");
+            VglTestHarness.setupRemoteRepo(repo, remoteRepo, "main");
+            
+            // diff -lb -rb should show branches are identical
+            String diffOutput = repo.runCommand("diff", "-lb", "-rb");
+            
+            assertThat(diffOutput).contains("Fetching from remote");
+            assertThat(diffOutput).contains("branches are identical");
+        }
+    }
 }

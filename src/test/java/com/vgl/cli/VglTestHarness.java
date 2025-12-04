@@ -38,6 +38,57 @@ public class VglTestHarness {
     }
     
     /**
+     * Creates a bare remote repository at the specified path.
+     * This is useful for tests that need to push/fetch from a remote.
+     * 
+     * @param remotePath Path where the bare repository should be created
+     * @return Path to the created bare repository
+     */
+    public static Path createBareRemoteRepo(Path remotePath) throws Exception {
+        Files.createDirectories(remotePath);
+        try (Git remoteGit = Git.init().setDirectory(remotePath.toFile()).setBare(true).call()) {
+            remoteGit.close();
+        }
+        return remotePath;
+    }
+    
+    /**
+     * Sets up a local repo with a remote, including:
+     * 1. Creating a bare remote repository
+     * 2. Pushing the local branch to it
+     * 3. Configuring remote tracking
+     * 4. Fetching to ensure refs are synced
+     * 
+     * This is a convenience method for tests that need remote functionality.
+     * 
+     * @param repo The local test repository
+     * @param remotePath Path where the remote should be created
+     * @param branch Branch name to track (e.g., "main")
+     * @return Path to the created remote repository
+     */
+    public static Path setupRemoteRepo(VglTestRepo repo, Path remotePath, String branch) throws Exception {
+        // Create bare remote
+        createBareRemoteRepo(remotePath);
+        
+        // Push to remote
+        try (Git git = repo.getGit()) {
+            git.push().setRemote(remotePath.toUri().toString()).add(branch).call();
+        }
+        
+        // Set up remote tracking
+        repo.setupRemoteTracking(remotePath.toUri().toString(), branch);
+        
+        // Fetch to sync refs
+        try (Git git = repo.getGit()) {
+            git.fetch().call();
+        } catch (Exception e) {
+            // Ignore "nothing to fetch" errors - this can happen if refs are already up to date
+        }
+        
+        return remotePath;
+    }
+    
+    /**
      * Represents a test repository with automatic cleanup.
      */
     public static class VglTestRepo implements AutoCloseable {
@@ -217,8 +268,9 @@ public class VglTestHarness {
          */
         public void setupRemoteTracking(String remoteUrl, String branch) throws Exception {
             try (Git git = getGit()) {
-                // Configure remote
+                // Configure remote with fetch refspec
                 git.getRepository().getConfig().setString("remote", "origin", "url", remoteUrl);
+                git.getRepository().getConfig().setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*");
                 git.getRepository().getConfig().setString("branch", branch, "remote", "origin");
                 git.getRepository().getConfig().setString("branch", branch, "merge", "refs/heads/" + branch);
                 git.getRepository().getConfig().save();
