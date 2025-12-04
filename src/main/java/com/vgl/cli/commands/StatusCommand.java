@@ -208,6 +208,16 @@ public class StatusCommand implements Command {
                 int numDeleted = status.getRemoved().size() + status.getMissing().size();
                 int numUntracked = status.getUntracked().size();
                 
+                // Apply filters if specified
+                if (!filters.isEmpty()) {
+                    numModified = (int) status.getChanged().stream().filter(p -> matchesAnyFilter(p, filters)).count() +
+                                  (int) status.getModified().stream().filter(p -> matchesAnyFilter(p, filters)).count();
+                    numAdded = (int) status.getAdded().stream().filter(p -> matchesAnyFilter(p, filters)).count();
+                    numDeleted = (int) status.getRemoved().stream().filter(p -> matchesAnyFilter(p, filters)).count() +
+                                 (int) status.getMissing().stream().filter(p -> matchesAnyFilter(p, filters)).count();
+                    numUntracked = (int) status.getUntracked().stream().filter(p -> matchesAnyFilter(p, filters)).count();
+                }
+                
                 // Build summary string with full category names
                 List<String> fileSummary = new java.util.ArrayList<>();
                 fileSummary.add(numModified + " Modified");
@@ -308,10 +318,20 @@ public class StatusCommand implements Command {
                             System.out.println("  (none)");
                         }
                     } else {
+                        // Track if any files match the filter
+                        boolean anyPrinted = false;
+                        
                         // First show uncommitted working directory changes (no arrow)
                         for (Map.Entry<String, String> entry : filesToCommit.entrySet()) {
                             String path = entry.getKey();
                             String statusLetter = entry.getValue();
+                            
+                            // Apply filters if specified
+                            if (!filters.isEmpty() && !matchesAnyFilter(path, filters)) {
+                                continue;
+                            }
+                            
+                            anyPrinted = true;
                             
                             // Check if this file is in working directory changes
                             boolean isUncommitted = status.getModified().contains(path) || 
@@ -326,6 +346,11 @@ public class StatusCommand implements Command {
                                 // Committed but not pushed - use up arrow
                                 System.out.println("↑ " + statusLetter + " " + path);
                             }
+                        }
+                        
+                        // If filters were applied but nothing matched, show (none)
+                        if (!anyPrinted) {
+                            System.out.println("  (none)");
                         }
                     }
                     

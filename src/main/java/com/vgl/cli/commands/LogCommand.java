@@ -14,7 +14,7 @@ public class LogCommand implements Command {
     @Override public String name(){ return "log"; }
 
     @Override public int run(List<String> args) throws Exception {
-        try (Git git = Utils.openGit()) {
+        try (Git git = Utils.findGitRepoOrWarn()) {
             if (git == null) {
                 System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());

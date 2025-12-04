@@ -180,8 +180,15 @@ public class IntegrationTest {
 
         ProcessResult result = runVgl(tmp, "diff", "-lb", "*.java");
 
+        // Verify the filtered file appears with content changes
         assertThat(result.output).contains("test.java");
+        assertThat(result.output).contains("- original java");
+        assertThat(result.output).contains("+ modified java");
+        
+        // Verify the non-matching file is excluded
         assertThat(result.output).doesNotContain("test.txt");
+        assertThat(result.output).doesNotContain("original txt");
+        
         System.out.println(" PASSED");
     }
 

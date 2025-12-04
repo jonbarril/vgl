@@ -1,6 +1,5 @@
 package com.vgl.cli;
 
-import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

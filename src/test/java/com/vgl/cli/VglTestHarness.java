@@ -162,7 +162,8 @@ public class VglTestHarness {
          * Get the Git instance for this repo (if it has .git).
          */
         public Git getGit() throws IOException {
-            if (!hasGit) {
+            // Check if .git exists (may have been created by vgl create command)
+            if (!hasGit && !Files.exists(path.resolve(".git"))) {
                 throw new IllegalStateException("This test directory does not have .git initialized");
             }
             return Git.open(path.toFile());

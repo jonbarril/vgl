@@ -3,7 +3,6 @@ package com.vgl.cli.commands;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,6 +11,7 @@ import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.revwalk.RevCommit;
 
 import com.vgl.cli.Utils;
+import com.vgl.cli.VglRepo;
 
 public class CommitCommand implements Command {
     @Override public String name(){ return "commit"; }
@@ -31,14 +31,10 @@ public class CommitCommand implements Command {
             return 1;
         }
 
-        Git maybe = Utils.openGit();
-        if (maybe == null) maybe = Git.open(new java.io.File("."));
-        if (maybe == null) {
-            System.out.println("Warning: No local repository found in: " + 
-                Paths.get(".").toAbsolutePath().normalize());
-            return 1;
-        }
-        try (Git git = maybe) {
+        try (VglRepo vglRepo = Utils.findVglRepoOrWarn()) {
+            if (vglRepo == null) return 1;
+            
+            Git git = vglRepo.getGit();
 
             // First get status to see what needs to be added
             Status preStatus = git.status().call();

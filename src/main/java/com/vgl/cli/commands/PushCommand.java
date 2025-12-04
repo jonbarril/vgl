@@ -12,7 +12,7 @@ public class PushCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         boolean noop = args.contains("-noop");
-        try (Git git = Utils.openGit()) {
+        try (Git git = Utils.findGitRepoOrWarn()) {
             if (git == null) {
                 System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());

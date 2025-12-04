@@ -14,25 +14,275 @@ import java.util.stream.Stream;
 public final class Utils {
     private Utils(){}
 
-    public static Repository openNearestGitRepo(File start) throws IOException {
-        FileRepositoryBuilder fb = new FileRepositoryBuilder();
-        fb.findGitDir(start);
-        return (fb.getGitDir()!=null) ? fb.build() : null;
+    // ============================================================================
+    // Standard Messages (for testing and consistency)
+    // ============================================================================
+    
+    public static final String MSG_NO_REPO_PREFIX = "Error: No git repository found in: ";
+    public static final String MSG_NO_REPO_HELP = "Initialize a repository with: vgl create";
+    public static final String MSG_NO_REPO_WARNING_PREFIX = "Warning: No local repository found in: ";
+    
+    /**
+     * Get the standard "no repository" error message for a given path.
+     * Useful for tests that need to verify error messages.
+     */
+    public static String getNoRepoMessage(Path searchPath) {
+        return MSG_NO_REPO_PREFIX + searchPath.toAbsolutePath().normalize() + "\n" + MSG_NO_REPO_HELP;
+    }
+    
+    /**
+     * Get the standard "no repository" warning message for a given path.
+     * Used by commands that can proceed without a repo (like track).
+     */
+    public static String getNoRepoWarning(Path searchPath) {
+        return MSG_NO_REPO_WARNING_PREFIX + searchPath.toAbsolutePath().normalize();
     }
 
-    public static Git openGit() throws IOException {
-        Repository r = openNearestGitRepo(new File("."));
+    // ============================================================================
+    // Core Repository Finding
+    // ============================================================================
+    
+    /**
+     * Find git repository starting from a specific directory.
+     * Searches upward from the start path to find .git directory.
+     * Returns null silently if not found - caller decides how to handle.
+     * 
+     * @param startPath Directory to start searching from
+     * @return Git instance, or null if no repository found
+     */
+    public static Git findGitRepo(Path startPath) throws IOException {
+        return findGitRepo(startPath, null);
+    }
+    
+    /**
+     * Find git repository with optional ceiling directory.
+     * Package-private for testing - allows tests to prevent upward search beyond test directories.
+     * 
+     * @param startPath Directory to start searching from
+     * @param ceilingDir Directory to stop searching at (null = no limit)
+     * @return Git instance, or null if no repository found
+     */
+    static Git findGitRepo(Path startPath, Path ceilingDir) throws IOException {
+        if (startPath == null) {
+            return null;
+        }
+        File ceilingFile = (ceilingDir != null) ? ceilingDir.toFile() : null;
+        Repository r = openNearestGitRepo(startPath.toFile(), ceilingFile);
         if (r == null || r.isBare()) return null;
         return new Git(r);
     }
 
-    public static Git openGit(File directory) throws IOException {
-        FileRepositoryBuilder fb = new FileRepositoryBuilder();
-        fb.findGitDir(directory);
-        Repository repo = (fb.getGitDir() != null) ? fb.build() : null;
-        if (repo == null || repo.isBare()) return null;
-        return new Git(repo);
+    /**
+     * Find git repository starting from current working directory.
+     * Returns null silently if not found - caller decides how to handle.
+     * 
+     * @return Git instance, or null if no repository found
+     */
+    public static Git findGitRepo() throws IOException {
+        return findGitRepo(currentDir());
     }
+
+    /**
+     * Find VGL repository (git + config) starting from a specific directory.
+     * Returns null silently if not found - caller decides how to handle.
+     * 
+     * @param startPath Directory to start searching from
+     * @return VglRepo instance, or null if no git repository found
+     */
+    public static VglRepo findVglRepo(Path startPath) throws IOException {
+        return findVglRepo(startPath, null);
+    }
+    
+    /**
+     * Find VGL repository with optional ceiling directory.
+     * Package-private for testing - allows tests to prevent upward search beyond test directories.
+     * 
+     * @param startPath Directory to start searching from
+     * @param ceilingDir Directory to stop searching at (null = no limit)
+     * @return VglRepo instance, or null if no git repository found
+     */
+    static VglRepo findVglRepo(Path startPath, Path ceilingDir) throws IOException {
+        Git git = findGitRepo(startPath, ceilingDir);
+        if (git == null) {
+            return null;
+        }
+        
+        Path repoRoot = git.getRepository().getWorkTree().toPath();
+        Properties config = VglRepo.loadConfig(repoRoot);
+        return new VglRepo(git, config);
+    }
+
+    /**
+     * Find VGL repository (git + config) from current working directory.
+     * Returns null silently if not found - caller decides how to handle.
+     * 
+     * @return VglRepo instance, or null if no git repository found
+     */
+    public static VglRepo findVglRepo() throws IOException {
+        return findVglRepo(currentDir());
+    }
+
+    // ============================================================================
+    // Repository Finding with Standard Error Messages
+    // ============================================================================
+
+    /**
+     * Find git repository, printing standard error message if not found.
+     * Use this in commands that require a repository.
+     * 
+     * @param startPath Directory to start searching from
+     * @return Git instance, or null if not found (after printing error)
+     */
+    public static Git findGitRepoOrWarn(Path startPath) throws IOException {
+        Git git = findGitRepo(startPath);
+        if (git == null) {
+            warnNoRepo(startPath);
+        }
+        return git;
+    }
+
+    /**
+     * Find git repository from current directory, printing error if not found.
+     * Use this in commands that require a repository.
+     * 
+     * @return Git instance, or null if not found (after printing error)
+     */
+    public static Git findGitRepoOrWarn() throws IOException {
+        return findGitRepoOrWarn(currentDir());
+    }
+
+    /**
+     * Find VGL repository (git + config), printing error if not found.
+     * Use this in commands that require a repository.
+     * 
+     * @param startPath Directory to start searching from
+     * @return VglRepo instance, or null if not found (after printing error)
+     */
+    public static VglRepo findVglRepoOrWarn(Path startPath) throws IOException {
+        VglRepo repo = findVglRepo(startPath);
+        if (repo == null) {
+            warnNoRepo(startPath);
+        }
+        return repo;
+    }
+
+    /**
+     * Find VGL repository from current directory, printing error if not found.
+     * Use this in commands that require a repository.
+     * 
+     * @return VglRepo instance, or null if not found (after printing error)
+     */
+    public static VglRepo findVglRepoOrWarn() throws IOException {
+        return findVglRepoOrWarn(currentDir());
+    }
+
+    // ============================================================================
+    // Repository Information Utilities
+    // ============================================================================
+
+    /**
+     * Get the git repository root directory.
+     * 
+     * @param startPath Directory to start searching from
+     * @return Path to the repository root, or null if no repository found
+     */
+    public static Path getGitRepoRoot(Path startPath) throws IOException {
+        return getGitRepoRoot(startPath, null);
+    }
+    
+    /**
+     * Get the git repository root directory with optional ceiling.
+     * Package-private for testing.
+     * 
+     * @param startPath Directory to start searching from
+     * @param ceilingDir Directory to stop searching at (null = no limit)
+     * @return Path to the repository root, or null if no repository found
+     */
+    static Path getGitRepoRoot(Path startPath, Path ceilingDir) throws IOException {
+        try (Git git = findGitRepo(startPath, ceilingDir)) {
+            if (git == null) {
+                return null;
+            }
+            return git.getRepository().getWorkTree().toPath();
+        }
+    }
+
+    /**
+     * Get the git repository root directory from current working directory.
+     * 
+     * @return Path to the repository root, or null if no repository found
+     */
+    public static Path getGitRepoRoot() throws IOException {
+        return getGitRepoRoot(currentDir());
+    }
+
+    /**
+     * Check if a directory is inside a nested git repository.
+     * This detects when startPath is in a repo that's nested inside another repo.
+     * 
+     * @param startPath Directory to check
+     * @return true if nested repo detected, false otherwise
+     */
+    public static boolean isNestedRepo(Path startPath) throws IOException {
+        return isNestedRepo(startPath, null);
+    }
+    
+    /**
+     * Check if a directory is inside a nested git repository with optional ceiling.
+     * Package-private for testing.
+     * 
+     * @param startPath Directory to check
+     * @param ceilingDir Directory to stop searching at (null = no limit)
+     * @return true if nested repo detected, false otherwise
+     */
+    static boolean isNestedRepo(Path startPath, Path ceilingDir) throws IOException {
+        if (startPath == null) {
+            return false;
+        }
+        
+        Path firstRepoRoot = getGitRepoRoot(startPath, ceilingDir);
+        if (firstRepoRoot == null) {
+            return false;
+        }
+        
+        Path parentSearch = firstRepoRoot.getParent();
+        if (parentSearch == null) {
+            return false;
+        }
+        
+        Path outerRepoRoot = getGitRepoRoot(parentSearch, ceilingDir);
+        return outerRepoRoot != null;
+    }
+
+    // ============================================================================
+    // Helper Methods
+    // ============================================================================
+
+    private static Path currentDir() {
+        return Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+    }
+
+    private static void warnNoRepo(Path searchPath) {
+        System.out.println(MSG_NO_REPO_PREFIX + searchPath.toAbsolutePath().normalize());
+        System.out.println(MSG_NO_REPO_HELP);
+    }
+
+    static Repository openNearestGitRepo(File start) throws IOException {
+        return openNearestGitRepo(start, null);
+    }
+    
+    static Repository openNearestGitRepo(File start, File ceiling) throws IOException {
+        FileRepositoryBuilder fb = new FileRepositoryBuilder();
+        if (ceiling != null) {
+            fb.addCeilingDirectory(ceiling);
+        }
+        fb.findGitDir(start);
+        return (fb.getGitDir()!=null) ? fb.build() : null;
+    }
+
+    // ============================================================================
+    // Other Utilities
+    // ============================================================================
 
     public static String versionFromRuntime() {
         Package p = Utils.class.getPackage();

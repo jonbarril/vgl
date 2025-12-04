@@ -25,7 +25,7 @@ public class RestoreCommand implements Command {
         List<String> filters = new ArrayList<>();
         for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) filters.add(s);
 
-        try (Git git = Utils.openGit()) {
+        try (Git git = Utils.findGitRepoOrWarn()) {
             if (git == null) {
                 System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());

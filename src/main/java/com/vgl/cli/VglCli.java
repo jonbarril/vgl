@@ -4,6 +4,7 @@ import com.vgl.cli.commands.*;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import org.eclipse.jgit.api.Git;
 
 public class VglCli {
     private static final String CONFIG_FILE = ".vgl";
@@ -66,25 +67,59 @@ public class VglCli {
     }
 
     /**
-     * Search upward from current directory for .vgl file (like git searches for .git)
+     * Search upward from current directory for .vgl file.
+     * 
+     * @param repoRoot The root of the git repository, or null if no repo is known.
+     *                 If provided, search stops at this boundary.
+     *                 If null, only checks the current working directory.
      */
-    private Path findConfigFile() {
+    private Path findConfigFile(Path repoRoot) {
         // Use user.dir property (respects test environment)
         String userDir = System.getProperty("user.dir");
         Path current = Paths.get(userDir).toAbsolutePath().normalize();
+        
+        // If no repo root provided, only check current directory
+        if (repoRoot == null) {
+            Path configPath = current.resolve(CONFIG_FILE);
+            return Files.exists(configPath) ? configPath : null;
+        }
+        
+        // Normalize repo root for comparison
+        Path normalizedRoot = repoRoot.toAbsolutePath().normalize();
+        
+        // Search from current dir up to repo root for .vgl
         while (current != null) {
             Path configPath = current.resolve(CONFIG_FILE);
             if (Files.exists(configPath)) {
                 return configPath;
             }
+            
+            // Stop at repo root
+            if (current.equals(normalizedRoot)) {
+                break;
+            }
+            
             current = current.getParent();
         }
+        
         return null; // Not found
     }
 
     private void loadConfig() {
-        // Search upward for .vgl file (like git searches for .git)
-        Path configPath = findConfigFile();
+        // Find git repo root first, then search for .vgl within that boundary
+        Path repoRoot = null;
+        try {
+            Git git = Utils.findGitRepo();
+            if (git != null) {
+                repoRoot = git.getRepository().getWorkTree().toPath();
+                git.close();
+            }
+        } catch (IOException e) {
+            // No repo found - will only check current directory
+        }
+        
+        // Search upward for .vgl file (bounded by repo root)
+        Path configPath = findConfigFile(repoRoot);
         if (configPath != null && Files.exists(configPath)) {
             // Check if .git exists alongside .vgl
             Path vglDir = configPath.getParent();

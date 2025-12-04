@@ -13,7 +13,7 @@ public class CheckinCommand implements Command {
         boolean draft = args.contains("-draft");
         boolean fin = args.contains("-final");
         if (!draft && !fin) { System.out.println("Usage: vgl checkin -draft|-final"); return 1; }
-        try (Git git = Utils.openGit()) {
+        try (Git git = Utils.findGitRepoOrWarn()) {
             if (git == null) {
                 System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());

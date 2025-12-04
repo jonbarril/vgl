@@ -23,7 +23,7 @@ public class TrackCommand implements Command {
         Path dir = Paths.get(localDir).toAbsolutePath().normalize();
 
         if (!vgl.isConfigurable()) {
-            System.out.println("Warning: No local repository found in: " + dir);
+            System.out.println(Utils.MSG_NO_REPO_WARNING_PREFIX + dir);
             return 1;
         }
 

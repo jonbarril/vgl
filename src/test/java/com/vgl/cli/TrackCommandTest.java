@@ -115,7 +115,7 @@ public class TrackCommandTest {
             
             String output = repo.runCommand("track", "test.txt");
             
-            assertThat(output).contains("Warning: No local repository found");
+            assertThat(output).contains(Utils.MSG_NO_REPO_WARNING_PREFIX);
         }
     }
 

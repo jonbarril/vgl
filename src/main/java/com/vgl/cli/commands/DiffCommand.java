@@ -3,8 +3,12 @@ package com.vgl.cli.commands;
 import com.vgl.cli.Utils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.diff.DiffEntry;
+import org.eclipse.jgit.diff.DiffFormatter;
+import org.eclipse.jgit.lib.ObjectReader;
+import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 
-import java.nio.file.Paths;
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -19,10 +23,8 @@ public class DiffCommand implements Command {
         List<String> filters = new ArrayList<>();
         for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) filters.add(s);
 
-        try (Git git = Utils.openGit()) {
+        try (Git git = Utils.findGitRepoOrWarn()) {
             if (git == null) {
-                System.out.println("Warning: No local repository found in: " + 
-                    Paths.get(".").toAbsolutePath().normalize());
                 return 1;
             }
             String remoteUrl = git.getRepository().getConfig().getString("remote","origin","url");
@@ -35,47 +37,135 @@ public class DiffCommand implements Command {
 
             // Local branch: show working tree changes
             if (lb && !rb) {
-                Status st = git.status().call();
-                Set<String> out = new LinkedHashSet<>();
-                st.getChanged().forEach(p -> out.add("MODIFY " + p));
-                st.getModified().forEach(p -> out.add("MODIFY " + p));
-                st.getAdded().forEach(p -> out.add("ADD " + p));
-                st.getRemoved().forEach(p -> out.add("DELETE " + p));
-                st.getMissing().forEach(p -> out.add("DELETE " + p + " (missing)"));
-
-                if (!filters.isEmpty()) {
-                    out.removeIf(line -> {
-                        String file = line.replaceFirst("^[A-Z]+\\s+","");
-                        // Check if any filter matches this file
-                        boolean matches = false;
-                        for (String filter : filters) {
-                            // Check if it's a commit ID - if so, ignore for diff (commits show changes)
-                            if (filter.matches("[0-9a-f]{7,40}")) {
-                                // For commit IDs in diff, we'd need to show diff between commits
-                                // For now, skip this filter
-                                continue;
-                            }
-                            // Support glob patterns
-                            if (filter.contains("*") || filter.contains("?")) {
-                                String regex = filter.replace(".", "\\\\.")
-                                                    .replace("*", ".*")
-                                                    .replace("?", ".");
-                                if (file.matches(regex)) {
-                                    matches = true;
-                                    break;
+                // Get the HEAD commit
+                org.eclipse.jgit.lib.ObjectId headCommitId = git.getRepository().resolve("HEAD");
+                
+                if (headCommitId == null) {
+                    // No commits yet - show status only
+                    Status st = git.status().call();
+                    Set<String> out = new LinkedHashSet<>();
+                    st.getAdded().forEach(p -> out.add("ADD " + p + " (new file)"));
+                    st.getUntracked().forEach(p -> out.add("ADD " + p + " (untracked)"));
+                    
+                    if (!filters.isEmpty()) {
+                        out.removeIf(line -> {
+                            String file = line.replaceFirst("^[A-Z]+\\s+","").replaceFirst("\\s+\\(.*\\)$", "");
+                            return !matchesAnyFilter(file, filters);
+                        });
+                    }
+                    out.forEach(System.out::println);
+                    return 0;
+                }
+                
+                // Use DiffFormatter to get actual diffs
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                try (DiffFormatter formatter = new DiffFormatter(outputStream)) {
+                    formatter.setRepository(git.getRepository());
+                    formatter.setContext(3); // 3 lines of context
+                    formatter.setDetectRenames(true);
+                    
+                    // Compare HEAD with working tree
+                    ObjectReader reader = git.getRepository().newObjectReader();
+                    
+                    // Parse HEAD commit to get tree
+                    org.eclipse.jgit.revwalk.RevWalk revWalk = new org.eclipse.jgit.revwalk.RevWalk(git.getRepository());
+                    org.eclipse.jgit.revwalk.RevCommit headCommit = revWalk.parseCommit(headCommitId);
+                    org.eclipse.jgit.lib.ObjectId headTreeId = headCommit.getTree().getId();
+                    revWalk.close();
+                    
+                    CanonicalTreeParser oldTreeIter = new CanonicalTreeParser();
+                    oldTreeIter.reset(reader, headTreeId);
+                    
+                    List<DiffEntry> diffs = formatter.scan(oldTreeIter, new org.eclipse.jgit.treewalk.FileTreeIterator(git.getRepository()));
+                    
+                    boolean foundAny = false;
+                    for (DiffEntry entry : diffs) {
+                        String path = entry.getNewPath();
+                        if (entry.getChangeType() == DiffEntry.ChangeType.DELETE) {
+                            path = entry.getOldPath();
+                        }
+                        
+                        // Apply filters
+                        if (!filters.isEmpty() && !matchesAnyFilter(path, filters)) {
+                            continue;
+                        }
+                        
+                        foundAny = true;
+                        
+                        // Show file header
+                        String changeType = switch (entry.getChangeType()) {
+                            case ADD -> "NEW FILE";
+                            case DELETE -> "DELETED";
+                            case MODIFY -> "MODIFIED";
+                            case RENAME -> "RENAMED";
+                            case COPY -> "COPIED";
+                            default -> "CHANGED";
+                        };
+                        System.out.println("=== " + changeType + ": " + path + " ===");
+                        
+                        // Try to read and compare file contents directly for better text handling
+                        try {
+                            if (entry.getChangeType() == DiffEntry.ChangeType.MODIFY) {
+                                // Get old content from HEAD tree by path
+                                org.eclipse.jgit.treewalk.TreeWalk treeWalk = org.eclipse.jgit.treewalk.TreeWalk.forPath(
+                                    git.getRepository(), path, headTreeId);
+                                
+                                String oldContent = "";
+                                if (treeWalk != null) {
+                                    org.eclipse.jgit.lib.ObjectId objectId = treeWalk.getObjectId(0);
+                                    
+                                    try (org.eclipse.jgit.lib.ObjectReader objReader = git.getRepository().newObjectReader()) {
+                                        org.eclipse.jgit.lib.ObjectLoader loader = objReader.open(objectId);
+                                        oldContent = new String(loader.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                                    }
+                                    treeWalk.close();
+                                }
+                                
+                                // Get new content from working tree
+                                java.nio.file.Path workingFile = git.getRepository().getWorkTree().toPath().resolve(path);
+                                byte[] newBytes = java.nio.file.Files.readAllBytes(workingFile);
+                                String newContent = new String(newBytes, java.nio.charset.StandardCharsets.UTF_8);
+                                
+                                // Simple line-by-line diff
+                                String[] oldLines = oldContent.split("\r?\n", -1);
+                                String[] newLines = newContent.split("\r?\n", -1);
+                                
+                                // Show only changed lines with minimal context
+                                for (int i = 0; i < Math.max(oldLines.length, newLines.length); i++) {
+                                    String oldLine = i < oldLines.length ? oldLines[i] : null;
+                                    String newLine = i < newLines.length ? newLines[i] : null;
+                                    
+                                    if (oldLine == null && newLine != null) {
+                                        System.out.println("  + " + newLine);
+                                    } else if (oldLine != null && newLine == null) {
+                                        System.out.println("  - " + oldLine);
+                                    } else if (oldLine != null && newLine != null && !oldLine.equals(newLine)) {
+                                        System.out.println("  - " + oldLine);
+                                        System.out.println("  + " + newLine);
+                                    }
+                                    // Skip unchanged lines for cleaner output
                                 }
                             } else {
-                                // Exact match or path contains
-                                if (file.equals(filter) || file.startsWith(filter + "/") || file.contains("/" + filter)) {
-                                    matches = true;
-                                    break;
+                                // For ADD/DELETE, show simple status
+                                if (entry.getChangeType() == DiffEntry.ChangeType.ADD) {
+                                    System.out.println("  (new file)");
+                                } else if (entry.getChangeType() == DiffEntry.ChangeType.DELETE) {
+                                    System.out.println("  (deleted)");
                                 }
                             }
+                        } catch (Exception e) {
+                            System.err.println("Error reading file content: " + e.getMessage());
                         }
-                        return !matches;
-                    });
+                        
+                        System.out.println(); // blank line after each file
+                    }
+                    
+                    if (!foundAny) {
+                        System.out.println("(no changes)");
+                    }
+                    
+                    reader.close();
                 }
-                out.forEach(System.out::println);
                 return 0;
             }
 
@@ -86,5 +176,29 @@ public class DiffCommand implements Command {
             }
         }
         return 0;
+    }
+    
+    private boolean matchesAnyFilter(String path, List<String> filters) {
+        for (String filter : filters) {
+            // Check if it's a commit ID - skip for file filtering
+            if (filter.matches("[0-9a-f]{7,40}")) {
+                continue;
+            }
+            // Support glob patterns
+            if (filter.contains("*") || filter.contains("?")) {
+                String regex = filter.replace(".", "\\.")
+                                    .replace("*", ".*")
+                                    .replace("?", ".");
+                if (path.matches(regex)) {
+                    return true;
+                }
+            } else {
+                // Exact match or path contains
+                if (path.equals(filter) || path.startsWith(filter + "/") || path.contains("/" + filter)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 }

@@ -13,7 +13,7 @@ public class PullCommand implements Command {
     @Override public int run(List<String> args) throws Exception {
         boolean dr = args.contains("-noop");
         if (dr) { System.out.println("(dry run) would pull from remote"); return 0; }
-        try (Git git = Utils.openGit()) {
+        try (Git git = Utils.findGitRepoOrWarn()) {
             if (git == null) {
                 System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());
