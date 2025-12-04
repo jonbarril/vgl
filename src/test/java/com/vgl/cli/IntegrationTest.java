@@ -18,7 +18,7 @@ public class IntegrationTest {
 
     private static String vglCommand;
     private static int currentTest = 0;
-    private static final int TOTAL_TESTS = 11;
+    private static final int TOTAL_TESTS = 12;
 
     @BeforeAll
     static void setup() {
@@ -39,7 +39,7 @@ public class IntegrationTest {
     }
 
     private static ProcessResult runVgl(Path workingDir, String... args) throws Exception {
-        return runVglWithInput(workingDir, null, args);
+        return runVglWithInput(workingDir, "n\n", args);
     }
 
     private static ProcessResult runVglWithInput(Path workingDir, String input, String... args) throws Exception {
@@ -252,11 +252,11 @@ public class IntegrationTest {
     void switchWarnsAboutUncommittedChanges(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "switchWarnsAboutUncommittedChanges]...");
         // Create repo with two branches
-        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main");
+        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main", "-f");
         Files.writeString(tmp.resolve("test.txt"), "content");
         runVgl(tmp, "commit", "initial");
 
-        runVgl(tmp, "create", "-lb", "develop");
+        runVgl(tmp, "create", "-lb", "develop", "-f");
 
         // Make uncommitted changes
         Files.writeString(tmp.resolve("test.txt"), "modified");
@@ -273,12 +273,12 @@ public class IntegrationTest {
     void createCommandCreatesNewBranch(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "createCommandCreatesNewBranch]...");
         // Create repo
-        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main");
+        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main", "-f");
         Files.writeString(tmp.resolve("test.txt"), "content");
         runVgl(tmp, "commit", "initial");
 
         // Create new branch
-        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "feature");
+        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "feature", "-f");
 
         ProcessResult result = runVgl(tmp, "status");
         assertThat(result.output).containsPattern("LOCAL.*::.*feature");
@@ -311,21 +311,20 @@ public class IntegrationTest {
         System.out.println(" PASSED");
     }
 
-    // TODO: This test is hanging/very slow - needs investigation
-    // @Test
+    @Test
     void bbFlagSwitchesBothBranches(@TempDir Path tmp) throws Exception {
         System.out.print("\n" + getTestProgress() + "bbFlagSwitchesBothBranches]...");
         // Create repo with two branches
-        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main");
+        runVgl(tmp, "create", "-lr", tmp.toString(), "-lb", "main", "-f");
         Files.writeString(tmp.resolve("test.txt"), "content");
         runVgl(tmp, "commit", "initial");
-        runVgl(tmp, "create", "-lb", "develop");
+        runVgl(tmp, "create", "-lb", "develop", "-f");
         
         // Set a remote for testing
         runVgl(tmp, "switch", "-rr", "https://example.com/repo.git", "-rb", "main");
         
         // Switch both local and remote branches to develop using -bb
-        ProcessResult result = runVgl(tmp, "switch", "-bb", "develop");
+        ProcessResult result = runVgl(tmp, "switch", "-bb", "develop", "-f");
         
         assertThat(result.exitCode).isEqualTo(0);
         assertThat(result.output).contains("develop");
