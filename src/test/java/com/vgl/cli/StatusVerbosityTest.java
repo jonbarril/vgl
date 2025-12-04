@@ -70,19 +70,24 @@ public class StatusVerbosityTest {
 
     @Test
     void statusVeryVerboseShowsTrackedSection(@TempDir Path tmp) throws Exception {
-        // Create a test repository with a commit
+        // Create a test repository with a commit and an undecided file
         try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-            Path testFile = tmp.resolve("test.txt");
-            Files.writeString(testFile, "hello");
-            git.add().addFilepattern("test.txt").call();
+            Path trackedFile = tmp.resolve("tracked.txt");
+            Path undecidedFile = tmp.resolve("undecided.txt");
+            Files.writeString(trackedFile, "tracked");
+            Files.writeString(undecidedFile, "undecided");
+            git.add().addFilepattern("tracked.txt").call();
             git.commit().setMessage("initial").call();
         }
-        
+
         String output = run(tmp, "status", "-vv");
-        
+
         // -vv should always show these sections
         assertThat(output).contains("-- Tracked Files:");
         assertThat(output).contains("-- Untracked Files:");
         assertThat(output).contains("-- Ignored Files:");
+        assertThat(output).contains("-- Undecided Files:");
+        // Should list undecided.txt in undecided section
+        assertThat(output).containsPattern("-- Undecided Files:\s+undecided.txt");
     }
 }

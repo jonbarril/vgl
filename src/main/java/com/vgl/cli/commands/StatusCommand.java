@@ -476,61 +476,85 @@ public class StatusCommand implements Command {
                 }
                 
                 if (veryVerbose) {
-                    System.out.println("-- Ignored Files:");
-                    // Manually scan for ignored files using TreeWalk and ignore rules
-                    // Exclude files that appear in tracked or untracked sections
+                    // Collect all tracked, staged, and untracked files
                     Set<String> trackedOrUntracked = new LinkedHashSet<>();
-                    if (verbose || veryVerbose) {
-                        // Collect all tracked files
-                        try {
-                            org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
-                            org.eclipse.jgit.lib.ObjectId headId = git.getRepository().resolve("HEAD^{tree}");
-                            if (headId != null) {
-                                treeWalk.addTree(headId);
-                                treeWalk.setRecursive(true);
-                                while (treeWalk.next()) {
-                                    trackedOrUntracked.add(treeWalk.getPathString());
-                                }
-                                treeWalk.close();
-                            }
-                        } catch (Exception e) {
-                            // Ignore
-                        }
-                        status.getModified().forEach(trackedOrUntracked::add);
-                        status.getChanged().forEach(trackedOrUntracked::add);
-                        status.getAdded().forEach(trackedOrUntracked::add);
-                        // Don't add removed/missing - those should show as ignored if they match patterns
-                    }
-                    trackedOrUntracked.addAll(status.getUntracked());
-                    
                     try {
-                        Set<String> ignoredFiles = new LinkedHashSet<>();
-                        org.eclipse.jgit.treewalk.FileTreeIterator workingTreeIt = 
-                            new org.eclipse.jgit.treewalk.FileTreeIterator(git.getRepository());
+                        org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
+                        org.eclipse.jgit.lib.ObjectId headId = git.getRepository().resolve("HEAD^{tree}");
+                        if (headId != null) {
+                            treeWalk.addTree(headId);
+                            treeWalk.setRecursive(true);
+                            while (treeWalk.next()) {
+                                trackedOrUntracked.add(treeWalk.getPathString());
+                            }
+                            treeWalk.close();
+                        }
+                    } catch (Exception e) {
+                        // Ignore
+                    }
+                    status.getModified().forEach(trackedOrUntracked::add);
+                    status.getChanged().forEach(trackedOrUntracked::add);
+                    status.getAdded().forEach(trackedOrUntracked::add);
+                    status.getRemoved().forEach(trackedOrUntracked::add);
+                    status.getMissing().forEach(trackedOrUntracked::add);
+                    trackedOrUntracked.addAll(status.getUntracked());
+
+                    // Find all files in working directory
+                    Set<String> allFiles = new LinkedHashSet<>();
+                    try {
+                        org.eclipse.jgit.treewalk.FileTreeIterator workingTreeIt = new org.eclipse.jgit.treewalk.FileTreeIterator(git.getRepository());
                         org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
                         treeWalk.addTree(workingTreeIt);
                         treeWalk.setRecursive(true);
-                        
                         while (treeWalk.next()) {
-                            org.eclipse.jgit.treewalk.WorkingTreeIterator workingTreeIterator = 
-                                (org.eclipse.jgit.treewalk.WorkingTreeIterator) treeWalk.getTree(0, org.eclipse.jgit.treewalk.WorkingTreeIterator.class);
+                            String path = treeWalk.getPathString();
+                            allFiles.add(path);
+                        }
+                        treeWalk.close();
+                    } catch (Exception e) {
+                        // Ignore
+                    }
+
+                    // Find ignored files
+                    Set<String> ignoredFiles = new LinkedHashSet<>();
+                    try {
+                        org.eclipse.jgit.treewalk.FileTreeIterator workingTreeIt = new org.eclipse.jgit.treewalk.FileTreeIterator(git.getRepository());
+                        org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
+                        treeWalk.addTree(workingTreeIt);
+                        treeWalk.setRecursive(true);
+                        while (treeWalk.next()) {
+                            org.eclipse.jgit.treewalk.WorkingTreeIterator workingTreeIterator = (org.eclipse.jgit.treewalk.WorkingTreeIterator) treeWalk.getTree(0, org.eclipse.jgit.treewalk.WorkingTreeIterator.class);
                             String path = treeWalk.getPathString();
                             if (workingTreeIterator != null && workingTreeIterator.isEntryIgnored()) {
-                                // Only show if not already in tracked or untracked sections
-                                if (!trackedOrUntracked.contains(path)) {
-                                    ignoredFiles.add(path);
-                                }
+                                ignoredFiles.add(path);
                             }
                         }
                         treeWalk.close();
-                        
-                        if (ignoredFiles.isEmpty()) {
-                            System.out.println("  (none)");
-                        } else {
-                            ignoredFiles.forEach(p -> System.out.println("  " + p));
-                        }
                     } catch (Exception e) {
-                        System.out.println("  (error detecting ignored files)");
+                        // Ignore
+                    }
+
+                    // Undecided files: in working dir, not tracked/staged/untracked/ignored
+                    // Untracked files are those not staged or tracked, so remove them from undecided
+                    Set<String> stagedOrTracked = new LinkedHashSet<>(trackedOrUntracked);
+                    stagedOrTracked.removeAll(status.getUntracked());
+                    Set<String> undecidedFiles = new LinkedHashSet<>(allFiles);
+                    undecidedFiles.removeAll(stagedOrTracked);
+                    undecidedFiles.removeAll(status.getUntracked());
+                    undecidedFiles.removeAll(ignoredFiles);
+
+                    System.out.println("-- Undecided Files:");
+                    if (undecidedFiles.isEmpty()) {
+                        System.out.println("  (none)");
+                    } else {
+                        undecidedFiles.forEach(p -> System.out.println("  " + p));
+                    }
+
+                    System.out.println("-- Ignored Files:");
+                    if (ignoredFiles.isEmpty()) {
+                        System.out.println("  (none)");
+                    } else {
+                        ignoredFiles.forEach(p -> System.out.println("  " + p));
                     }
                 }
             }
