@@ -22,6 +22,7 @@ public class SwitchCommand implements Command {
     @Override
     public int run(List<String> args) throws Exception {
         VglCli vgl = new VglCli();
+        boolean force = Args.hasFlag(args, "-f");
         
         // Parse new flags
         String newLocalDir = Args.getFlag(args, "-lr");
@@ -110,18 +111,21 @@ public class SwitchCommand implements Command {
                                                 !status.getUntracked().isEmpty();
                             
                             if (hasChanges) {
-                                System.out.println("Warning: You have uncommitted changes in current workspace.");
-                                System.out.println("Commit or restore them before switching to avoid confusion.");
-                                System.out.print("Continue? (y/N): ");
+                                System.out.println("Warning: You have uncommitted changes in your working directory.");
+                                System.out.println("Switching branches may cause these changes to be lost.");
                                 
-                                String response;
-                                try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
-                                    response = scanner.nextLine().trim().toLowerCase();
-                                }
-                                
-                                if (!response.equals("y") && !response.equals("yes")) {
-                                    System.out.println("Switch cancelled.");
-                                    return 0;
+                                if (!force) {
+                                    System.out.print("Continue? (y/N): ");
+                                    
+                                    String response;
+                                    try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
+                                        response = scanner.nextLine().trim().toLowerCase();
+                                    }
+                                    
+                                    if (!response.equals("y") && !response.equals("yes")) {
+                                        System.out.println("Switch cancelled.");
+                                        return 0;
+                                    }
                                 }
                             }
                         }

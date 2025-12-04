@@ -20,6 +20,7 @@ public class CreateCommand implements Command {
         String newRemoteUrl = Args.getFlag(args, "-rr");
         String newRemoteBranch = Args.getFlag(args, "-rb");
         boolean createBothBranches = Args.hasFlag(args, "-bb");
+        boolean force = Args.hasFlag(args, "-f");
         
         // Check for TBD feature: create with remote
         if (newRemoteUrl != null || newRemoteBranch != null) {
@@ -50,6 +51,16 @@ public class CreateCommand implements Command {
 
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir)) Files.createDirectories(dir);
+
+        // Check for nested repository and get confirmation
+        if (Utils.isNestedRepo(dir)) {
+            if (!force) {
+                if (!Utils.warnNestedRepo(dir, Utils.getGitRepoRoot(dir.getParent()))) {
+                    System.out.println("Create cancelled.");
+                    return 0;
+                }
+            }
+        }
 
         // Case 1: No .git exists - create new repository
         if (!Files.exists(dir.resolve(".git"))) {

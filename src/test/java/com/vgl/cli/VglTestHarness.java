@@ -85,20 +85,35 @@ public class VglTestHarness {
         
         /**
          * Run a VGL command and capture output.
+         * Automatically provides "n\n" to stdin to decline any prompts.
+         * Use runCommandWithInput() to provide custom stdin.
          * @param args Command arguments (e.g., "status", "-v")
          * @return Combined stdout and stderr
          */
         public String runCommand(String... args) throws Exception {
+            return runCommandWithInput("n\n", args);
+        }
+        
+        /**
+         * Run a VGL command with custom stdin input.
+         * @param input String to provide to stdin (e.g., "y\n" or "")
+         * @param args Command arguments
+         * @return Combined stdout and stderr
+         */
+        public String runCommandWithInput(String input, String... args) throws Exception {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            InputStream oldIn = System.in;
             PrintStream oldOut = System.out;
             PrintStream oldErr = System.err;
             try {
+                System.setIn(new java.io.ByteArrayInputStream(input.getBytes("UTF-8")));
                 PrintStream ps = new PrintStream(baos, true, "UTF-8");
                 System.setOut(ps);
                 System.setErr(ps);
                 new VglCli().run(args);
                 return baos.toString("UTF-8");
             } finally {
+                System.setIn(oldIn);
                 System.setOut(oldOut);
                 System.setErr(oldErr);
             }

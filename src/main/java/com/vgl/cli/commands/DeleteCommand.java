@@ -24,6 +24,7 @@ public class DeleteCommand implements Command {
     @Override
     public int run(List<String> args) throws Exception {
         VglCli vgl = new VglCli();
+        boolean force = Args.hasFlag(args, "-f");
         
         // Check for -rr flag (TBD feature)
         if (Args.hasFlag(args, "-rr")) {
@@ -84,7 +85,7 @@ public class DeleteCommand implements Command {
         
         // Delete local branch
         if (localBranch != null) {
-            int result = deleteLocalBranch(vgl, localBranch);
+            int result = deleteLocalBranch(vgl, localBranch, force);
             if (result != 0 && remoteBranch != null) {
                 return result; // Don't try remote if local failed
             }
@@ -92,7 +93,7 @@ public class DeleteCommand implements Command {
         
         // Delete remote branch
         if (remoteBranch != null) {
-            return deleteRemoteBranch(vgl, remoteBranch);
+            return deleteRemoteBranch(vgl, remoteBranch, force);
         }
         
         return 0;
@@ -141,7 +142,7 @@ public class DeleteCommand implements Command {
         return 0;
     }
     
-    private int deleteLocalBranch(VglCli vgl, String branch) throws Exception {
+    private int deleteLocalBranch(VglCli vgl, String branch, boolean force) throws Exception {
         String localDir = vgl.getLocalDir();
         Path dir = Paths.get(localDir).toAbsolutePath().normalize();
         
@@ -173,14 +174,17 @@ public class DeleteCommand implements Command {
             // (This is a simplified check - could be enhanced)
             System.out.println("WARNING: Deleting branch '" + branch + "'.");
             System.out.println("Make sure it has been merged if you want to keep its changes.");
-            System.out.print("Continue? (y/N): ");
             
-            try (Scanner scanner = new Scanner(System.in)) {
-                String response = scanner.nextLine().trim().toLowerCase();
+            if (!force) {
+                System.out.print("Continue? (y/N): ");
                 
-                if (!response.equals("y") && !response.equals("yes")) {
-                    System.out.println("Deletion cancelled.");
-                    return 0;
+                try (Scanner scanner = new Scanner(System.in)) {
+                    String response = scanner.nextLine().trim().toLowerCase();
+                    
+                    if (!response.equals("y") && !response.equals("yes")) {
+                        System.out.println("Deletion cancelled.");
+                        return 0;
+                    }
                 }
             }
             
@@ -196,7 +200,7 @@ public class DeleteCommand implements Command {
         return 0;
     }
     
-    private int deleteRemoteBranch(VglCli vgl, String branch) throws Exception {
+    private int deleteRemoteBranch(VglCli vgl, String branch, boolean force) throws Exception {
         String remoteUrl = vgl.getRemoteUrl();
         
         if (remoteUrl == null || remoteUrl.isBlank()) {
@@ -216,14 +220,17 @@ public class DeleteCommand implements Command {
         System.out.println("WARNING: Deleting remote branch '" + branch + "' from:");
         System.out.println("  " + remoteUrl);
         System.out.println("This cannot be undone.");
-        System.out.print("Continue? (y/N): ");
         
-        try (Scanner scanner = new Scanner(System.in)) {
-            String response = scanner.nextLine().trim().toLowerCase();
+        if (!force) {
+            System.out.print("Continue? (y/N): ");
             
-            if (!response.equals("y") && !response.equals("yes")) {
-                System.out.println("Deletion cancelled.");
-                return 0;
+            try (Scanner scanner = new Scanner(System.in)) {
+                String response = scanner.nextLine().trim().toLowerCase();
+                
+                if (!response.equals("y") && !response.equals("yes")) {
+                    System.out.println("Deletion cancelled.");
+                    return 0;
+                }
             }
         }
         

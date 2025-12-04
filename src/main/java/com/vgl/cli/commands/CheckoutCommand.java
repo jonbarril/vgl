@@ -18,6 +18,7 @@ public class CheckoutCommand implements Command {
         // Parse flags - use switch state as defaults
         boolean hasRrFlag = Args.hasFlag(args, "-rr");
         boolean hasRbFlag = Args.hasFlag(args, "-rb");
+        boolean force = Args.hasFlag(args, "-f");
         
         String remoteUrl = Args.getFlag(args, "-rr");
         String remoteBranch = Args.getFlag(args, "-rb");
@@ -90,6 +91,16 @@ public class CheckoutCommand implements Command {
             } else {
                 System.out.println("Directory already exists and is not empty: " + dir);
                 return 1;
+            }
+        }
+
+        // Check for nested repository and get confirmation
+        if (Utils.isNestedRepo(dir)) {
+            if (!force) {
+                if (!Utils.warnNestedRepo(dir, Utils.getGitRepoRoot(dir.getParent()))) {
+                    System.out.println("Checkout cancelled.");
+                    return 0;
+                }
             }
         }
 

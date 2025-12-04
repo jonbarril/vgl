@@ -1,5 +1,6 @@
 package com.vgl.cli.commands;
 
+import com.vgl.cli.Args;
 import com.vgl.cli.Utils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullResult;
@@ -11,6 +12,7 @@ public class PullCommand implements Command {
     @Override public String name(){ return "pull"; }
 
     @Override public int run(List<String> args) throws Exception {
+        boolean force = Args.hasFlag(args, "-f");
         boolean dr = args.contains("-noop");
         if (dr) { System.out.println("(dry run) would pull from remote"); return 0; }
         try (Git git = Utils.findGitRepoOrWarn()) {
@@ -34,17 +36,20 @@ public class PullCommand implements Command {
                 status.getAdded().forEach(f -> System.out.println("  A " + f));
                 status.getRemoved().forEach(f -> System.out.println("  D " + f));
                 status.getMissing().forEach(f -> System.out.println("  D " + f));
-                System.out.println();
-                System.out.print("Continue? (y/N): ");
+                System.out.println("Warning: You have uncommitted changes.");
                 
-                String response;
-                try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
-                    response = scanner.nextLine().trim().toLowerCase();
-                }
-                
-                if (!response.equals("y") && !response.equals("yes")) {
-                    System.out.println("Pull cancelled.");
-                    return 0;
+                if (!force) {
+                    System.out.print("Continue? (y/N): ");
+                    
+                    String response;
+                    try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
+                        response = scanner.nextLine().trim().toLowerCase();
+                    }
+                    
+                    if (!response.equals("y") && !response.equals("yes")) {
+                        System.out.println("Pull cancelled.");
+                        return 0;
+                    }
                 }
             }
             

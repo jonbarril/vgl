@@ -1,5 +1,6 @@
 package com.vgl.cli.commands;
 
+import com.vgl.cli.Args;
 import com.vgl.cli.Utils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.ObjectId;
@@ -20,6 +21,7 @@ public class RestoreCommand implements Command {
     @Override public String name(){ return "restore"; }
 
     @Override public int run(List<String> args) throws Exception {
+        boolean force = Args.hasFlag(args, "-f");
         boolean lb = args.contains("-lb");
         boolean rb = args.contains("-rb");
         List<String> filters = new ArrayList<>();
@@ -78,16 +80,19 @@ public class RestoreCommand implements Command {
             System.out.println("The following files will be restored from " + treeish + ":");
             filesToRestore.forEach(f -> System.out.println("  " + f));
             System.out.println();
-            System.out.print("Continue? (y/N): ");
             
-            String response;
-            try (Scanner scanner = new Scanner(System.in)) {
-                response = scanner.nextLine().trim().toLowerCase();
-            }
-            
-            if (!response.equals("y") && !response.equals("yes")) {
-                System.out.println("Restore cancelled.");
-                return 0;
+            if (!force) {
+                System.out.print("Continue? (y/N): ");
+                
+                String response;
+                try (Scanner scanner = new Scanner(System.in)) {
+                    response = scanner.nextLine().trim().toLowerCase();
+                }
+                
+                if (!response.equals("y") && !response.equals("yes")) {
+                    System.out.println("Restore cancelled.");
+                    return 0;
+                }
             }
             
             // Second pass: actually restore the files

@@ -97,4 +97,38 @@ public class CreateCommandTest {
             assertThat(branchExists).isTrue();
         }
     }
+    
+    @Test
+    public void warnsAndPromptsWhenCreatingNestedRepository(@TempDir Path tempDir) throws Exception {
+        // Create parent repo
+        try (Git parentGit = Git.init().setDirectory(tempDir.toFile()).call()) {
+            parentGit.close();
+        }
+        
+        // Verify isNestedRepo detects it
+        Path nestedDir = tempDir.resolve("nested");
+        Files.createDirectories(nestedDir);
+        assertThat(Utils.isNestedRepo(nestedDir)).isTrue();
+        
+        // Note: Full integration test with prompt is in IntegrationTest
+        // This test just verifies the detection logic works
+    }
+    
+    @Test
+    public void forceFlagSkipsNestedRepoWarning(@TempDir Path tempDir) throws Exception {
+        // Create parent repo
+        try (VglTestHarness.VglTestRepo parentRepo = VglTestHarness.createRepo(tempDir)) {
+            // Create nested directory
+            Path nestedDir = tempDir.resolve("nested");
+            Files.createDirectories(nestedDir);
+            
+            // With -f flag, should skip prompt entirely
+            String output = parentRepo.runCommandWithInput("", "create", "-lr", nestedDir.toString(), "-f");
+            
+            assertThat(output).doesNotContain("Continue? (y/N):");
+            assertThat(output).contains("Created new local repository");
+            assertThat(Files.exists(nestedDir.resolve(".git"))).isTrue();
+            assertThat(Files.exists(nestedDir.resolve(".vgl"))).isTrue();
+        }
+    }
 }

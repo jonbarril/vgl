@@ -254,6 +254,35 @@ public final class Utils {
         return outerRepoRoot != null;
     }
 
+    /**
+     * Prints a warning message about creating a nested repository.
+     * @param targetDir The directory where the new repository will be created
+     * @param parentRepo The parent repository root
+     */
+    /**
+     * Warn about nested repository and prompt user for confirmation.
+     * Used by commands that create repositories (create, checkout).
+     * 
+     * @param targetDir The directory where the new repository will be created
+     * @param parentRepo The parent repository path
+     * @return true if user confirms to continue, false otherwise
+     */
+    public static boolean warnNestedRepo(Path targetDir, Path parentRepo) {
+        System.out.println("Warning: Creating a repository inside another Git repository.");
+        System.out.println("This will create a nested repository and may cause confusion.");
+        System.out.println("Parent repository: " + parentRepo);
+        System.out.println("New repository: " + targetDir);
+        System.out.println();
+        System.out.print("Continue? (y/N): ");
+        
+        String response;
+        try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
+            response = scanner.nextLine().trim().toLowerCase();
+        }
+        
+        return response.equals("y") || response.equals("yes");
+    }
+
     // ============================================================================
     // Helper Methods
     // ============================================================================

@@ -232,11 +232,45 @@ public class VglTestHarnessTest {
             // 2. create command without -lb flag finds .git exists
             // 3. Goes to Case 3: "Repository already exists" error
             
-            String output = repo.runCommand("create", "-lr", tmp.toString());
+            // Use -f to skip nested repo warning (if any)
+            String output = repo.runCommandWithInput("", "create", "-lr", tmp.toString(), "-f");
             
             // Documents the problem - create fails when .git already exists
             assertThat(output).contains("Error: Repository already exists");
             assertThat(Files.exists(tmp.resolve(".vgl"))).isFalse(); // .vgl not created
+        }
+    }
+    
+    @Test
+    void stdinProvidedToCommands(@TempDir Path tmp) throws Exception {
+        // Test that stdin redirection works properly
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            Path nestedDir = tmp.resolve("nested");
+            Files.createDirectories(nestedDir);
+            
+            // Provide "n" to decline nested repo creation
+            String output = repo.runCommandWithInput("n\n", "create", "-lr", nestedDir.toString());
+            
+            // Should show prompt and cancellation message
+            assertThat(output).contains("Warning: Creating a repository inside another");
+            assertThat(output).contains("Continue? (y/N):");
+            assertThat(Files.exists(nestedDir.resolve(".git"))).isFalse();
+        }
+    }
+    
+    @Test
+    void stdinAcceptsPrompt(@TempDir Path tmp) throws Exception {
+        // Test that providing "y" accepts the prompt
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            Path nestedDir = tmp.resolve("nested");
+            Files.createDirectories(nestedDir);
+            
+            // Provide "y" to accept nested repo creation
+            String output = repo.runCommandWithInput("y\n", "create", "-lr", nestedDir.toString());
+            
+            // Should create the nested repo
+            assertThat(output).contains("Created new local repository");
+            assertThat(Files.exists(nestedDir.resolve(".git"))).isTrue();
         }
     }
 }

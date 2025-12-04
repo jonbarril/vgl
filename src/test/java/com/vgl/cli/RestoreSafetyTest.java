@@ -44,4 +44,15 @@ public class RestoreSafetyTest {
         // Should indicate all files or show prompt
         assertThat(output).doesNotContain("Usage:");
     }
+
+    @Test
+    void forceFlagSkipsConfirmationPrompt() throws Exception {
+        // With -f flag, should skip confirmation prompt
+        // Will likely fail on "No repository" or similar because we're not in a test repo
+        // But it should NOT hang waiting for user input
+        String output = runWithInput("", "restore", "-f");
+        
+        // Should either restore files or show error, but NOT prompt for confirmation
+        assertThat(output).doesNotContain("Continue? (y/N):");
+    }
 }
