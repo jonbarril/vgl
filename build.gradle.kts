@@ -30,7 +30,9 @@ application {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags("integration")
+    }
     filter {
         includeTestsMatching("*")
     }

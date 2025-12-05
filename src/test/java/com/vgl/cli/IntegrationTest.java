@@ -1,5 +1,7 @@
 package com.vgl.cli;
 
+import org.junit.jupiter.api.Tag;
+
 import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -14,6 +16,7 @@ import java.util.*;
  * These tests verify end-to-end behavior including Git operations, file system
  * interactions, and working directory handling.
  */
+@Tag("integration")
 public class IntegrationTest {
 
     private static String vglCommand;

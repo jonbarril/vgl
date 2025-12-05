@@ -14,6 +14,27 @@ import java.util.stream.Stream;
 public final class Utils {
     private Utils(){}
 
+    /**
+     * Returns true if the given file is ignored by git (.gitignore, etc).
+     * Uses JGit's StatusCommand.
+     */
+    public static boolean isGitIgnored(Path file, org.eclipse.jgit.lib.Repository repo) {
+        if (repo == null || file == null) return false;
+        // Always treat the VGL configuration file as ignored regardless of .gitignore
+        try {
+            if (file.getFileName() != null && ".vgl".equals(file.getFileName().toString())) return true;
+        } catch (Exception e) {
+            // ignore and continue to JGit check
+        }
+        try (org.eclipse.jgit.api.Git git = new org.eclipse.jgit.api.Git(repo)) {
+            Path repoRoot = repo.getWorkTree().toPath();
+            String relPath = repoRoot.relativize(file.toAbsolutePath()).toString().replace('\\', '/');
+            return git.status().call().getIgnoredNotInIndex().contains(relPath);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     // ============================================================================
     // Standard Messages (for testing and consistency)
     // ============================================================================
@@ -255,6 +276,23 @@ public final class Utils {
     }
 
     /**
+     * Return true if the current environment should be treated as interactive.
+     * Tests can force non-interactive mode by setting system property
+     * `vgl.noninteractive=true`.
+     */
+    public static boolean isInteractive() {
+        // If explicitly forced non-interactive, honor that first
+        if (Boolean.getBoolean("vgl.noninteractive")) {
+            return false;
+        }
+        boolean consolePresent = System.console() != null;
+        if (Boolean.getBoolean("vgl.debug")) {
+            System.err.println("[vgl.debug] isInteractive: vgl.noninteractive=" + Boolean.getBoolean("vgl.noninteractive") + ", consolePresent=" + consolePresent);
+        }
+        return consolePresent;
+    }
+
+    /**
      * Prints a warning message about creating a nested repository.
      * @param targetDir The directory where the new repository will be created
      * @param parentRepo The parent repository root
@@ -434,4 +472,5 @@ public final class Utils {
     private static String padRight(String str, int length) {
         return String.format("%-" + length + "s", str);
     }
+
 }

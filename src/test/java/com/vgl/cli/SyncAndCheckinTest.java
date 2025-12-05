@@ -13,9 +13,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for sync and checkin commands - verifies composite operations.
  */
 public class SyncAndCheckinTest {
+    private static int currentTest = 0;
+    private static final int TOTAL_TESTS = 5;
+    private static void printProgress(String testName) {
+        currentTest++;
+        System.out.println("[SyncAndCheckinTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
+        System.out.flush();
+    }
 
     @Test
     public void syncIsPullThenPush(@TempDir Path tempDir) throws Exception {
+            printProgress("syncIsPullThenPush");
         // Sync command just calls PullCommand then PushCommand
         // This test verifies the command sequence can be composed
         try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
@@ -32,6 +40,7 @@ public class SyncAndCheckinTest {
     
     @Test
     public void checkinParsesGitHubUrl(@TempDir Path tempDir) throws Exception {
+            printProgress("checkinParsesGitHubUrl");
         String url = "https://github.com/user/repo.git";
         
         // Simulate PR URL generation logic
@@ -47,6 +56,7 @@ public class SyncAndCheckinTest {
     
     @Test
     public void checkinHandlesSshUrl(@TempDir Path tempDir) throws Exception {
+            printProgress("checkinHandlesSshUrl");
         String url = "git@github.com:user/repo.git";
         
         // Simulate PR URL generation with SSH URL
@@ -59,6 +69,7 @@ public class SyncAndCheckinTest {
     
     @Test
     public void checkinDraftVsFinalFlag() {
+            printProgress("checkinDraftVsFinalFlag");
         // Verify flag logic for draft vs final PR
         boolean draft = true;
         
@@ -72,6 +83,7 @@ public class SyncAndCheckinTest {
     
     @Test
     public void nonGitHubRemoteHandling() {
+            printProgress("nonGitHubRemoteHandling");
         String url = "https://gitlab.com/user/repo.git";
         
         if (!url.contains("github.com")) {

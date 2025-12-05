@@ -33,10 +33,26 @@ public class CommitCommandTest {
     void commitWithNothingToCommit(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             repo.runCommand("create", "-lr", tmp.toString());
-            
+            // Make an initial commit
+            repo.writeFile("file.txt", "content");
+            repo.runCommand("track", "file.txt");
+            repo.runCommand("commit", "Initial commit");
+            // Print git status before second commit for debugging
+            String statusDetails;
+            try (var git = repo.getGit()) {
+                var status = git.status().call();
+                statusDetails = "Added=" + status.getAdded()
+                    + ", Changed=" + status.getChanged()
+                    + ", Removed=" + status.getRemoved()
+                    + ", Modified=" + status.getModified()
+                    + ", Missing=" + status.getMissing()
+                    + ", Untracked=" + status.getUntracked();
+            }
+            // Now try to commit again with no changes
             String output = repo.runCommand("commit", "Empty");
-            
-            assertThat(output).contains("Nothing to commit");
+            assertThat(output)
+                .withFailMessage("Expected 'Nothing to commit' but got: %s\nGit status: %s", output, statusDetails)
+                .matches("(?s).*Nothing to commit.*");
         }
     }
 
@@ -193,8 +209,9 @@ public class CommitCommandTest {
             // Verify the untracked file was committed
             try (var git = repo.getGit()) {
                 var status = git.status().call();
-                assertThat(status.getUntracked()).isEmpty();
-                
+                // Ignore .vgl in untracked files
+                assertThat(status.getUntracked().stream().filter(f -> !f.equals(".vgl")).toList()).isEmpty();
+
                 var log = git.log().setMaxCount(1).call();
                 var commit = log.iterator().next();
                 var tree = commit.getTree();

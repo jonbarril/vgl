@@ -11,9 +11,17 @@ import java.nio.file.*;
  * properly stages files for commit.
  */
 public class TrackCommandTest {
+    private static int currentTest = 0;
+    private static final int TOTAL_TESTS = 8;
+    private static void printProgress(String testName) {
+        currentTest++;
+        System.out.println("[TrackCommandTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
+        System.out.flush();
+    }
 
     @Test
     void trackSingleFile(@TempDir Path tmp) throws Exception {
+            printProgress("trackSingleFile");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             // Create a file
             repo.writeFile("test.txt", "content");
@@ -32,6 +40,7 @@ public class TrackCommandTest {
 
     @Test
     void trackMultipleFiles(@TempDir Path tmp) throws Exception {
+            printProgress("trackMultipleFiles");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             repo.writeFile("file1.txt", "content1");
             repo.writeFile("file2.txt", "content2");
@@ -49,15 +58,15 @@ public class TrackCommandTest {
 
     @Test
     void trackWithGlobPattern(@TempDir Path tmp) throws Exception {
+            printProgress("trackWithGlobPattern");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             repo.writeFile("file1.java", "java1");
             repo.writeFile("file2.java", "java2");
             repo.writeFile("file.txt", "txt");
             
             String output = repo.runCommand("track", "*.java");
-            
-            assertThat(output).contains("Tracking: *.java");
-            
+            // Should show the actual files tracked, not the glob pattern
+            assertThat(output).contains("Tracking: file1.java file2.java");
             try (var git = repo.getGit()) {
                 var status = git.status().call();
                 assertThat(status.getAdded()).contains("file1.java", "file2.java");
@@ -68,6 +77,7 @@ public class TrackCommandTest {
 
     @Test
     void trackFileInSubdirectory(@TempDir Path tmp) throws Exception {
+            printProgress("trackFileInSubdirectory");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             repo.writeFile("src/main/App.java", "code");
             
@@ -84,6 +94,7 @@ public class TrackCommandTest {
 
     @Test
     void trackModifiedFile(@TempDir Path tmp) throws Exception {
+            printProgress("trackModifiedFile");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             // Use createRepo since we need to commit first
             
@@ -109,6 +120,7 @@ public class TrackCommandTest {
 
     @Test
     void trackWithoutRepo(@TempDir Path tmp) throws Exception {
+            printProgress("trackWithoutRepo");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createDir(tmp)) {
             // Don't initialize repo, just create a file
             repo.writeFile("test.txt", "content");
@@ -121,6 +133,7 @@ public class TrackCommandTest {
 
     @Test
     void trackNonexistentFile(@TempDir Path tmp) throws Exception {
+            printProgress("trackNonexistentFile");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createDir(tmp)) {
             repo.runCommand("create", "-lr", tmp.toString());
             
@@ -134,6 +147,7 @@ public class TrackCommandTest {
 
     @Test
     void trackAllFilesWithDot(@TempDir Path tmp) throws Exception {
+            printProgress("trackAllFilesWithDot");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             repo.writeFile("file1.txt", "content1");
             repo.writeFile("file2.txt", "content2");

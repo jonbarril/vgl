@@ -34,8 +34,7 @@ public class UtilsTest {
     
     @Test
     public void openGitWithDirectory(@TempDir Path tempDir) throws Exception {
-        try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
-            git.close();
+        try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
             
             // Open git with specific directory
             Git reopened = Utils.findGitRepo(tempDir);
@@ -115,9 +114,7 @@ public class UtilsTest {
 
     @Test
     public void findGitRepoWithPathFindsRepo(@TempDir Path tmp) throws Exception {
-        try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-            git.close();
-            
+        try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
             try (Git found = Utils.findGitRepo(tmp)) {
                 assertThat(found).isNotNull();
                 assertThat(found.getRepository().getWorkTree().toPath()).isEqualTo(tmp);
@@ -148,8 +145,7 @@ public class UtilsTest {
     @Test
     public void findVglRepoFindsGitAndConfig(@TempDir Path tmp) throws Exception {
         // Create git repo
-        try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-            git.close();
+        try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
         }
         
         // Create .vgl config - use forward slashes to avoid escaping issues in Properties format
@@ -169,8 +165,7 @@ public class UtilsTest {
     @Test
     public void findVglRepoWorksWithoutVglFile(@TempDir Path tmp) throws Exception {
         // Create git repo without .vgl file
-        try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-            git.close();
+        try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
         }
         
         // Should still return VglRepo with empty config
@@ -182,8 +177,7 @@ public class UtilsTest {
 
     @Test
     public void getGitRepoRootReturnsCorrectPath(@TempDir Path tmp) throws Exception {
-        try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-            git.close();
+        try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
         }
         
         Path repoRoot = Utils.getGitRepoRoot(tmp);
@@ -202,15 +196,13 @@ public class UtilsTest {
     @Test
     public void isNestedRepoDetectsNestedRepositories(@TempDir Path tmp) throws Exception {
         // Create outer repo
-        try (Git outerGit = Git.init().setDirectory(tmp.toFile()).call()) {
-            outerGit.close();
+        try (@SuppressWarnings("unused") Git outerGit = Git.init().setDirectory(tmp.toFile()).call()) {
         }
         
         // Create nested repo
         Path nested = tmp.resolve("nested");
         Files.createDirectories(nested);
-        try (Git nestedGit = Git.init().setDirectory(nested.toFile()).call()) {
-            nestedGit.close();
+        try (@SuppressWarnings("unused") Git nestedGit = Git.init().setDirectory(nested.toFile()).call()) {
         }
         
         // Should detect nesting
@@ -220,8 +212,7 @@ public class UtilsTest {
 
     @Test
     public void isNestedRepoReturnsFalseForNonNestedRepo(@TempDir Path tmp) throws Exception {
-        try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-            git.close();
+        try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
         }
         
         // Use ceiling above the parent to prevent finding workspace .git

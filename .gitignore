@@ -38,6 +38,9 @@ buildSrc/build/
 .idea/
 out/
 
+# VGL local repo state
+.vgl
+
 ############################
 # Eclipse
 ############################

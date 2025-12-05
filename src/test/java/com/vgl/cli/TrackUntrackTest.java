@@ -14,9 +14,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for track/untrack commands - verifies Git add/rm operations.
  */
 public class TrackUntrackTest {
+    private static int currentTest = 0;
+    private static final int TOTAL_TESTS = 3;
+    private static void printProgress(String testName) {
+        currentTest++;
+        System.out.println("[TrackUntrackTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
+        System.out.flush();
+    }
 
     @Test
     public void trackingAddsFilesToGitIndex(@TempDir Path tempDir) throws Exception {
+            printProgress("trackingAddsFilesToGitIndex");
         try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
             // Create test files
             Files.writeString(tempDir.resolve("file1.txt"), "content1");
@@ -34,6 +42,7 @@ public class TrackUntrackTest {
     
     @Test
     public void untrackingRemovesFromIndexButKeepsFile(@TempDir Path tempDir) throws Exception {
+            printProgress("untrackingRemovesFromIndexButKeepsFile");
         try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
             // Create and commit a file
             Path testFile = tempDir.resolve("tracked.txt");
@@ -53,6 +62,7 @@ public class TrackUntrackTest {
     
     @Test
     public void addFilepatternSupportsGlobSyntax(@TempDir Path tempDir) throws Exception {
+            printProgress("addFilepatternSupportsGlobSyntax");
         try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
             // Create files
             Files.writeString(tempDir.resolve("app.log"), "log1");

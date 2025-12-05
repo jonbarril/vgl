@@ -18,6 +18,7 @@ public class HelpCommand implements Command {
             "Voodoo Gitless (" + Utils.versionFromRuntime() + ") -- Git for mortals",
             "",
             "Commands:",
+            // Group 1: repo/branch management
             "  create [-f]                           Create local/remote repo/branch, then switch",
             "    [-lr DIR] [-lb BRANCH]                defaults to switch state",
             "    [-bb BRANCH]                          defaults to switch state",
@@ -33,6 +34,8 @@ public class HelpCommand implements Command {
             "    [-bb BRANCH]                          defaults to switch state",
             "    [-rr URL] [-rb BRANCH]                defaults to switch state",
             "  jump                                  Toggle to previous switch state",
+            "",
+            // Group 2: branch/merge/split
             "  split -into|-from                     Clone branch from source, then switch",
             "    [-lr [DIR]] [-lb [BRANCH]]            defaults to switch state",
             "    [-rr [URL]] [-rb [BRANCH]]            defaults to switch state",
@@ -41,17 +44,22 @@ public class HelpCommand implements Command {
             "    [-lr [DIR]] [-lb [BRANCH]]            defaults to switch state",
             "    [-rr [URL]] [-rb [BRANCH]]            defaults to switch state",
             "    [-bb [BRANCH]]                        defaults to switch state",
-            "  track/untrack [GLOB|* ...]            Add/remove files from version control",
+            "",
+            // Group 3: file tracking/commit/restore
+            "  track/untrack GLOB|* ...              Add/remove files from version control",
             "    -all                                  or, all undecided files",
             "  commit \"MESSAGE\" | [-new|-add] \"MSG\"  Commit changes / amend last commit",
-            "  restore [-f]                          Revert working files to local or remote",
+            "  restore [-f] [GLOB|* ...]             Revert working files to local or remote",
             "    [-lb|-rb] [COMMIT|GLOB|* ...]         specify branch and optional file filter",
+            "",
+            // Group 4: sync/abort
             "  pull [-f] [-noop]                     Merge remote changes into local branch",
             "  push [-noop]                          Replace remote branch with local changes",
             "  sync [-noop]                          Pull then push",
             "  checkin -draft|-final                 Push and create pull request",
             "  abort                                 Cancel ongoing pull merge",
             "",
+            // Group 5: status/diff/log/help
             "  status [-v|-vv] [COMMIT|GLOB|* ...]   Show workspace/repo/file status",
             "  diff [COMMIT|GLOB|* ...]              Compare working files with switch state branches",
             "    [-lb|-rb]                             working vs local or remote branch",
@@ -84,8 +92,7 @@ public class HelpCommand implements Command {
             helpText.append("\n\nOverview:\n");
             helpText.append(String.join("\n",
                 "  Working Locally:",
-                "    Use 'create -lr DIR' to make a new local repository (defaults to main",
-                "    branch), or 'switch -lr DIR -lb BRANCH' to work in existing ones.",
+                "    Use 'create -lr DIR' to make a new repository (defaults to main branch), or 'switch -lr DIR -lb BRANCH' to work in existing ones.",
                 "    Your workspace is where your working files live. Changes exist only in",
                 "    the workspace until you 'commit' them to the local branch.",
                 "    Use 'split' to create a new branch for experiments, 'merge' to combine",

@@ -2,6 +2,7 @@ package com.vgl.cli;
 
 import static org.assertj.core.api.Assertions.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
@@ -21,6 +22,7 @@ public class HelpCommandTest {
     }
 
     @Test
+    @Timeout(30)
     void defaultPrintsCommandsAndVersion() throws Exception {
         System.setProperty("vgl.version", "TEST-VERSION");
         String out = run();
@@ -32,6 +34,7 @@ public class HelpCommandTest {
     }
 
     @Test
+    @Timeout(30)
     void verboseIncludesFlagsSection() throws Exception {
         String out = run("help", "-v");
         assertThat(out).contains("Flags:");
@@ -40,6 +43,7 @@ public class HelpCommandTest {
     }
 
     @Test
+    @Timeout(30)
     void veryVerboseIncludesOverview() throws Exception {
         String out = run("help", "-vv");
         assertThat(out).contains("Overview:");

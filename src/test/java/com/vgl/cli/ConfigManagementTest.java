@@ -21,7 +21,8 @@ public class ConfigManagementTest {
             System.setProperty("user.dir", tmp.toString());
             
             // Create .git
-            Git.init().setDirectory(tmp.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+            }
             
             // Create and configure VglCli
             VglCli vgl = new VglCli();
@@ -52,7 +53,8 @@ public class ConfigManagementTest {
             System.setProperty("user.dir", tmp.toString());
             
             // Create .git
-            Git.init().setDirectory(tmp.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+            }
             
             // Create VglCli with null remote
             VglCli vgl = new VglCli();
@@ -80,7 +82,8 @@ public class ConfigManagementTest {
             System.setProperty("user.dir", tmp.toString());
             
             // Create .git
-            Git.init().setDirectory(tmp.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+            }
             
             // Create VglCli with jump state
             VglCli vgl = new VglCli();
@@ -110,7 +113,8 @@ public class ConfigManagementTest {
             System.setProperty("user.dir", tmp.toString());
             
             // Create .git
-            Git.init().setDirectory(tmp.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+            }
             
             // Create VglCli with all null jump state
             VglCli vgl = new VglCli();
@@ -139,7 +143,8 @@ public class ConfigManagementTest {
         String oldUserDir = System.getProperty("user.dir");
         try {
             // Create .git and .vgl in parent
-            Git.init().setDirectory(tmp.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+            }
             System.setProperty("user.dir", tmp.toString());
             
             VglCli vgl = new VglCli();
@@ -166,7 +171,8 @@ public class ConfigManagementTest {
         String oldUserDir = System.getProperty("user.dir");
         try {
             // Create .git and .vgl in grandparent
-            Git.init().setDirectory(tmp.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+            }
             System.setProperty("user.dir", tmp.toString());
             
             VglCli vgl = new VglCli();
@@ -214,7 +220,8 @@ public class ConfigManagementTest {
             // Create repo1
             Path repo1 = tmp.resolve("repo1");
             Files.createDirectories(repo1);
-            Git.init().setDirectory(repo1.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(repo1.toFile()).call()) {
+            }
             System.setProperty("user.dir", repo1.toString());
             
             VglCli vgl1 = new VglCli();
@@ -225,7 +232,8 @@ public class ConfigManagementTest {
             // Create repo2
             Path repo2 = tmp.resolve("repo2");
             Files.createDirectories(repo2);
-            Git.init().setDirectory(repo2.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(repo2.toFile()).call()) {
+            }
             System.setProperty("user.dir", repo2.toString());
             
             VglCli vgl2 = new VglCli();
@@ -254,7 +262,8 @@ public class ConfigManagementTest {
             System.setProperty("user.dir", tmp.toString());
             
             // Create .git
-            Git.init().setDirectory(tmp.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+            }
             
             // Set local and jump to same values
             VglCli vgl = new VglCli();
@@ -280,6 +289,7 @@ public class ConfigManagementTest {
     }
 
     @Test
+    @org.junit.jupiter.api.Timeout(30)
     void orphanedVglWithoutGitIsDeleted(@TempDir Path tmp) throws Exception {
         String oldUserDir = System.getProperty("user.dir");
         ByteArrayOutputStream errCapture = new ByteArrayOutputStream();
@@ -294,8 +304,13 @@ public class ConfigManagementTest {
             
             assertThat(Files.exists(vglFile)).isTrue();
             
-            // Load should detect orphaned .vgl and delete it (non-interactive)
-            new VglCli();
+            // Force non-interactive mode and load should detect orphaned .vgl and delete it
+            System.setProperty("vgl.noninteractive", "true");
+            try {
+                new VglCli();
+            } finally {
+                System.clearProperty("vgl.noninteractive");
+            }
             
             // .vgl should be deleted
             assertThat(Files.exists(vglFile)).isFalse();
@@ -317,7 +332,8 @@ public class ConfigManagementTest {
             System.setProperty("user.dir", tmp.toString());
             
             // Create both .git and .vgl
-            Git.init().setDirectory(tmp.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+            }
             Path vglFile = tmp.resolve(".vgl");
             Files.writeString(vglFile, "local.dir=" + tmp + "\nlocal.branch=preserved\n");
             
@@ -511,7 +527,8 @@ public class ConfigManagementTest {
             // Create directory with spaces
             Path dirWithSpaces = tmp.resolve("my project dir");
             Files.createDirectories(dirWithSpaces);
-            Git.init().setDirectory(dirWithSpaces.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(dirWithSpaces.toFile()).call()) {
+            }
             
             System.setProperty("user.dir", dirWithSpaces.toString());
             
@@ -535,7 +552,8 @@ public class ConfigManagementTest {
             // Create directory with unicode characters
             Path unicodeDir = tmp.resolve("プロジェクト");
             Files.createDirectories(unicodeDir);
-            Git.init().setDirectory(unicodeDir.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(unicodeDir.toFile()).call()) {
+            }
             
             System.setProperty("user.dir", unicodeDir.toString());
             
@@ -559,7 +577,8 @@ public class ConfigManagementTest {
         try {
             Path realDir = tmp.resolve("real");
             Files.createDirectories(realDir);
-            Git.init().setDirectory(realDir.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(realDir.toFile()).call()) {
+            }
             
             Path linkDir = tmp.resolve("link");
             try {
@@ -595,7 +614,8 @@ public class ConfigManagementTest {
             }
             Path deepDir = tmp.resolve(pathBuilder.substring(1));
             Files.createDirectories(deepDir);
-            Git.init().setDirectory(deepDir.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(deepDir.toFile()).call()) {
+            }
             
             System.setProperty("user.dir", deepDir.toString());
             
@@ -616,7 +636,8 @@ public class ConfigManagementTest {
         String oldUserDir = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tmp.toString());
-            Git.init().setDirectory(tmp.toFile()).call().close();
+            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+            }
             
             // Branch names can have slashes, dashes, etc
             VglCli vgl1 = new VglCli();

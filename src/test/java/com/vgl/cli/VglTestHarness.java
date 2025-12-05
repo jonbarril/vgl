@@ -46,8 +46,7 @@ public class VglTestHarness {
      */
     public static Path createBareRemoteRepo(Path remotePath) throws Exception {
         Files.createDirectories(remotePath);
-        try (Git remoteGit = Git.init().setDirectory(remotePath.toFile()).setBare(true).call()) {
-            remoteGit.close();
+        try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remotePath.toFile()).setBare(true).call()) {
         }
         return remotePath;
     }

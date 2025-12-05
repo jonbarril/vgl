@@ -9,6 +9,13 @@ import java.io.*;
 import java.nio.file.*;
 
 public class StatusVerbosityTest {
+    private static int currentTest = 0;
+    private static final int TOTAL_TESTS = 3;
+    private static void printProgress(String testName) {
+        currentTest++;
+        System.out.println("[StatusVerbosityTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
+        System.out.flush();
+    }
 
     private static String run(Path dir, String... args) throws Exception {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -31,6 +38,7 @@ public class StatusVerbosityTest {
 
     @Test
     void statusShowsBasicSections(@TempDir Path tmp) throws Exception {
+            printProgress("statusShowsBasicSections");
         // Create a test repository with a commit
         try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
             // Create initial commit
@@ -54,6 +62,7 @@ public class StatusVerbosityTest {
 
     @Test
     void statusVerboseShowsCommitInfo(@TempDir Path tmp) throws Exception {
+            printProgress("statusVerboseShowsCommitInfo");
         // Create a test repository with a commit
         try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
             Path testFile = tmp.resolve("test.txt");
@@ -70,6 +79,7 @@ public class StatusVerbosityTest {
 
     @Test
     void statusVeryVerboseShowsTrackedSection(@TempDir Path tmp) throws Exception {
+            printProgress("statusVeryVerboseShowsTrackedSection");
         // Create a test repository with a commit and an undecided file
         try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
             Path trackedFile = tmp.resolve("tracked.txt");

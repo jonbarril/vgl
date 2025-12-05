@@ -9,6 +9,7 @@ import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 
 import java.io.ByteArrayOutputStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -104,92 +105,8 @@ public class DiffCommand implements Command {
                     
                     List<DiffEntry> diffs = formatter.scan(oldTreeIter, new org.eclipse.jgit.treewalk.FileTreeIterator(git.getRepository()));
                     
-                    boolean foundAny = false;
-                    for (DiffEntry entry : diffs) {
-                        String path = entry.getNewPath();
-                        if (entry.getChangeType() == DiffEntry.ChangeType.DELETE) {
-                            path = entry.getOldPath();
-                        }
-                        
-                        // Apply filters
-                        if (!filters.isEmpty() && !matchesAnyFilter(path, filters)) {
-                            continue;
-                        }
-                        
-                        foundAny = true;
-                        
-                        // Show file header
-                        String changeType = switch (entry.getChangeType()) {
-                            case ADD -> "NEW FILE";
-                            case DELETE -> "DELETED";
-                            case MODIFY -> "MODIFIED";
-                            case RENAME -> "RENAMED";
-                            case COPY -> "COPIED";
-                            default -> "CHANGED";
-                        };
-                        System.out.println("=== " + changeType + ": " + path + " ===");
-                        
-                        // Try to read and compare file contents directly for better text handling
-                        try {
-                            if (entry.getChangeType() == DiffEntry.ChangeType.MODIFY) {
-                                // Get old content from HEAD tree by path
-                                org.eclipse.jgit.treewalk.TreeWalk treeWalk = org.eclipse.jgit.treewalk.TreeWalk.forPath(
-                                    git.getRepository(), path, headTreeId);
-                                
-                                String oldContent = "";
-                                if (treeWalk != null) {
-                                    org.eclipse.jgit.lib.ObjectId objectId = treeWalk.getObjectId(0);
-                                    
-                                    try (org.eclipse.jgit.lib.ObjectReader objReader = git.getRepository().newObjectReader()) {
-                                        org.eclipse.jgit.lib.ObjectLoader loader = objReader.open(objectId);
-                                        oldContent = new String(loader.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
-                                    }
-                                    treeWalk.close();
-                                }
-                                
-                                // Get new content from working tree
-                                java.nio.file.Path workingFile = git.getRepository().getWorkTree().toPath().resolve(path);
-                                byte[] newBytes = java.nio.file.Files.readAllBytes(workingFile);
-                                String newContent = new String(newBytes, java.nio.charset.StandardCharsets.UTF_8);
-                                
-                                // Simple line-by-line diff
-                                String[] oldLines = oldContent.split("\r?\n", -1);
-                                String[] newLines = newContent.split("\r?\n", -1);
-                                
-                                // Show only changed lines with minimal context
-                                for (int i = 0; i < Math.max(oldLines.length, newLines.length); i++) {
-                                    String oldLine = i < oldLines.length ? oldLines[i] : null;
-                                    String newLine = i < newLines.length ? newLines[i] : null;
-                                    
-                                    if (oldLine == null && newLine != null) {
-                                        System.out.println("  + " + newLine);
-                                    } else if (oldLine != null && newLine == null) {
-                                        System.out.println("  - " + oldLine);
-                                    } else if (oldLine != null && newLine != null && !oldLine.equals(newLine)) {
-                                        System.out.println("  - " + oldLine);
-                                        System.out.println("  + " + newLine);
-                                    }
-                                    // Skip unchanged lines for cleaner output
-                                }
-                            } else {
-                                // For ADD/DELETE, show simple status
-                                if (entry.getChangeType() == DiffEntry.ChangeType.ADD) {
-                                    System.out.println("  (new file)");
-                                } else if (entry.getChangeType() == DiffEntry.ChangeType.DELETE) {
-                                    System.out.println("  (deleted)");
-                                }
-                            }
-                        } catch (Exception e) {
-                            System.err.println("Error reading file content: " + e.getMessage());
-                        }
-                        
-                        System.out.println(); // blank line after each file
-                    }
-                    
-                    if (!foundAny) {
-                        System.out.println("(no changes)");
-                    }
-                    
+                    // Delegate to shared display logic (handles working-tree diffs)
+                    displayDiffs(git, diffs, headTreeId, null, filters, true);
                     reader.close();
                 }
                 return 0;
@@ -315,105 +232,113 @@ public class DiffCommand implements Command {
                               List<String> filters, boolean useWorkingTree) throws Exception {
         boolean foundAny = false;
         
+        org.eclipse.jgit.lib.Repository repo = git.getRepository();
+        Path repoRoot = repo.getWorkTree().toPath();
         for (DiffEntry entry : diffs) {
             String path = entry.getNewPath();
             if (entry.getChangeType() == DiffEntry.ChangeType.DELETE) {
                 path = entry.getOldPath();
             }
-            
+            // Ignore git-ignored files in diff output
+            if (Utils.isGitIgnored(repoRoot.resolve(path), repo)) continue;
             // Apply filters
             if (!filters.isEmpty() && !matchesAnyFilter(path, filters)) {
                 continue;
             }
-            
             foundAny = true;
-            
             // Show file header
-            String changeType = switch (entry.getChangeType()) {
-                case ADD -> "NEW FILE";
-                case DELETE -> "DELETED";
-                case MODIFY -> "MODIFIED";
-                case RENAME -> "RENAMED";
-                case COPY -> "COPIED";
-                default -> "CHANGED";
-            };
-            System.out.println("=== " + changeType + ": " + path + " ===");
-            
-            // Try to read and compare file contents
-            try {
-                if (entry.getChangeType() == DiffEntry.ChangeType.MODIFY) {
-                    // Get old content from tree
-                    org.eclipse.jgit.treewalk.TreeWalk treeWalk = org.eclipse.jgit.treewalk.TreeWalk.forPath(
-                        git.getRepository(), path, oldTreeId);
-                    
-                    String oldContent = "";
-                    if (treeWalk != null) {
-                        org.eclipse.jgit.lib.ObjectId objectId = treeWalk.getObjectId(0);
-                        try (org.eclipse.jgit.lib.ObjectReader objReader = git.getRepository().newObjectReader()) {
-                            org.eclipse.jgit.lib.ObjectLoader loader = objReader.open(objectId);
-                            oldContent = new String(loader.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
-                        }
-                        treeWalk.close();
-                    }
-                    
-                    // Get new content (from working tree or commit tree)
-                    String newContent;
-                    if (useWorkingTree) {
-                        java.nio.file.Path workingFile = git.getRepository().getWorkTree().toPath().resolve(path);
-                        byte[] newBytes = java.nio.file.Files.readAllBytes(workingFile);
-                        newContent = new String(newBytes, java.nio.charset.StandardCharsets.UTF_8);
-                    } else {
-                        // Get from new tree
-                        org.eclipse.jgit.treewalk.TreeWalk newTreeWalk = org.eclipse.jgit.treewalk.TreeWalk.forPath(
-                            git.getRepository(), path, newTreeId);
-                        newContent = "";
-                        if (newTreeWalk != null) {
-                            org.eclipse.jgit.lib.ObjectId newObjectId = newTreeWalk.getObjectId(0);
-                            try (org.eclipse.jgit.lib.ObjectReader objReader = git.getRepository().newObjectReader()) {
-                                org.eclipse.jgit.lib.ObjectLoader loader = objReader.open(newObjectId);
-                                newContent = new String(loader.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
-                            }
-                            newTreeWalk.close();
-                        }
-                    }
-                    
-                    // Simple line-by-line diff
-                    String[] oldLines = oldContent.split("\r?\n", -1);
-                    String[] newLines = newContent.split("\r?\n", -1);
-                    
-                    // Show only changed lines
-                    for (int i = 0; i < Math.max(oldLines.length, newLines.length); i++) {
-                        String oldLine = i < oldLines.length ? oldLines[i] : null;
-                        String newLine = i < newLines.length ? newLines[i] : null;
-                        
-                        if (oldLine == null && newLine != null) {
-                            System.out.println("  + " + newLine);
-                        } else if (oldLine != null && newLine == null) {
-                            System.out.println("  - " + oldLine);
-                        } else if (oldLine != null && newLine != null && !oldLine.equals(newLine)) {
-                            System.out.println("  - " + oldLine);
-                            System.out.println("  + " + newLine);
-                        }
-                    }
-                } else {
-                    // For ADD/DELETE, show simple status
-                    if (entry.getChangeType() == DiffEntry.ChangeType.ADD) {
-                        System.out.println("  (new file)");
-                    } else if (entry.getChangeType() == DiffEntry.ChangeType.DELETE) {
-                        System.out.println("  (deleted)");
-                    }
-                }
-            } catch (Exception e) {
-                System.err.println("Error reading file content: " + e.getMessage());
-            }
-            
-            System.out.println(); // blank line after each file
+            String changeType;
+            switch (entry.getChangeType()) {
+                case ADD:
+                    changeType = "NEW FILE";
+                    break;
+                case DELETE:
+                    changeType = "DELETED";
+                    break;
+                case MODIFY:
+                    changeType = "MODIFIED";
+                    break;
+                case RENAME:
+                    changeType = "RENAMED";
+                    break;
+                case COPY:
+                    changeType = "COPIED";
+                                        break;
+                                    default:
+                                        changeType = "CHANGED";
+                                        break;
+                                }
+                                System.out.println("=== " + changeType + ": " + path + " ===");
+                                // Try to read and compare file contents
+                                try {
+                                    if (entry.getChangeType() == DiffEntry.ChangeType.MODIFY) {
+                                        // Get old content from tree
+                                        org.eclipse.jgit.treewalk.TreeWalk treeWalk = org.eclipse.jgit.treewalk.TreeWalk.forPath(
+                                            git.getRepository(), path, oldTreeId);
+                                        String oldContent = "";
+                                        if (treeWalk != null) {
+                                            org.eclipse.jgit.lib.ObjectId objectId = treeWalk.getObjectId(0);
+                                            try (org.eclipse.jgit.lib.ObjectReader objReader = git.getRepository().newObjectReader()) {
+                                                org.eclipse.jgit.lib.ObjectLoader loader = objReader.open(objectId);
+                                                oldContent = new String(loader.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                                            }
+                                            treeWalk.close();
+                                        }
+                                        // Get new content (from working tree or commit tree)
+                                        String newContent;
+                                        if (useWorkingTree) {
+                                            java.nio.file.Path workingFile = git.getRepository().getWorkTree().toPath().resolve(path);
+                                            byte[] newBytes = java.nio.file.Files.readAllBytes(workingFile);
+                                            newContent = new String(newBytes, java.nio.charset.StandardCharsets.UTF_8);
+                                        } else {
+                                            // Get from new tree
+                                            org.eclipse.jgit.treewalk.TreeWalk newTreeWalk = org.eclipse.jgit.treewalk.TreeWalk.forPath(
+                                                git.getRepository(), path, newTreeId);
+                                            newContent = "";
+                                            if (newTreeWalk != null) {
+                                                org.eclipse.jgit.lib.ObjectId newObjectId = newTreeWalk.getObjectId(0);
+                                                try (org.eclipse.jgit.lib.ObjectReader objReader = git.getRepository().newObjectReader()) {
+                                                    org.eclipse.jgit.lib.ObjectLoader loader = objReader.open(newObjectId);
+                                                    newContent = new String(loader.getBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                                                }
+                                                newTreeWalk.close();
+                                            }
+                                        }
+                                        // Simple line-by-line diff
+                                        String[] oldLines = oldContent.split("\r?\n", -1);
+                                        String[] newLines = newContent.split("\r?\n", -1);
+                                        // Show only changed lines
+                                        for (int i = 0; i < Math.max(oldLines.length, newLines.length); i++) {
+                                            String oldLine = i < oldLines.length ? oldLines[i] : null;
+                                            String newLine = i < newLines.length ? newLines[i] : null;
+                                            if (oldLine == null && newLine != null) {
+                                                System.out.println("  + " + newLine);
+                                            } else if (oldLine != null && newLine == null) {
+                                                System.out.println("  - " + oldLine);
+                                            } else if (oldLine != null && newLine != null && !oldLine.equals(newLine)) {
+                                                System.out.println("  - " + oldLine);
+                                                System.out.println("  + " + newLine);
+                                            }
+                                        }
+                                    } else {
+                                        // For ADD/DELETE, show simple status
+                                        if (entry.getChangeType() == DiffEntry.ChangeType.ADD) {
+                                            System.out.println("  (new file)");
+                                        } else if (entry.getChangeType() == DiffEntry.ChangeType.DELETE) {
+                                            System.out.println("  (deleted)");
+                                        }
+                                    }
+                                } catch (Exception e) {
+                                    System.err.println("Error reading file content: " + e.getMessage());
+                                }
+                                System.out.println(); // blank line after each file
         }
         
         if (!foundAny) {
             System.out.println("(no changes)");
         }
-    }
+                        }
+    // End of displayDiffs
     
     private boolean matchesAnyFilter(String path, List<String> filters) {
         for (String filter : filters) {

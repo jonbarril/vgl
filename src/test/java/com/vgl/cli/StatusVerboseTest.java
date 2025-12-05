@@ -13,9 +13,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for status -v and -vv output formatting with arrows.
  */
 public class StatusVerboseTest {
+    private static int currentTest = 0;
+    private static final int TOTAL_TESTS = 6;
+    private static void printProgress(String testName) {
+        currentTest++;
+        System.out.println("[StatusVerboseTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
+        System.out.flush();
+    }
 
     @Test
     void uncommittedChangesShowWithoutArrow(@TempDir Path tmp) throws Exception {
+            printProgress("uncommittedChangesShowWithoutArrow");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             // Create initial commit
             repo.writeFile("test.txt", "initial content");
@@ -35,11 +43,11 @@ public class StatusVerboseTest {
     
     @Test
     void committedButNotPushedShowsUpArrow(@TempDir Path tmp) throws Exception {
+            printProgress("committedButNotPushedShowsUpArrow");
         // Create a bare remote repo
         Path remoteRepo = tmp.resolve("remote");
         Files.createDirectories(remoteRepo);
-        try (Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
-            remoteGit.close();
+        try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
         }
         
         // Create local repo
@@ -77,11 +85,11 @@ public class StatusVerboseTest {
     
     @Test
     void remoteChangesShowDownArrow(@TempDir Path tmp) throws Exception {
+            printProgress("remoteChangesShowDownArrow");
         // Create a bare remote repo
         Path remoteRepo = tmp.resolve("remote");
         Files.createDirectories(remoteRepo);
-        try (Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
-            remoteGit.close();
+        try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
         }
         
         // Create first local repo and push
@@ -149,6 +157,7 @@ public class StatusVerboseTest {
     
     @Test
     void noRemoteShowsAppropriateMessage(@TempDir Path tmp) throws Exception {
+            printProgress("noRemoteShowsAppropriateMessage");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             repo.writeFile("test.txt", "content");
             repo.gitAdd("test.txt");
@@ -165,11 +174,11 @@ public class StatusVerboseTest {
     
     @Test
     void mixedUncommittedAndCommittedChanges(@TempDir Path tmp) throws Exception {
+            printProgress("mixedUncommittedAndCommittedChanges");
         // Create a bare remote repo
         Path remoteRepo = tmp.resolve("remote");
         Files.createDirectories(remoteRepo);
-        try (Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
-            remoteGit.close();
+        try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
         }
         
         Path localRepo = tmp.resolve("local");

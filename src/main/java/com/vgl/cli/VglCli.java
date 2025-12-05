@@ -124,6 +124,9 @@ public class VglCli {
             // Check if .git exists alongside .vgl
             Path vglDir = configPath.getParent();
             if (!Files.exists(vglDir.resolve(".git"))) {
+                if (Boolean.getBoolean("vgl.debug")) {
+                    System.err.println("[vgl.debug] orphaned .vgl detected at " + configPath + ", isInteractive=" + com.vgl.cli.Utils.isInteractive());
+                }
                 // Orphaned .vgl file - .git was deleted or moved
                 System.err.println("Warning: Found .vgl but no .git directory.");
                 System.err.println("The .git repository may have been deleted or moved.");
@@ -134,8 +137,8 @@ public class VglCli {
                 System.err.println("  - Keep .vgl if you plan to restore .git");
                 System.err.println();
                 
-                // Only prompt if we have an interactive console
-                if (System.console() != null) {
+                // Only prompt if we are in an interactive environment
+                if (com.vgl.cli.Utils.isInteractive()) {
                     System.err.print("Delete orphaned .vgl file? (y/N): ");
                     try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
                         if (scanner.hasNextLine()) {

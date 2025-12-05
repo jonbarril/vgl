@@ -14,7 +14,7 @@ public class TrackCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         if (args.isEmpty()) {
-            System.out.println("Usage: vgl track <glob...>");
+            System.out.println("Usage: vgl track <glob...> | -all");
             return 1;
         }
 
@@ -27,15 +27,63 @@ public class TrackCommand implements Command {
             return 1;
         }
 
+        // Load undecided files from .vgl if -all is specified
+        boolean useAll = args.size() == 1 && args.get(0).equals("-all");
+        List<String> filesToTrack;
+        com.vgl.cli.VglRepo vglRepo = com.vgl.cli.Utils.findVglRepo(dir);
+        if (vglRepo != null) {
+            try (Git git = Git.open(dir.toFile())) {
+                // Always update undecided files before track
+                org.eclipse.jgit.api.Status status = git.status().call();
+                vglRepo.updateUndecidedFilesFromWorkingTree(git, status);
+            }
+        }
+        if (useAll) {
+            if (vglRepo == null) {
+                System.out.println("No .vgl repo found for undecided files.");
+                return 1;
+            }
+            filesToTrack = vglRepo.getUndecidedFiles();
+            if (filesToTrack.isEmpty()) {
+                System.out.println("No undecided files to track.");
+                return 0;
+            }
+        } else {
+            filesToTrack = Utils.expandGlobs(args);
+        }
+
+        if (filesToTrack.isEmpty()) {
+            System.out.println("No matching files to track.");
+            return 1;
+        }
+
         try (Git git = Git.open(dir.toFile())) {
+            org.eclipse.jgit.lib.Repository repo = git.getRepository();
+            List<String> filteredFiles = new java.util.ArrayList<>();
+            for (String p : filesToTrack) {
+                Path filePath = dir.resolve(p);
+                if (!Utils.isGitIgnored(filePath, repo)) {
+                    filteredFiles.add(p);
+                }
+            }
+            if (filteredFiles.isEmpty()) {
+                System.out.println("All matching files are ignored by git.");
+                return 1;
+            }
             var addc = git.add();
-            List<String> expanded = Utils.expandGlobs(args);
-            for (String p : expanded) {
+            for (String p : filteredFiles) {
                 addc.addFilepattern(p);
             }
             try {
                 addc.call();
-                System.out.println("Tracking: " + String.join(" ", args));
+                System.out.println("Tracking: " + String.join(" ", filteredFiles));
+                // Remove tracked files from undecided in .vgl
+                if (vglRepo != null) {
+                    List<String> undecided = new java.util.ArrayList<>(vglRepo.getUndecidedFiles());
+                    undecided.removeAll(filteredFiles);
+                    vglRepo.setUndecidedFiles(undecided);
+                    vglRepo.saveConfig();
+                }
             } catch (NoFilepatternException ex) {
                 System.out.println("No matching files to track.");
             }

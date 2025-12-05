@@ -101,8 +101,7 @@ public class CreateCommandTest {
     @Test
     public void warnsAndPromptsWhenCreatingNestedRepository(@TempDir Path tempDir) throws Exception {
         // Create parent repo
-        try (Git parentGit = Git.init().setDirectory(tempDir.toFile()).call()) {
-            parentGit.close();
+        try (@SuppressWarnings("unused") Git parentGit = Git.init().setDirectory(tempDir.toFile()).call()) {
         }
         
         // Verify isNestedRepo detects it
