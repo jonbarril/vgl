@@ -383,6 +383,37 @@ public final class Utils {
     }
 
     /**
+     * Return the set of non-ignored regular files under the repository working tree.
+     * Paths are returned relative to the repo root and use '/' separators.
+     */
+    public static java.util.Set<String> listNonIgnoredFiles(Path repoRoot, org.eclipse.jgit.lib.Repository repo) {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        if (repo == null || repoRoot == null) return out;
+        try {
+            org.eclipse.jgit.treewalk.FileTreeIterator workingTreeIt = new org.eclipse.jgit.treewalk.FileTreeIterator(repo);
+            org.eclipse.jgit.treewalk.TreeWalk treeWalk = new org.eclipse.jgit.treewalk.TreeWalk(repo);
+            treeWalk.addTree(workingTreeIt);
+            treeWalk.setRecursive(true);
+            while (treeWalk.next()) {
+                org.eclipse.jgit.treewalk.WorkingTreeIterator wti = (org.eclipse.jgit.treewalk.WorkingTreeIterator) treeWalk.getTree(0, org.eclipse.jgit.treewalk.WorkingTreeIterator.class);
+                String path = treeWalk.getPathString();
+                if (wti == null) continue;
+                try {
+                    if (!wti.isEntryIgnored()) {
+                        out.add(path.replace('\\','/'));
+                    }
+                } catch (Exception e) {
+                    // ignore and continue
+                }
+            }
+            treeWalk.close();
+        } catch (Exception e) {
+            // fallback: nothing
+        }
+        return out;
+    }
+
+    /**
      * Print consistent switch state showing LOCAL and REMOTE, current and jump.
      * Uses compact format with truncated paths (non-verbose).
      */

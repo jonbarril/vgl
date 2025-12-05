@@ -202,29 +202,66 @@ public class StatusCommand implements Command {
                     }
                 }
                 
-                // Count files by status
+                // Use a canonical JGit-based traversal to find non-ignored files, then
+                // compute tracked / untracked / undecided sets from that base.
                 int numModified = status.getChanged().size() + status.getModified().size();
                 int numAdded = status.getAdded().size();
                 int numDeleted = status.getRemoved().size() + status.getMissing().size();
-                int numUntracked = status.getUntracked().size();
-                
-                // Apply filters if specified
-                if (!filters.isEmpty()) {
-                    numModified = (int) status.getChanged().stream().filter(p -> matchesAnyFilter(p, filters)).count() +
-                                  (int) status.getModified().stream().filter(p -> matchesAnyFilter(p, filters)).count();
-                    numAdded = (int) status.getAdded().stream().filter(p -> matchesAnyFilter(p, filters)).count();
-                    numDeleted = (int) status.getRemoved().stream().filter(p -> matchesAnyFilter(p, filters)).count() +
-                                 (int) status.getMissing().stream().filter(p -> matchesAnyFilter(p, filters)).count();
-                    numUntracked = (int) status.getUntracked().stream().filter(p -> matchesAnyFilter(p, filters)).count();
+
+                java.nio.file.Path localDirPath = java.nio.file.Paths.get(localDir);
+                java.util.Set<String> nonIgnored = com.vgl.cli.Utils.listNonIgnoredFiles(localDirPath, git.getRepository());
+
+                // Tracked files = files present in HEAD tree
+                java.util.Set<String> tracked = new java.util.LinkedHashSet<>();
+                try {
+                    org.eclipse.jgit.lib.ObjectId headTree = git.getRepository().resolve("HEAD^{tree}");
+                    if (headTree != null) {
+                        org.eclipse.jgit.treewalk.TreeWalk tw = new org.eclipse.jgit.treewalk.TreeWalk(git.getRepository());
+                        tw.addTree(headTree);
+                        tw.setRecursive(true);
+                        while (tw.next()) {
+                            tracked.add(tw.getPathString().replace('\\','/'));
+                        }
+                        tw.close();
+                    }
+                } catch (Exception e) {
+                    // ignore
                 }
-                
-                // Build summary string with full category names
+
+                // Undecided from .vgl
+                java.util.Set<String> undecidedSet = new java.util.LinkedHashSet<>();
+                try {
+                    com.vgl.cli.VglRepo vglRepo = com.vgl.cli.Utils.findVglRepo(localDirPath);
+                    if (vglRepo != null) {
+                        vglRepo.updateUndecidedFilesFromWorkingTree(git, status);
+                        undecidedSet.addAll(vglRepo.getUndecidedFiles());
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+
+                // Apply filters if any
+                if (!filters.isEmpty()) {
+                    nonIgnored = nonIgnored.stream().filter(p -> matchesAnyFilter(p, filters)).collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                    tracked = tracked.stream().filter(p -> matchesAnyFilter(p, filters)).collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                    undecidedSet = undecidedSet.stream().filter(p -> matchesAnyFilter(p, filters)).collect(java.util.stream.Collectors.toCollection(java.util.LinkedHashSet::new));
+                }
+
+                // untracked = nonIgnored - tracked - undecided
+                java.util.Set<String> untrackedSet = new java.util.LinkedHashSet<>(nonIgnored);
+                untrackedSet.removeAll(tracked);
+                untrackedSet.removeAll(undecidedSet);
+
+                int numUntracked = untrackedSet.size();
+                int numUndecided = undecidedSet.size();
+
                 List<String> fileSummary = new java.util.ArrayList<>();
                 fileSummary.add(numModified + " Modified");
                 fileSummary.add(numAdded + " Added");
                 fileSummary.add(numDeleted + " Deleted");
                 fileSummary.add(numUntracked + " Untracked");
-                
+                fileSummary.add(numUndecided + " Undecided");
+
                 System.out.println("FILES  " + String.join(", ", fileSummary));
 
                 // For -v, show which files need commit and merge
@@ -490,26 +527,13 @@ public class StatusCommand implements Command {
                 }
                 
                 if (veryVerbose) {
-
-                    java.nio.file.Path localDirPath = java.nio.file.Paths.get(localDir);
-                    com.vgl.cli.VglRepo vglRepo = com.vgl.cli.Utils.findVglRepo(localDirPath);
-                    if (vglRepo != null) {
-                        vglRepo.updateUndecidedFilesFromWorkingTree(git, status);
-                        // Show undecided files
-                        java.util.List<String> undecided = vglRepo.getUndecidedFiles();
-                        if (undecided.isEmpty()) {
-                            System.out.println("-- Undecided Files:");
-                            System.out.println("  (none)");
-                        } else {
-                            // Print a compact inline summary so tests that look for the
-                            // header followed by the filename on the same line will match.
-                            System.out.println("-- Undecided Files: " + String.join(", ", undecided));
-                            // Also print a detailed list for readability
-                            undecided.forEach(p -> System.out.println("  " + p));
-                        }
-                    } else {
+                    // Use the undecided set we computed earlier (may be empty)
+                    if (undecidedSet == null || undecidedSet.isEmpty()) {
                         System.out.println("-- Undecided Files:");
                         System.out.println("  (none)");
+                    } else {
+                        System.out.println("-- Undecided Files: " + String.join(", ", undecidedSet));
+                        undecidedSet.forEach(p -> System.out.println("  " + p));
                     }
 
                     // Retain ignored files logic as before
