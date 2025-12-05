@@ -46,6 +46,36 @@ tasks.test {
     }
 }
 
+// Integration test task: run tests tagged with 'integration' and ensure
+// the installed distribution exists so the tests can invoke the `vgl` binary.
+tasks.register<Test>("integrationTest") {
+    useJUnitPlatform {
+        includeTags("integration")
+    }
+    dependsOn(tasks.named("installDist"))
+    // Use the test output and runtime classpath
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    testLogging {
+        events("standardOut")
+        showStandardStreams = true
+        showExceptions = true
+    }
+}
+
+// Smoke test task: runs a small, fast subset of tests tagged "smoke".
+tasks.register<Test>("smokeTest") {
+    useJUnitPlatform {
+        includeTags("smoke")
+    }
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    testLogging {
+        events("standardOut")
+        showStandardStreams = true
+    }
+}
+
 version = vglVersion
 
 tasks.jar {
