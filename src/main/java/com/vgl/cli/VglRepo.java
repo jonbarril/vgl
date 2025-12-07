@@ -55,6 +55,27 @@ public class VglRepo implements Closeable {
                 setUndecidedFiles(undecided);
                 saveConfig();
             }
+
+            /**
+             * Fallback update of undecided files when JGit Status cannot be obtained.
+             * This scans the working tree for non-ignored files and treats them as undecided.
+             * This is a best-effort fallback used when the repo has no commits or status fails.
+             */
+            public void updateUndecidedFilesFromWorkingTree(org.eclipse.jgit.api.Git git) throws IOException {
+                java.util.List<String> undecided = new java.util.ArrayList<>();
+                try {
+                    org.eclipse.jgit.lib.Repository repo = git.getRepository();
+                    java.util.Set<String> nonIgnored = Utils.listNonIgnoredFiles(repoRoot, repo);
+                    for (String f : nonIgnored) {
+                        if (".vgl".equals(f)) continue;
+                        undecided.add(f);
+                    }
+                } catch (Exception e) {
+                    // Best-effort: ignore failures here
+                }
+                setUndecidedFiles(undecided);
+                saveConfig();
+            }
         private static final String UNDECIDED_KEY = "undecided.files";
     private final Git git;
     private final Path repoRoot;

@@ -35,6 +35,10 @@ public class TrackCommandTest {
                 var status = git.status().call();
                 assertThat(status.getAdded()).contains("test.txt");
             }
+
+            // Verify CLI-level status agrees (should not list as Untracked)
+            String out = repo.runCommand("status", "-vv");
+            assertThat(getStatusSectionLines(out, "Untracked Files")).doesNotContain("test.txt");
         }
     }
 
@@ -53,6 +57,9 @@ public class TrackCommandTest {
                 var status = git.status().call();
                 assertThat(status.getAdded()).contains("file1.txt", "file2.txt");
             }
+
+            String out = repo.runCommand("status", "-vv");
+            assertThat(getStatusSectionLines(out, "Untracked Files")).doesNotContain("file1.txt", "file2.txt");
         }
     }
 
@@ -72,6 +79,9 @@ public class TrackCommandTest {
                 assertThat(status.getAdded()).contains("file1.java", "file2.java");
                 assertThat(status.getAdded()).doesNotContain("file.txt");
             }
+
+            String out = repo.runCommand("status", "-vv");
+            assertThat(getStatusSectionLines(out, "Untracked Files")).doesNotContain("file1.java", "file2.java");
         }
     }
 
@@ -89,6 +99,9 @@ public class TrackCommandTest {
                 var status = git.status().call();
                 assertThat(status.getAdded()).contains("src/main/App.java");
             }
+
+            String out = repo.runCommand("status", "-vv");
+            assertThat(getStatusSectionLines(out, "Untracked Files")).doesNotContain("src/main/App.java");
         }
     }
 
@@ -115,6 +128,9 @@ public class TrackCommandTest {
                 var status = git.status().call();
                 assertThat(status.getChanged()).contains("test.txt");
             }
+
+            String out = repo.runCommand("status", "-vv");
+            assertThat(getStatusSectionLines(out, "Untracked Files")).doesNotContain("test.txt");
         }
     }
 
@@ -161,6 +177,28 @@ public class TrackCommandTest {
                 var status = git.status().call();
                 assertThat(status.getAdded()).contains("file1.txt", "file2.txt", "src/code.java");
             }
+
+            String out = repo.runCommand("status", "-vv");
+            // If user tracked '.', the files should not appear in Untracked
+            assertThat(getStatusSectionLines(out, "Untracked Files")).doesNotContain("file1.txt", "file2.txt", "src/code.java");
         }
+    }
+
+    private java.util.List<String> getStatusSectionLines(String statusOutput, String sectionName) {
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        String marker = "-- " + sectionName + ":";
+        String[] split = statusOutput.split("\r?\n");
+        boolean inSection = false;
+        for (String l : split) {
+            if (l.startsWith("-- ") && inSection) break; // end of section
+            if (inSection) {
+                String t = l.trim();
+                if (!t.isEmpty()) lines.add(t);
+            }
+            if (l.startsWith(marker)) {
+                inSection = true;
+            }
+        }
+        return lines;
     }
 }

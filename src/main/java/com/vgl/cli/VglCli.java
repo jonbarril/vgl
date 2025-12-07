@@ -1,4 +1,5 @@
 package com.vgl.cli;
+import com.vgl.cli.commands.StatusCommand;
 
 import com.vgl.cli.commands.*;
 import java.io.*;
