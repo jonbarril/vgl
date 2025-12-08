@@ -59,7 +59,22 @@ public class TrackCommand implements Command {
                 System.out.println("No .vgl repo found for undecided files.");
                 return 1;
             }
-            filesToTrack = vglRepo.getUndecidedFiles();
+            // When using -all, exclude any undecided files that are inside nested repositories.
+            filesToTrack = new java.util.ArrayList<>(vglRepo.getUndecidedFiles());
+            try {
+                java.util.Set<String> nested = Utils.listNestedRepos(dir);
+                if (nested != null && !nested.isEmpty()) {
+                    java.util.List<String> filtered = new java.util.ArrayList<>();
+                    for (String f : filesToTrack) {
+                        boolean insideNested = false;
+                        for (String n : nested) {
+                            if (f.equals(n) || f.startsWith(n + "/")) { insideNested = true; break; }
+                        }
+                        if (!insideNested) filtered.add(f);
+                    }
+                    filesToTrack = filtered;
+                }
+            } catch (Exception ignored) {}
             if (filesToTrack.isEmpty()) {
                 System.out.println("No undecided files to track.");
                 return 0;

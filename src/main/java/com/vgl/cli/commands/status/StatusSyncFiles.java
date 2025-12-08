@@ -144,6 +144,21 @@ public final class StatusSyncFiles {
             System.out.println("  (none)");
         } else {
             boolean any = false;
+            // Apply working-tree rename detection overlay so renames show as R instead of A/D
+            java.util.Map<String, String> workingRenames = computeWorkingRenames(git);
+            if (!workingRenames.isEmpty()) {
+                for (java.util.Map.Entry<String, String> r : workingRenames.entrySet()) {
+                    String oldPath = r.getKey();
+                    String newPath = r.getValue();
+                    // If working tree rename detected, show as R for the new path
+                    if (filesToCommit.containsKey(oldPath) || filesToCommit.containsKey(newPath)) {
+                        filesToCommit.remove(oldPath);
+                        filesToCommit.remove(newPath);
+                        filesToCommit.put(newPath, "R");
+                    }
+                }
+            }
+
             for (java.util.Map.Entry<String, String> e : filesToCommit.entrySet()) {
                 if (filters != null && !filters.isEmpty() && !matchesAnyFilter(e.getKey(), filters)) continue;
                 System.out.println("  " + e.getValue() + " " + e.getKey());
@@ -155,6 +170,38 @@ public final class StatusSyncFiles {
         System.out.println("  (none)");
 
         // print undecided/verbose lists handled by StatusCommand or StatusVerboseOutput
+    }
+
+    /**
+     * Detect renames between HEAD tree and working tree (uncommitted/staged renames).
+     * Returns a map of oldPath -> newPath for detected renames/copies.
+     */
+    public static java.util.Map<String, String> computeWorkingRenames(Git git) {
+        java.util.Map<String, String> out = new java.util.LinkedHashMap<>();
+        if (git == null) return out;
+        try {
+            org.eclipse.jgit.lib.ObjectId head = git.getRepository().resolve("HEAD");
+            if (head == null) return out;
+            org.eclipse.jgit.revwalk.RevWalk rw = new org.eclipse.jgit.revwalk.RevWalk(git.getRepository());
+            org.eclipse.jgit.revwalk.RevCommit headCommit = rw.parseCommit(head);
+            org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
+            org.eclipse.jgit.treewalk.CanonicalTreeParser oldTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+            oldTree.reset(reader, headCommit.getTree());
+            org.eclipse.jgit.treewalk.FileTreeIterator workingTreeIt = new org.eclipse.jgit.treewalk.FileTreeIterator(git.getRepository());
+            try (org.eclipse.jgit.diff.DiffFormatter df = new org.eclipse.jgit.diff.DiffFormatter(new java.io.ByteArrayOutputStream())) {
+                df.setRepository(git.getRepository());
+                df.setDetectRenames(true);
+                java.util.List<org.eclipse.jgit.diff.DiffEntry> diffs = df.scan(oldTree, workingTreeIt);
+                for (org.eclipse.jgit.diff.DiffEntry d : diffs) {
+                    if (d.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.RENAME || d.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.COPY) {
+                        out.put(d.getOldPath(), d.getNewPath());
+                    }
+                }
+            }
+            reader.close();
+            rw.close();
+        } catch (Exception ignore) {}
+        return out;
     }
 
     private static boolean matchesAnyFilter(String path, List<String> filters) {
