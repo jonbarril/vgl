@@ -130,11 +130,27 @@ public class StatusCommand implements Command {
                     }
                 } catch (Exception ignore) {}
                 if (!nested.isEmpty()) ignored.addAll(nested);
+                    if (!nested.isEmpty()) ignored.addAll(nested);
 
-                // Ensure tracked files do not include ignored or nested-repo entries
-                try {
-                    if (!ignored.isEmpty()) tracked.removeAll(ignored);
-                } catch (Exception ignore) {}
+                    // Ensure untracked/undecided do not include ignored entries
+                    try {
+                        if (!ignored.isEmpty()) {
+                            untracked.removeAll(ignored);
+                            undecided.removeAll(ignored);
+                        }
+                    } catch (Exception ignore) {}
+
+                    // Ensure tracked files do not include ignored or nested-repo entries
+                    try {
+                        if (!ignored.isEmpty()) tracked.removeAll(ignored);
+                    } catch (Exception ignore) {}
+                    // Also remove untracked and undecided so sections are mutually exclusive
+                    try {
+                        if (!untracked.isEmpty()) tracked.removeAll(untracked);
+                        if (!undecided.isEmpty()) tracked.removeAll(undecided);
+                    } catch (Exception ignore) {}
+                    // Extra guard: always ensure the VGL config file itself is never listed as tracked
+                    try { tracked.remove(".vgl"); } catch (Exception ignore) {}
 
                 com.vgl.cli.commands.status.StatusFileCounts counts = com.vgl.cli.commands.status.StatusFileCounts.fromStatus(status);
                 // Merge count is computed later in StatusSyncFiles; pass 0 for now (StatusSyncFiles prints details)
