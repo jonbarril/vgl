@@ -93,11 +93,24 @@ public class StatusCountsConsistencyTest {
             int expectedAdded = status.getAdded().size();
             int expectedModified = status.getModified().size() + status.getChanged().size();
             int expectedDeleted = status.getRemoved().size() + status.getMissing().size();
-            int expectedRenamed = StatusSyncFiles.computeCommitRenamedCount(git, status, "", "");
+            java.util.Set<String> commitRenames = StatusSyncFiles.computeCommitRenamedSet(git, status, "", "");
+            java.util.Map<String,String> workingRenames = StatusSyncFiles.computeWorkingRenames(git);
+            java.util.Set<String> unionRenames = new java.util.LinkedHashSet<>();
+            if (commitRenames != null) unionRenames.addAll(commitRenames);
+            if (workingRenames != null) unionRenames.addAll(workingRenames.values());
+            int expectedRenamed = unionRenames.size();
 
-            assertThat(added).as("Added count in FILES").isEqualTo(expectedAdded);
+            // Adjust expected added/deleted by removing any rename targets that appear in status added/removed
+            int expectedAddedAdjusted = expectedAdded;
+            int expectedDeletedAdjusted = expectedDeleted;
+            for (String r : unionRenames) {
+                if (status.getAdded().contains(r)) expectedAddedAdjusted = Math.max(0, expectedAddedAdjusted - 1);
+                if (status.getRemoved().contains(r) || status.getMissing().contains(r)) expectedDeletedAdjusted = Math.max(0, expectedDeletedAdjusted - 1);
+            }
+
+            assertThat(added).as("Added count in FILES").isEqualTo(expectedAddedAdjusted);
             assertThat(modified).as("Modified count in FILES").isEqualTo(expectedModified);
-            assertThat(deleted).as("Deleted count in FILES").isEqualTo(expectedDeleted);
+            assertThat(deleted).as("Deleted count in FILES").isEqualTo(expectedDeletedAdjusted);
             assertThat(renamed).as("Renamed count in FILES").isEqualTo(expectedRenamed);
 
             // Verify Files to Commit letters include expected entries

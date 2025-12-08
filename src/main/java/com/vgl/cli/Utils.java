@@ -286,9 +286,6 @@ public final class Utils {
             return false;
         }
         boolean consolePresent = System.console() != null;
-        if (Boolean.getBoolean("vgl.debug")) {
-            System.err.println("[vgl.debug] isInteractive: vgl.noninteractive=" + Boolean.getBoolean("vgl.noninteractive") + ", consolePresent=" + consolePresent);
-        }
         return consolePresent;
     }
 

@@ -16,8 +16,6 @@ public class TrackCommand implements Command {
     @Override public String name(){ return "track"; }
 
     @Override public int run(List<String> args) throws Exception {
-        System.out.println("[vgl.debug:FORCE] Args: " + args);
-        System.out.flush();
         if (args.isEmpty()) {
             System.out.println("Usage: vgl track <glob...> | -all");
             return 1;
@@ -48,9 +46,7 @@ public class TrackCommand implements Command {
                         vglRepo.updateUndecidedFilesFromWorkingTree(git);
                     }
                 } catch (Exception e) {
-                    if (Boolean.getBoolean("vgl.debug")) {
-                        System.err.println("[vgl.debug] TrackCommand: status read failed: " + e.getMessage());
-                    }
+                    // ignore status read failures during undecided update
                 }
             }
         }
@@ -285,9 +281,6 @@ public class TrackCommand implements Command {
                                 if (dc.getEntry(p) != null) isStaged = true;
                             } catch (Exception e) {
                                 // If we cannot read the index, fall back to conservative assumption
-                                if (Boolean.getBoolean("vgl.debug")) {
-                                    System.err.println("[vgl.debug] TrackCommand: DirCache read failed: " + e.getMessage());
-                                }
                                 isStaged = true;
                             }
                         }
@@ -297,15 +290,11 @@ public class TrackCommand implements Command {
                             actuallyTracked.add(p);
                         } else failed.add(p);
                     }
-                } catch (Exception e) {
-                    // If status cannot be read (unborn HEAD, repository odd state), log debug and conservatively
-                    // assume the files we attempted to add are tracked. This keeps behavior consistent with
-                    // the command output while avoiding false failure messages.
-                    if (Boolean.getBoolean("vgl.debug")) {
-                        System.err.println("[vgl.debug] TrackCommand: post-add status read failed: " + e.getMessage());
+                    } catch (Exception e) {
+                        // If status cannot be read (unborn HEAD, repository odd state), conservatively assume
+                        // the files we attempted to add are tracked.
+                        actuallyTracked.addAll(filteredFiles);
                     }
-                    actuallyTracked.addAll(filteredFiles);
-                }
 
                 if (!actuallyTracked.isEmpty()) {
                     // If the user requested '.' specifically, echo that instead of listing every file
@@ -340,16 +329,14 @@ public class TrackCommand implements Command {
                             staged.addAll(status.getRemoved());
                             staged.addAll(status.getMissing());
                             staged.addAll(status.getModified());
-                            System.out.println("[vgl.debug:FORCE] Undecided before: " + undecided);
-                            System.out.println("[vgl.debug:FORCE] Tracked set: " + staged);
+                            // Update undecided list based on staged entries
                             for (String u : undecided) {
                                 String uNorm = u.replace('\\','/');
                                 if (!staged.contains(uNorm)) {
                                     newUndecided.add(u);
                                 }
                             }
-                            System.out.println("[vgl.debug:FORCE] Undecided after: " + newUndecided);
-                            System.out.flush();
+                            
                         } else {
                             // No commits: skip status logic and debug output, keep undecided unchanged
                             newUndecided.addAll(undecided);

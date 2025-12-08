@@ -52,16 +52,48 @@ public class VglRepo implements Closeable {
                 try {
                     workingRenames = com.vgl.cli.commands.status.StatusSyncFiles.computeWorkingRenames(git);
                 } catch (Exception ignoredEx) {}
+                // Also compute commit-derived rename targets (fallback detection) so committed renames
+                // are not considered undecided either.
+                java.util.Set<String> commitRenameTargets = new java.util.HashSet<>();
+                try {
+                    java.util.Set<String> cr = com.vgl.cli.commands.status.StatusSyncFiles.computeCommitRenamedSet(git, status, "", "main");
+                    if (cr != null) commitRenameTargets.addAll(cr);
+                } catch (Exception ignoredEx) {}
 
                 for (String f : untracked) {
+                    // Normalize path separators to '/' for robust comparisons
+                    String fn = f.replace('\\', '/');
                     // Never include the VGL config file itself in the undecided list
-                    if (".vgl".equals(f)) continue;
-                    if (ignored.contains(f)) continue;
+                    if (".vgl".equals(fn)) continue;
+                    if (ignored.contains(fn)) continue;
                     // If this untracked file is the target of a detected rename from a tracked path,
-                    // skip adding it to undecided so it remains effectively tracked.
-                    if (workingRenames != null && !workingRenames.isEmpty() && workingRenames.containsValue(f)) continue;
-                    undecided.add(f);
+                    // either in the working tree or in recent commits, skip adding it to undecided so it
+                    // remains effectively tracked.
+                    boolean isRenameTarget = false;
+                    if (workingRenames != null && !workingRenames.isEmpty()) {
+                        for (String v : workingRenames.values()) {
+                            if (v != null && v.replace('\\','/').equals(fn)) { isRenameTarget = true; break; }
+                        }
+                    }
+                    if (isRenameTarget) continue;
+                    if (commitRenameTargets.contains(fn)) continue;
+                    undecided.add(fn);
                 }
+                // Remove any entries that are nested repositories (they should be considered ignored)
+                try {
+                    java.util.Set<String> nested = Utils.listNestedRepos(repoRoot);
+                    if (nested != null && !nested.isEmpty()) {
+                        java.util.List<String> filtered = new java.util.ArrayList<>();
+                        for (String u : undecided) {
+                            boolean insideNested = false;
+                            for (String n : nested) {
+                                if (u.equals(n) || u.startsWith(n + "/")) { insideNested = true; break; }
+                            }
+                            if (!insideNested) filtered.add(u);
+                        }
+                        undecided = filtered;
+                    }
+                } catch (Exception ignore) {}
                 setUndecidedFiles(undecided);
                 saveConfig();
             }
@@ -83,6 +115,21 @@ public class VglRepo implements Closeable {
                 } catch (Exception e) {
                     // Best-effort: ignore failures here
                 }
+                // Filter out nested repositories from undecided
+                try {
+                    java.util.Set<String> nested = Utils.listNestedRepos(repoRoot);
+                    if (nested != null && !nested.isEmpty()) {
+                        java.util.List<String> filtered = new java.util.ArrayList<>();
+                        for (String u : undecided) {
+                            boolean insideNested = false;
+                            for (String n : nested) {
+                                if (u.equals(n) || u.startsWith(n + "/")) { insideNested = true; break; }
+                            }
+                            if (!insideNested) filtered.add(u);
+                        }
+                        undecided = filtered;
+                    }
+                } catch (Exception ignore) {}
                 setUndecidedFiles(undecided);
                 saveConfig();
             }

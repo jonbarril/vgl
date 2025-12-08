@@ -1,4 +1,4 @@
-﻿package com.vgl.cli.commands;
+package com.vgl.cli.commands;
 
 import com.vgl.cli.VglCli;
 import com.vgl.cli.VglRepo;
@@ -60,6 +60,35 @@ public class StatusCommand implements Command {
                 System.out.println("STATE  (no commits yet)");
             } else {
                 StatusSyncState.printSyncState(git, remoteUrl, remoteBranch, localBranch);
+                // Print latest commit message under STATE section when verbose flags are used.
+                if (verbose || veryVerbose) {
+                    try {
+                        Iterable<org.eclipse.jgit.revwalk.RevCommit> logs = git.log().setMaxCount(1).call();
+                        java.util.Iterator<org.eclipse.jgit.revwalk.RevCommit> it = logs.iterator();
+                        if (it.hasNext()) {
+                            org.eclipse.jgit.revwalk.RevCommit head = it.next();
+                            String shortId = (head.getName() != null && head.getName().length() >= 7) ? head.getName().substring(0, 7) : head.getName();
+                            String fullMsg = head.getFullMessage();
+                            if (!veryVerbose) {
+                                // -v: show single-line message (truncate newlines)
+                                String oneLine = fullMsg.replace('\n', ' ').replaceAll("\\s+", " ").trim();
+                                System.out.println("  " + shortId + " " + oneLine);
+                            } else {
+                                // -vv: show full commit message (may be multiline)
+                                // Indent the first line; preserve subsequent newlines as-is.
+                                String[] lines = fullMsg.split("\\r?\\n", -1);
+                                if (lines.length > 0) {
+                                    System.out.println("  " + shortId + " " + lines[0]);
+                                    for (int i = 1; i < lines.length; i++) {
+                                        System.out.println("  " + lines[i]);
+                                    }
+                                } else {
+                                    System.out.println("  " + shortId + " " + fullMsg);
+                                }
+                            }
+                        }
+                    } catch (Exception ignore) {}
+                }
             }
 
             Set<String> tracked = new LinkedHashSet<>();
@@ -156,28 +185,46 @@ public class StatusCommand implements Command {
                 // Compute rename count as union of commit-derived renames and working-tree (uncommitted) renames
                 java.util.Set<String> commitRenames = com.vgl.cli.commands.status.StatusSyncFiles.computeCommitRenamedSet(git, status, remoteUrl, remoteBranch);
                 java.util.Map<String, String> workingRenames = com.vgl.cli.commands.status.StatusSyncFiles.computeWorkingRenames(git);
-                java.util.Set<String> unionRenames = new java.util.LinkedHashSet<>();
-                if (commitRenames != null) unionRenames.addAll(commitRenames);
-                if (workingRenames != null) unionRenames.addAll(workingRenames.values());
-                int renamedCountUnion = unionRenames.size();
-                int mergeCount = 0;
-                StatusFileSummary.printFileSummary(counts.modified, counts.added, counts.removed, renamedCountUnion,
-                    mergeCount, undecided, tracked, untracked, ignored);
-            // Print latest commit message for verbose and very-verbose modes
-            if (verbose || veryVerbose) {
-                try {
-                    Iterable<org.eclipse.jgit.revwalk.RevCommit> logs = git.log().setMaxCount(1).call();
-                    java.util.Iterator<org.eclipse.jgit.revwalk.RevCommit> it = logs.iterator();
-                    if (it.hasNext()) {
-                        org.eclipse.jgit.revwalk.RevCommit head = it.next();
-                        String shortId = (head.getName() != null && head.getName().length() >= 7) ? head.getName().substring(0, 7) : head.getName();
-                        String msg = head.getShortMessage();
-                        System.out.println(msg + " (" + shortId + ")");
+                // Compute the set of rename targets that will actually be displayed as R
+                java.util.Set<String> displayedRenameTargets = new java.util.LinkedHashSet<>();
+                if (commitRenames != null) {
+                    for (String c : commitRenames) {
+                        // If the commit rename target is subsequently renamed in the working tree,
+                        // it will be shown under the working-tree target instead, so skip it here.
+                        if (workingRenames != null && workingRenames.containsKey(c)) continue;
+                        displayedRenameTargets.add(c);
                     }
-                } catch (Exception ignore) {
                 }
-
-            }
+                if (workingRenames != null) displayedRenameTargets.addAll(workingRenames.values());
+                int renamedCountUnion = displayedRenameTargets.size();
+                // Adjust added/removed counts to exclude files that are actually rename targets
+                int adjustedAdded = counts.added;
+                int adjustedRemoved = counts.removed;
+                try {
+                    // compute sources (old paths) for commit renames and working renames
+                    java.util.Set<String> commitRenameSources = com.vgl.cli.commands.status.StatusSyncFiles.computeCommitRenamedSourceSet(git, status, remoteUrl, remoteBranch);
+                    java.util.Set<String> workingRenameSources = new java.util.LinkedHashSet<>();
+                    if (workingRenames != null) workingRenameSources.addAll(workingRenames.keySet());
+                    // Decrement added for any new-path rename targets (already in unionRenames)
+                    if (displayedRenameTargets != null && !displayedRenameTargets.isEmpty() && status != null) {
+                        for (String r : displayedRenameTargets) {
+                            if (status.getAdded().contains(r)) adjustedAdded = Math.max(0, adjustedAdded - 1);
+                        }
+                    }
+                    // Decrement removed for any old-path rename sources that appear in removed/missing
+                    java.util.Set<String> allRenameSources = new java.util.LinkedHashSet<>();
+                    if (commitRenameSources != null) allRenameSources.addAll(commitRenameSources);
+                    if (workingRenameSources != null) allRenameSources.addAll(workingRenameSources);
+                    if (!allRenameSources.isEmpty() && status != null) {
+                        for (String sPath : allRenameSources) {
+                            if (status.getRemoved().contains(sPath) || status.getMissing().contains(sPath)) adjustedRemoved = Math.max(0, adjustedRemoved - 1);
+                        }
+                    }
+                } catch (Exception ignore) {}
+                int mergeCount = 0;
+                StatusFileSummary.printFileSummary(counts.modified, adjustedAdded, adjustedRemoved, renamedCountUnion,
+                    mergeCount, undecided, tracked, untracked, ignored);
+            // Commit message is printed under STATE (handled earlier). Do not duplicate here.
 
             if (verbose || veryVerbose) {
                 com.vgl.cli.commands.status.StatusSyncFiles.printSyncFiles(git, status, remoteUrl, remoteBranch, filters, verbose, veryVerbose, vgl);
@@ -191,7 +238,7 @@ public class StatusCommand implements Command {
                 }
             }
         } catch (Exception e) {
-            System.err.println("[vgl.debug] StatusCommand: unable to open repo: " + e.getMessage());
+            System.err.println("StatusCommand: unable to open repo: " + e.getMessage());
         }
 
         return 0;

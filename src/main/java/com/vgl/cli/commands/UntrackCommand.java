@@ -44,9 +44,7 @@ public class UntrackCommand implements Command {
                         vglRepo.updateUndecidedFilesFromWorkingTree(git);
                     }
                 } catch (Exception e) {
-                    if (Boolean.getBoolean("vgl.debug")) {
-                        System.err.println("[vgl.debug] UntrackCommand: status read failed: " + e.getMessage());
-                    }
+                    // ignore status read failures during undecided update
                 }
             }
         }
