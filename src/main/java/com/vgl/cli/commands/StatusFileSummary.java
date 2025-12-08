@@ -29,8 +29,8 @@ public class StatusFileSummary {
     }
 
     // Backward-compatible overload: existing callers can continue to pass sets only.
-    public static void printFileSummary(Set<String> undecidedSet, Set<String> trackedSet, Set<String> untrackedSet, Set<String> nestedRepos) {
+    public static void printFileSummary(Set<String> undecidedSet, Set<String> trackedSet, Set<String> untrackedSet, Set<String> ignoredSet) {
         // Backward-compatible: assume no working-tree changes and no merges
-        printFileSummary(0, 0, 0, 0, 0, undecidedSet, trackedSet, untrackedSet, nestedRepos);
+        printFileSummary(0, 0, 0, 0, 0, undecidedSet, trackedSet, untrackedSet, ignoredSet);
     }
 }
