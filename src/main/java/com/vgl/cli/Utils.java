@@ -414,17 +414,19 @@ public final class Utils {
      * 4) fallback to `cwd`
      */
     public static Path resolveEffectiveRepoRoot(VglCli vgl, Path cwd) {
-        try {
-            if (vgl != null && vgl.isConfigurable()) {
-                String ld = vgl.getLocalDir();
-                if (ld != null && !ld.isBlank()) return Paths.get(ld).toAbsolutePath().normalize();
-            }
-        } catch (Exception ignored) {}
-
+        // Prefer persisted user-level VGL state so an explicit switch/jump persists
+        // the active repository even when the user later changes the current working directory.
         try {
             VglStateStore.VglState s = VglStateStore.read();
             if (s != null && s.localDir != null && !s.localDir.isBlank()) {
                 return Paths.get(s.localDir).toAbsolutePath().normalize();
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            if (vgl != null && vgl.isConfigurable()) {
+                String ld = vgl.getLocalDir();
+                if (ld != null && !ld.isBlank()) return Paths.get(ld).toAbsolutePath().normalize();
             }
         } catch (Exception ignored) {}
 
@@ -615,6 +617,8 @@ public final class Utils {
      * @param veryVerbose If true, show extra details such as remote branch listings
      */
     public static void printSwitchState(com.vgl.cli.VglCli vgl, boolean verbose, boolean veryVerbose) {
+        // Determine the effective current state. Prefer persisted VglStateStore values
+        // so that an explicit jump/switch remains active when the user simply cds around.
         String localDir = vgl.getLocalDir();
         String localBranch = vgl.getLocalBranch();
         String remoteUrl = vgl.getRemoteUrl();
@@ -623,6 +627,15 @@ public final class Utils {
         String jumpLocalBranch = vgl.getJumpLocalBranch();
         String jumpRemoteUrl = vgl.getJumpRemoteUrl();
         String jumpRemoteBranch = vgl.getJumpRemoteBranch();
+        try {
+            VglStateStore.VglState s = VglStateStore.read();
+            if (s != null) {
+                if (s.localDir != null && !s.localDir.isBlank()) localDir = s.localDir;
+                if (s.localBranch != null && !s.localBranch.isBlank()) localBranch = s.localBranch;
+                if (s.remoteUrl != null && !s.remoteUrl.isBlank()) remoteUrl = s.remoteUrl;
+                if (s.remoteBranch != null && !s.remoteBranch.isBlank()) remoteBranch = s.remoteBranch;
+            }
+        } catch (Exception ignored) {}
         
         String separator = " :: ";
         int maxPathLen = 35;
