@@ -110,7 +110,7 @@ public class StatusCommand implements Command {
             untracked.removeAll(undecided);
 
             // Remove nested repositories from untracked/undecided so they only appear in Ignored
-            if (!nested.isEmpty()) {
+                if (!nested.isEmpty()) {
                 untracked.removeAll(nested);
                 undecided.removeAll(nested);
             }
@@ -130,6 +130,11 @@ public class StatusCommand implements Command {
                     }
                 } catch (Exception ignore) {}
                 if (!nested.isEmpty()) ignored.addAll(nested);
+
+                // Ensure tracked files do not include ignored or nested-repo entries
+                try {
+                    if (!ignored.isEmpty()) tracked.removeAll(ignored);
+                } catch (Exception ignore) {}
 
                 com.vgl.cli.commands.status.StatusFileCounts counts = com.vgl.cli.commands.status.StatusFileCounts.fromStatus(status);
                 // Merge count is computed later in StatusSyncFiles; pass 0 for now (StatusSyncFiles prints details)
