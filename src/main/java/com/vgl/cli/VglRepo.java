@@ -47,10 +47,20 @@ public class VglRepo implements Closeable {
                 }
                 // Only keep untracked files that are not ignored
                 java.util.List<String> undecided = new java.util.ArrayList<>();
+                // Compute working-tree renames so we don't treat renamed tracked files as undecided
+                java.util.Map<String,String> workingRenames = new java.util.HashMap<>();
+                try {
+                    workingRenames = com.vgl.cli.commands.status.StatusSyncFiles.computeWorkingRenames(git);
+                } catch (Exception ignoredEx) {}
+
                 for (String f : untracked) {
                     // Never include the VGL config file itself in the undecided list
                     if (".vgl".equals(f)) continue;
-                    if (!ignored.contains(f)) undecided.add(f);
+                    if (ignored.contains(f)) continue;
+                    // If this untracked file is the target of a detected rename from a tracked path,
+                    // skip adding it to undecided so it remains effectively tracked.
+                    if (workingRenames != null && !workingRenames.isEmpty() && workingRenames.containsValue(f)) continue;
+                    undecided.add(f);
                 }
                 setUndecidedFiles(undecided);
                 saveConfig();

@@ -341,7 +341,7 @@ public class TrackCommand implements Command {
                             staged.addAll(status.getMissing());
                             staged.addAll(status.getModified());
                             System.out.println("[vgl.debug:FORCE] Undecided before: " + undecided);
-                            System.out.println("[vgl.debug:FORCE] Staged set: " + staged);
+                            System.out.println("[vgl.debug:FORCE] Tracked set: " + staged);
                             for (String u : undecided) {
                                 String uNorm = u.replace('\\','/');
                                 if (!staged.contains(uNorm)) {
