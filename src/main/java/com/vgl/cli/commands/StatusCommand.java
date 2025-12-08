@@ -153,9 +153,10 @@ public class StatusCommand implements Command {
                     try { tracked.remove(".vgl"); } catch (Exception ignore) {}
 
                 com.vgl.cli.commands.status.StatusFileCounts counts = com.vgl.cli.commands.status.StatusFileCounts.fromStatus(status);
-                // Merge count is computed later in StatusSyncFiles; pass 0 for now (StatusSyncFiles prints details)
+                // Compute rename count from commit diffs (commits-to-push / commits-to-pull)
+                int commitRenameCount = com.vgl.cli.commands.status.StatusSyncFiles.computeCommitRenamedCount(git, status, remoteUrl, remoteBranch);
                 int mergeCount = 0;
-                StatusFileSummary.printFileSummary(counts.modified, counts.added, counts.removed, counts.replaced,
+                StatusFileSummary.printFileSummary(counts.modified, counts.added, counts.removed, commitRenameCount,
                     mergeCount, undecided, tracked, untracked, ignored);
             // Print latest commit message for verbose and very-verbose modes
             if (verbose || veryVerbose) {

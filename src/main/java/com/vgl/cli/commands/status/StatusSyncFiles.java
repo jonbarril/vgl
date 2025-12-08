@@ -51,24 +51,30 @@ public final class StatusSyncFiles {
                             org.eclipse.jgit.treewalk.CanonicalTreeParser newTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
                             oldTree.reset(reader, commit.getParent(0).getTree());
                             newTree.reset(reader, commit.getTree());
-                            List<org.eclipse.jgit.diff.DiffEntry> diffs = git.diff().setOldTree(oldTree).setNewTree(newTree).call();
-                            for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
-                                String newPath = diff.getNewPath();
-                                String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE ? diff.getOldPath() : newPath;
-                                String statusLetter = switch (diff.getChangeType()) {
-                                    case ADD -> "A";
-                                    case MODIFY -> "M";
-                                    case DELETE -> "D";
-                                    case RENAME -> "R";
-                                    case COPY -> "R"; // treat copy as moved/renamed for user-facing summary
-                                    default -> "M";
-                                };
-                                // If this file came from a commit that needs to be pushed, mark it with an up-arrow
-                                if (!filesToCommit.containsKey(filePath)) filesToCommit.put(filePath, "↑ " + statusLetter);
+                            try (org.eclipse.jgit.diff.DiffFormatter df = new org.eclipse.jgit.diff.DiffFormatter(new java.io.ByteArrayOutputStream())) {
+                                df.setRepository(git.getRepository());
+                                df.setDetectRenames(true);
+                                List<org.eclipse.jgit.diff.DiffEntry> diffs = df.scan(oldTree, newTree);
+                                for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
+                                    String newPath = diff.getNewPath();
+                                    String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE ? diff.getOldPath() : newPath;
+                                    String statusLetter = switch (diff.getChangeType()) {
+                                        case ADD -> "A";
+                                        case MODIFY -> "M";
+                                        case DELETE -> "D";
+                                        case RENAME -> "R";
+                                        case COPY -> "R"; // treat copy as moved/renamed for user-facing summary
+                                        default -> "M";
+                                    };
+                                    // If this file came from a commit that needs to be pushed, mark it with an up-arrow
+                                    filesToCommit.put(filePath, "↑ " + statusLetter);
+                                }
                             }
                             reader.close();
                         }
                     }
+
+                    
 
                     // commits to pull
                     Iterable<org.eclipse.jgit.revwalk.RevCommit> commitsToPull = git.log().add(remoteHead).not(localHead).call();
@@ -80,20 +86,24 @@ public final class StatusSyncFiles {
                             org.eclipse.jgit.treewalk.CanonicalTreeParser newTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
                             oldTree.reset(reader, commit.getParent(0).getTree());
                             newTree.reset(reader, commit.getTree());
-                            List<org.eclipse.jgit.diff.DiffEntry> diffs = git.diff().setOldTree(oldTree).setNewTree(newTree).call();
-                            for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
-                                String newPath = diff.getNewPath();
-                                String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE ? diff.getOldPath() : newPath;
-                                String statusLetter = switch (diff.getChangeType()) {
-                                    case ADD -> "A";
-                                    case MODIFY -> "M";
-                                    case DELETE -> "D";
-                                    case RENAME -> "R";
-                                    case COPY -> "R"; // show copies as renames/moves
-                                    default -> "M";
-                                };
-                                // If this file came from a commit that needs to be pulled, mark it with a down-arrow
-                                if (!filesToMerge.containsKey(filePath)) filesToMerge.put(filePath, "↓ " + statusLetter);
+                            try (org.eclipse.jgit.diff.DiffFormatter df = new org.eclipse.jgit.diff.DiffFormatter(new java.io.ByteArrayOutputStream())) {
+                                df.setRepository(git.getRepository());
+                                df.setDetectRenames(true);
+                                List<org.eclipse.jgit.diff.DiffEntry> diffs = df.scan(oldTree, newTree);
+                                for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
+                                    String newPath = diff.getNewPath();
+                                    String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE ? diff.getOldPath() : newPath;
+                                    String statusLetter = switch (diff.getChangeType()) {
+                                        case ADD -> "A";
+                                        case MODIFY -> "M";
+                                        case DELETE -> "D";
+                                        case RENAME -> "R";
+                                        case COPY -> "R"; // show copies as renames/moves
+                                        default -> "M";
+                                    };
+                                    // If this file came from a commit that needs to be pulled, mark it with a down-arrow
+                                    filesToMerge.put(filePath, "↓ " + statusLetter);
+                                }
                             }
                             reader.close();
                         }
@@ -159,5 +169,104 @@ public final class StatusSyncFiles {
             }
         }
         return false;
+    }
+
+    public static int computeCommitRenamedCount(Git git, Status status, String remoteUrl, String remoteBranch) {
+        java.util.Set<String> renamed = new java.util.LinkedHashSet<>();
+        boolean hasRemote = remoteUrl != null && !remoteUrl.isEmpty();
+        String effectiveRemoteBranch = remoteBranch;
+        if (!hasRemote) {
+            try {
+                org.eclipse.jgit.lib.StoredConfig cfg = git.getRepository().getConfig();
+                String gitRemoteUrl = cfg.getString("remote", "origin", "url");
+                if (gitRemoteUrl != null && !gitRemoteUrl.isEmpty()) {
+                    hasRemote = true;
+                    String currentBranch = git.getRepository().getBranch();
+                    String trackedBranch = cfg.getString("branch", currentBranch, "merge");
+                    if (trackedBranch != null) effectiveRemoteBranch = trackedBranch.replaceFirst("refs/heads/", "");
+                    else effectiveRemoteBranch = currentBranch;
+                }
+            } catch (Exception ignore) {}
+        }
+
+        if (hasRemote) {
+            try {
+                org.eclipse.jgit.lib.ObjectId localHead = git.getRepository().resolve("HEAD");
+                org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + effectiveRemoteBranch);
+                if (localHead != null && remoteHead != null && !localHead.equals(remoteHead)) {
+                    // commits to push
+                    Iterable<org.eclipse.jgit.revwalk.RevCommit> commitsToPush = git.log().add(localHead).not(remoteHead).call();
+                    for (org.eclipse.jgit.revwalk.RevCommit commit : commitsToPush) {
+                        if (commit.getParentCount() > 0) {
+                            org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
+                            org.eclipse.jgit.treewalk.CanonicalTreeParser oldTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                            org.eclipse.jgit.treewalk.CanonicalTreeParser newTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                            oldTree.reset(reader, commit.getParent(0).getTree());
+                            newTree.reset(reader, commit.getTree());
+                            List<org.eclipse.jgit.diff.DiffEntry> diffs = git.diff().setOldTree(oldTree).setNewTree(newTree).call();
+                            for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
+                                if (diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.RENAME || diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.COPY) {
+                                    String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE ? diff.getOldPath() : diff.getNewPath();
+                                    renamed.add(filePath);
+                                }
+                            }
+                            reader.close();
+                        }
+                    }
+
+                    // commits to pull
+                    Iterable<org.eclipse.jgit.revwalk.RevCommit> commitsToPull = git.log().add(remoteHead).not(localHead).call();
+                    for (org.eclipse.jgit.revwalk.RevCommit commit : commitsToPull) {
+                        if (commit.getParentCount() > 0) {
+                            org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
+                            org.eclipse.jgit.treewalk.CanonicalTreeParser oldTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                            org.eclipse.jgit.treewalk.CanonicalTreeParser newTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                            oldTree.reset(reader, commit.getParent(0).getTree());
+                            newTree.reset(reader, commit.getTree());
+                            List<org.eclipse.jgit.diff.DiffEntry> diffs = git.diff().setOldTree(oldTree).setNewTree(newTree).call();
+                            for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
+                                if (diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.RENAME || diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.COPY) {
+                                    String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE ? diff.getOldPath() : diff.getNewPath();
+                                    renamed.add(filePath);
+                                }
+                            }
+                            reader.close();
+                        }
+                    }
+                }
+            } catch (Exception ignore) {}
+        }
+
+        // Fallback: if we couldn't determine remote commits-to-push/pull, inspect the most
+        // recent local commit vs its parent for renames (covers the common case of a single
+        // local commit that hasn't been pushed yet).
+        if (renamed.isEmpty()) {
+            try {
+                org.eclipse.jgit.lib.ObjectId head = git.getRepository().resolve("HEAD");
+                if (head != null) {
+                    org.eclipse.jgit.revwalk.RevWalk rw = new org.eclipse.jgit.revwalk.RevWalk(git.getRepository());
+                    org.eclipse.jgit.revwalk.RevCommit headCommit = rw.parseCommit(head);
+                    if (headCommit.getParentCount() > 0) {
+                        org.eclipse.jgit.revwalk.RevCommit parent = rw.parseCommit(headCommit.getParent(0));
+                        org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
+                        org.eclipse.jgit.treewalk.CanonicalTreeParser oldTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                        org.eclipse.jgit.treewalk.CanonicalTreeParser newTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                        oldTree.reset(reader, parent.getTree());
+                        newTree.reset(reader, headCommit.getTree());
+                        List<org.eclipse.jgit.diff.DiffEntry> diffs = git.diff().setOldTree(oldTree).setNewTree(newTree).call();
+                        for (org.eclipse.jgit.diff.DiffEntry diff : diffs) {
+                            if (diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.RENAME || diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.COPY) {
+                                String filePath = diff.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.DELETE ? diff.getOldPath() : diff.getNewPath();
+                                renamed.add(filePath);
+                            }
+                        }
+                        reader.close();
+                    }
+                    rw.close();
+                }
+            } catch (Exception ignore) {}
+        }
+
+        return renamed.size();
     }
 }
