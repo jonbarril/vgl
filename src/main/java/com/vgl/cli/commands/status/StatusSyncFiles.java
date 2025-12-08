@@ -144,21 +144,6 @@ public final class StatusSyncFiles {
             System.out.println("  (none)");
         } else {
             boolean any = false;
-            // Apply working-tree rename detection overlay so renames show as R instead of A/D
-            java.util.Map<String, String> workingRenames = computeWorkingRenames(git);
-            if (!workingRenames.isEmpty()) {
-                for (java.util.Map.Entry<String, String> r : workingRenames.entrySet()) {
-                    String oldPath = r.getKey();
-                    String newPath = r.getValue();
-                    // If working tree rename detected, show as R for the new path
-                    if (filesToCommit.containsKey(oldPath) || filesToCommit.containsKey(newPath)) {
-                        filesToCommit.remove(oldPath);
-                        filesToCommit.remove(newPath);
-                        filesToCommit.put(newPath, "R");
-                    }
-                }
-            }
-
             for (java.util.Map.Entry<String, String> e : filesToCommit.entrySet()) {
                 if (filters != null && !filters.isEmpty() && !matchesAnyFilter(e.getKey(), filters)) continue;
                 System.out.println("  " + e.getValue() + " " + e.getKey());
