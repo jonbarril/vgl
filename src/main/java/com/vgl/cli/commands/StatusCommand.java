@@ -68,9 +68,23 @@ public class StatusCommand implements Command {
             Set<String> nested = new LinkedHashSet<>();
 
             if (status != null && !unbornRepo) {
-                tracked.addAll(status.getChanged());
-                tracked.addAll(status.getModified());
+                // Untracked files come directly from JGit status
                 untracked.addAll(status.getUntracked());
+
+                // Build the tracked set from the working tree: list all non-ignored files
+                // and subtract untracked/undecided/nested later. This ensures committed
+                // (clean) tracked files are included in the Tracked Files listing.
+                try {
+                    java.nio.file.Path repoRoot = Paths.get(vgl.getLocalDir()).toAbsolutePath().normalize();
+                    java.util.Set<String> nonIgnored = Utils.listNonIgnoredFiles(repoRoot, git.getRepository());
+                    if (nonIgnored != null) tracked.addAll(nonIgnored);
+                } catch (Exception ignore) {}
+
+                // Also add status-reported changed/modified entries to be safe
+                try {
+                    tracked.addAll(status.getChanged());
+                    tracked.addAll(status.getModified());
+                } catch (Exception ignore) {}
             }
 
             // Detect nested repositories (directories containing their own .git)
