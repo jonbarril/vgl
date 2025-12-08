@@ -60,7 +60,7 @@ public final class StatusSyncFiles {
                                     case MODIFY -> "M";
                                     case DELETE -> "D";
                                     case RENAME -> "R";
-                                    case COPY -> "C";
+                                    case COPY -> "R"; // treat copy as moved/renamed for user-facing summary
                                     default -> "M";
                                 };
                                 // If this file came from a commit that needs to be pushed, mark it with an up-arrow
@@ -89,7 +89,7 @@ public final class StatusSyncFiles {
                                     case MODIFY -> "M";
                                     case DELETE -> "D";
                                     case RENAME -> "R";
-                                    case COPY -> "C";
+                                    case COPY -> "R"; // show copies as renames/moves
                                     default -> "M";
                                 };
                                 // If this file came from a commit that needs to be pulled, mark it with a down-arrow

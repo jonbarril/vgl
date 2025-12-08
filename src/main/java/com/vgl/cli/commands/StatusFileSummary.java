@@ -9,7 +9,8 @@ public class StatusFileSummary {
                                        Set<String> undecidedSet, Set<String> trackedSet,
                                        Set<String> untrackedSet, Set<String> ignoredSet) {
         // First line: compact counts of working-tree changes
-        String first = "FILES   " + numModified + " Modified, " + numAdded + " Added, " + numRemoved + " Deleted, " + numReplaced + " Replaced";
+        // Order and labels: Added, Modified, Renamed, Deleted
+        String first = "FILES   " + numAdded + " Added, " + numModified + " Modified, " + numReplaced + " Renamed, " + numRemoved + " Deleted";
         System.out.println(first);
 
         // Second line: categorical summary aligned under the counts
