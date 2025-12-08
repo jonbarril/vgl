@@ -1,4 +1,4 @@
-package com.vgl.cli.commands;
+﻿package com.vgl.cli.commands;
 
 import com.vgl.cli.VglCli;
 import com.vgl.cli.VglRepo;
@@ -153,10 +153,15 @@ public class StatusCommand implements Command {
                     try { tracked.remove(".vgl"); } catch (Exception ignore) {}
 
                 com.vgl.cli.commands.status.StatusFileCounts counts = com.vgl.cli.commands.status.StatusFileCounts.fromStatus(status);
-                // Compute rename count from commit diffs (commits-to-push / commits-to-pull)
-                int commitRenameCount = com.vgl.cli.commands.status.StatusSyncFiles.computeCommitRenamedCount(git, status, remoteUrl, remoteBranch);
+                // Compute rename count as union of commit-derived renames and working-tree (uncommitted) renames
+                java.util.Set<String> commitRenames = com.vgl.cli.commands.status.StatusSyncFiles.computeCommitRenamedSet(git, status, remoteUrl, remoteBranch);
+                java.util.Map<String, String> workingRenames = com.vgl.cli.commands.status.StatusSyncFiles.computeWorkingRenames(git);
+                java.util.Set<String> unionRenames = new java.util.LinkedHashSet<>();
+                if (commitRenames != null) unionRenames.addAll(commitRenames);
+                if (workingRenames != null) unionRenames.addAll(workingRenames.values());
+                int renamedCountUnion = unionRenames.size();
                 int mergeCount = 0;
-                StatusFileSummary.printFileSummary(counts.modified, counts.added, counts.removed, commitRenameCount,
+                StatusFileSummary.printFileSummary(counts.modified, counts.added, counts.removed, renamedCountUnion,
                     mergeCount, undecided, tracked, untracked, ignored);
             // Print latest commit message for verbose and very-verbose modes
             if (verbose || veryVerbose) {

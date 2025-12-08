@@ -143,6 +143,21 @@ public final class StatusSyncFiles {
         if (filesToCommit.isEmpty()) {
             System.out.println("  (none)");
         } else {
+            // overlay any detected working-tree renames so that renamed files show as R
+            java.util.Map<String, String> workingRenames = computeWorkingRenames(git);
+            if (!workingRenames.isEmpty()) {
+                for (java.util.Map.Entry<String, String> r : workingRenames.entrySet()) {
+                    String oldPath = r.getKey();
+                    String newPath = r.getValue();
+                    boolean hadOld = filesToCommit.containsKey(oldPath);
+                    boolean hadNew = filesToCommit.containsKey(newPath);
+                    // Remove any separate A/D entries and show a single R under the new path
+                    if (hadOld) filesToCommit.remove(oldPath);
+                    if (hadNew) filesToCommit.remove(newPath);
+                    filesToCommit.put(newPath, "R");
+                }
+            }
+
             boolean any = false;
             for (java.util.Map.Entry<String, String> e : filesToCommit.entrySet()) {
                 if (filters != null && !filters.isEmpty() && !matchesAnyFilter(e.getKey(), filters)) continue;
@@ -204,6 +219,11 @@ public final class StatusSyncFiles {
     }
 
     public static int computeCommitRenamedCount(Git git, Status status, String remoteUrl, String remoteBranch) {
+        java.util.Set<String> renamed = computeCommitRenamedSet(git, status, remoteUrl, remoteBranch);
+        return renamed.size();
+    }
+
+    public static java.util.Set<String> computeCommitRenamedSet(Git git, Status status, String remoteUrl, String remoteBranch) {
         java.util.Set<String> renamed = new java.util.LinkedHashSet<>();
         boolean hasRemote = remoteUrl != null && !remoteUrl.isEmpty();
         String effectiveRemoteBranch = remoteBranch;
@@ -299,6 +319,6 @@ public final class StatusSyncFiles {
             } catch (Exception ignore) {}
         }
 
-        return renamed.size();
+        return renamed;
     }
 }
