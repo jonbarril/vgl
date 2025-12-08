@@ -36,16 +36,29 @@ public class CommitCommand implements Command {
 
             Git git = vglRepo.getGit();
 
-            // First get status to see what needs to be added
-            Status preStatus = git.status().call();
+            // First get status to see what needs to be added. Some JGit environments
+            // can throw MissingObjectException when the index or HEAD is in a transient
+            // state (especially after rename operations). Be defensive: if status
+            // fails, fall back to staging everything and continue.
+            Status preStatus = null;
+            try {
+                preStatus = git.status().call();
+            } catch (Exception ignore) {
+                preStatus = null;
+            }
 
             // Update undecided files in .vgl before commit
-            vglRepo.updateUndecidedFilesFromWorkingTree(git, preStatus);
+            try {
+                if (preStatus != null) vglRepo.updateUndecidedFilesFromWorkingTree(git, preStatus);
+                else vglRepo.updateUndecidedFilesFromWorkingTree(git);
+            } catch (Exception ignore) {}
 
-            // Stage untracked files (respects .gitignore automatically)
-            if (!preStatus.getUntracked().isEmpty()) {
-                for (String untracked : preStatus.getUntracked()) {
-                    git.add().addFilepattern(untracked).call();
+            // Stage untracked files (respects .gitignore automatically) if we have status
+            if (preStatus != null) {
+                if (!preStatus.getUntracked().isEmpty()) {
+                    for (String untracked : preStatus.getUntracked()) {
+                        try { git.add().addFilepattern(untracked).call(); } catch (Exception ignore) {}
+                    }
                 }
             }
 
@@ -60,17 +73,28 @@ public class CommitCommand implements Command {
             // Stage deletions
             git.add().setUpdate(true).addFilepattern(".").call();
 
-            Status s = git.status().call();
+            Status s = null;
+            try {
+                s = git.status().call();
+            } catch (Exception ignore) {
+                s = null;
+            }
             // Exclude git-ignored files from status checks
             org.eclipse.jgit.lib.Repository repo = git.getRepository();
-            boolean nothingToCommit = (
-                s.getAdded().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                s.getChanged().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                s.getRemoved().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                s.getModified().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                s.getMissing().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                s.getUntracked().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0
-            );
+            boolean nothingToCommit = false;
+            if (s == null) {
+                // Conservative: assume there is something to commit when status unavailable
+                nothingToCommit = false;
+            } else {
+                nothingToCommit = (
+                    s.getAdded().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    s.getChanged().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    s.getRemoved().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    s.getModified().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    s.getMissing().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    s.getUntracked().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0
+                );
+            }
             if (nothingToCommit) {
                 System.out.println("Nothing to commit.");
                 System.out.flush();
@@ -106,16 +130,22 @@ public class CommitCommand implements Command {
                 return 1;
             }
 
-            // Final check: if status is clean, skip commit
-            Status finalStatus = git.status().call();
-            boolean finalNothingToCommit = (
-                finalStatus.getAdded().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                finalStatus.getChanged().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                finalStatus.getRemoved().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                finalStatus.getModified().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                finalStatus.getMissing().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                finalStatus.getUntracked().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0
-            );
+            // Final check: if status is clean, skip commit. Be defensive if status call fails.
+            Status finalStatus = null;
+            try { finalStatus = git.status().call(); } catch (Exception ignore) { finalStatus = null; }
+            boolean finalNothingToCommit = false;
+            if (finalStatus == null) {
+                finalNothingToCommit = false;
+            } else {
+                finalNothingToCommit = (
+                    finalStatus.getAdded().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    finalStatus.getChanged().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    finalStatus.getRemoved().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    finalStatus.getModified().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    finalStatus.getMissing().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    finalStatus.getUntracked().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0
+                );
+            }
             if (finalNothingToCommit) {
                 System.out.println("Nothing to commit.");
                 System.out.flush();

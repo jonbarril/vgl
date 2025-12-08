@@ -21,9 +21,22 @@ public class StatusCommand implements Command {
     @Override
     public int run(List<String> args) throws Exception {
         VglCli vgl = new VglCli();
-        boolean hasLocalRepo = vgl.isConfigurable();
-
-        String localDir = hasLocalRepo ? Paths.get(vgl.getLocalDir()).toAbsolutePath().normalize().toString() : "(none)";
+        // Treat the configured local repository as active only when the current
+        // working directory is inside that configured repository. This prevents
+        // `vgl status` from reporting a remote/local repo when run in an
+        // unrelated empty directory that happens to have a persisted .vgl
+        // pointing elsewhere.
+        java.nio.file.Path cwd = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        boolean hasLocalRepo = false;
+        try {
+            String cfgLocal = vgl.getLocalDir();
+            if (cfgLocal != null && !cfgLocal.isEmpty()) {
+                java.nio.file.Path cfgPath = Paths.get(cfgLocal).toAbsolutePath().normalize();
+                if (java.nio.file.Files.exists(cfgPath.resolve(".git")) && cwd.startsWith(cfgPath)) {
+                    hasLocalRepo = true;
+                }
+            }
+        } catch (Exception ignored) {}
         String localBranch = hasLocalRepo ? vgl.getLocalBranch() : "main";
         String remoteUrl = hasLocalRepo ? (vgl.getRemoteUrl() != null ? vgl.getRemoteUrl() : "") : "";
         String remoteBranch = hasLocalRepo ? vgl.getRemoteBranch() : "main";
@@ -125,12 +138,20 @@ public class StatusCommand implements Command {
             try {
                 VglRepo repo = Utils.findVglRepo(Paths.get(vgl.getLocalDir()));
                 if (repo != null) {
-                    // Ensure the undecided file list is up-to-date by scanning the working tree
+                    // Only update undecided files if a .vgl config file already exists.
+                    // Avoid creating a new .vgl during a passive `status` run on an empty
+                    // directory (the user shouldn't get a config file unless they ran
+                    // `vgl create` or similar).
                     try {
-                        if (status != null) repo.updateUndecidedFilesFromWorkingTree(git, status);
-                        else repo.updateUndecidedFilesFromWorkingTree(git);
+                        java.nio.file.Path vglFile = repo.getRepoRoot().resolve(".vgl");
+                        if (java.nio.file.Files.exists(vglFile)) {
+                            try {
+                                if (status != null) repo.updateUndecidedFilesFromWorkingTree(git, status);
+                                else repo.updateUndecidedFilesFromWorkingTree(git);
+                            } catch (Exception ignore) {}
+                            undecided.addAll(repo.getUndecidedFiles());
+                        }
                     } catch (Exception ignore) {}
-                    undecided.addAll(repo.getUndecidedFiles());
                 }
             } catch (Exception ignored) {
             }
