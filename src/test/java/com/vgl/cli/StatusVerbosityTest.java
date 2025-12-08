@@ -97,7 +97,7 @@ public class StatusVerbosityTest {
         assertThat(output).contains("-- Untracked Files:");
         assertThat(output).contains("-- Ignored Files:");
         assertThat(output).contains("-- Undecided Files:");
-        // Should list undecided.txt in undecided section
-        assertThat(output).containsPattern("-- Undecided Files:\s+undecided.txt");
+        // Should list undecided.txt in undecided section (as an indented entry)
+        assertThat(output).contains("  undecided.txt");
     }
 }

@@ -604,6 +604,17 @@ public final class Utils {
      * @param verbose If true, show full paths; if false, truncate with ellipsis
      */
     public static void printSwitchState(com.vgl.cli.VglCli vgl, boolean verbose) {
+        printSwitchState(vgl, verbose, false);
+    }
+
+    /**
+     * Print consistent switch state showing LOCAL and REMOTE, current and jump.
+     * Uses compact format: section header on same line as first value.
+     * @param vgl The VglCli instance
+     * @param verbose If true, show full paths; if false, truncate with ellipsis
+     * @param veryVerbose If true, show extra details such as remote branch listings
+     */
+    public static void printSwitchState(com.vgl.cli.VglCli vgl, boolean verbose, boolean veryVerbose) {
         String localDir = vgl.getLocalDir();
         String localBranch = vgl.getLocalBranch();
         String remoteUrl = vgl.getRemoteUrl();
@@ -663,21 +674,27 @@ public final class Utils {
         
         String jumpBranch = (jumpLocalBranch != null && !jumpLocalBranch.isEmpty()) ? jumpLocalBranch : "(none)";
         System.out.println("       " + padRight(displayJumpDir, maxLen) + separator + jumpBranch);
-        // If very verbose, list local branches immediately under LOCAL for clarity
-        if (verbose && vgl.isConfigurable()) {
-            try (Git git = Git.open(Paths.get(vgl.getLocalDir()).toFile())) {
+        // If veryVerbose, list local branches immediately under LOCAL for clarity
+        if (veryVerbose && localDir != null && !localDir.isEmpty()) {
+                    System.out.println("  -- Branches:");
+            boolean printedAny = false;
+            try (Git git = Git.open(Paths.get(localDir).toFile())) {
                 List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
-                if (!branches.isEmpty()) {
-                    for (org.eclipse.jgit.lib.Ref ref : branches) {
-                        String branchName = ref.getName().replaceFirst("refs/heads/", "");
-                        if (branchName.equals(localBranch)) {
-                            System.out.println("  * " + branchName);
-                        } else {
-                            System.out.println("    " + branchName);
-                        }
+                for (org.eclipse.jgit.lib.Ref ref : branches) {
+                    String branchName = ref.getName().replaceFirst("refs/heads/", "");
+                    if (branchName.equals(localBranch)) {
+                        System.out.println("  * " + branchName);
+                    } else {
+                        System.out.println("    " + branchName);
                     }
+                    printedAny = true;
                 }
             } catch (Exception ignored) {}
+            // If Git returned no branches (e.g., unborn repo), show configured/current branch
+            if (!printedAny) {
+                String showBranch = (localBranch == null || localBranch.isEmpty()) ? "(none)" : localBranch;
+                System.out.println("  * " + showBranch);
+            }
         }
 
         // REMOTE: if no remote URL, branch must be (none)
@@ -687,6 +704,36 @@ public final class Utils {
         // REMOTE jump: if no jump remote URL, branch must be (none)
         String jumpRemoteBranchDisplay = hasJumpRemote ? jumpRemoteBranch : "(none)";
         System.out.println("       " + padRight(displayJumpRemote, maxLen) + separator + jumpRemoteBranchDisplay);
+
+        // If veryVerbose, list remote branches under REMOTE
+        if (veryVerbose && localDir != null && !localDir.isEmpty()) {
+                    System.out.println("  -- Branches:");
+            boolean printedAnyRemote = false;
+            if (hasRemote) {
+                try (Git git = Git.open(Paths.get(localDir).toFile())) {
+                    List<org.eclipse.jgit.lib.Ref> remoteBranches = git.branchList().setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE).call();
+                    for (org.eclipse.jgit.lib.Ref ref : remoteBranches) {
+                        String full = ref.getName(); // refs/remotes/origin/branch
+                        String display = full.replaceFirst("refs/remotes/", "");
+                        if (display.endsWith("/" + currentRemoteBranch)) {
+                            System.out.println("  * " + display);
+                        } else {
+                            System.out.println("    " + display);
+                        }
+                        printedAnyRemote = true;
+                    }
+                } catch (Exception ignored) {}
+            }
+            // If no remote branches found, show configured remote branch (or (none))
+            if (!printedAnyRemote) {
+                String showRemote = hasRemote && currentRemoteBranch != null ? currentRemoteBranch : "(none)";
+                if (hasRemote) {
+                    System.out.println("  * " + showRemote);
+                } else {
+                    System.out.println("  (no remote)");
+                }
+            }
+        }
     }
     
     /**

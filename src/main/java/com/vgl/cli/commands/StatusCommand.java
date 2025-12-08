@@ -43,7 +43,7 @@ public class StatusCommand implements Command {
             System.out.println("       (none) :: (none)");
             return 0;
         } else {
-            Utils.printSwitchState(vgl, verbose || veryVerbose);
+            Utils.printSwitchState(vgl, verbose, veryVerbose);
         }
 
         try (Git git = Git.open(Paths.get(vgl.getLocalDir()).toFile())) {
@@ -101,9 +101,27 @@ public class StatusCommand implements Command {
                 undecided.removeAll(nested);
             }
 
-            com.vgl.cli.commands.status.StatusFileCounts counts = com.vgl.cli.commands.status.StatusFileCounts.fromStatus(status);
-            StatusFileSummary.printFileSummary(counts.modified, counts.added, counts.removed, counts.replaced,
-                    undecided, tracked, untracked, nested);
+                // Build ignored set: include JGit's ignored files, ensure .vgl is treated as ignored,
+                // and include nested repos as ignored entries.
+                Set<String> ignored = new LinkedHashSet<>();
+                if (status != null) {
+                    try {
+                        ignored.addAll(status.getIgnoredNotInIndex());
+                    } catch (Exception ignore) {}
+                }
+                try {
+                    java.nio.file.Path repoRoot = Paths.get(vgl.getLocalDir()).toAbsolutePath().normalize();
+                    if (Utils.isGitIgnored(repoRoot.resolve(".vgl"), git.getRepository())) {
+                        ignored.add(".vgl");
+                    }
+                } catch (Exception ignore) {}
+                if (!nested.isEmpty()) ignored.addAll(nested);
+
+                com.vgl.cli.commands.status.StatusFileCounts counts = com.vgl.cli.commands.status.StatusFileCounts.fromStatus(status);
+                // Merge count is computed later in StatusSyncFiles; pass 0 for now (StatusSyncFiles prints details)
+                int mergeCount = 0;
+                StatusFileSummary.printFileSummary(counts.modified, counts.added, counts.removed, counts.replaced,
+                    mergeCount, undecided, tracked, untracked, ignored);
             // Print latest commit message for verbose and very-verbose modes
             if (verbose || veryVerbose) {
                 try {
@@ -124,11 +142,11 @@ public class StatusCommand implements Command {
                 com.vgl.cli.commands.status.StatusSyncFiles.printSyncFiles(git, status, remoteUrl, remoteBranch, filters, verbose, veryVerbose, vgl);
 
                 if (verbose && !veryVerbose) {
-                    System.out.println("-- Undecided Files:");
+                    System.out.println("  -- Undecided Files:");
                     if (undecided.isEmpty()) System.out.println("  (none)"); else undecided.forEach(p -> System.out.println("  " + p));
                 }
                 if (veryVerbose) {
-                    StatusVerboseOutput.printVerbose(tracked, untracked, undecided, nested, vgl.getLocalDir(), filters);
+                    StatusVerboseOutput.printVerbose(tracked, untracked, undecided, ignored, vgl.getLocalDir(), filters);
                 }
             }
         } catch (Exception e) {

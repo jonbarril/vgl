@@ -174,8 +174,10 @@ public class CreateCommand implements Command {
                 }
             }
         }
-        // Case 3: .git exists but no -lb or -bb specified - ERROR
+        // Case 3: .git exists but no -lb or -bb specified
         else {
+            // Creating a new VGL configuration inside an existing git repository is an anti-pattern.
+            // Preserve historical behavior: error out and advise user how to create or switch branches.
             System.err.println("Error: Repository already exists at " + dir);
             System.err.println("To create a new branch, use: vgl create -lb BRANCH");
             System.err.println("To switch to an existing branch, use: vgl switch -lb BRANCH");

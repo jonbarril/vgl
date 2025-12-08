@@ -100,7 +100,7 @@ public final class StatusSyncFiles {
                     }
 
                     // Print Files to Commit
-                    System.out.println("-- Files to Commit:");
+                    System.out.println("  -- Files to Commit:");
                     if (filesToCommit.isEmpty()) {
                         System.out.println("  (none)");
                     } else {
@@ -111,7 +111,7 @@ public final class StatusSyncFiles {
                     }
 
                     // Print Files to Merge
-                    System.out.println("-- Files to Merge:");
+                    System.out.println("  -- Files to Merge:");
                     if (filesToMerge.isEmpty()) {
                         System.out.println("  (none)");
                     } else {
@@ -129,7 +129,7 @@ public final class StatusSyncFiles {
         }
 
         // No remote or remote in sync: print working-tree changes only
-        System.out.println("-- Files to Commit:");
+        System.out.println("  -- Files to Commit:");
         if (filesToCommit.isEmpty()) {
             System.out.println("  (none)");
         } else {
@@ -141,7 +141,7 @@ public final class StatusSyncFiles {
             }
             if (!any) System.out.println("  (none)");
         }
-        System.out.println("-- Files to Merge:");
+        System.out.println("  -- Files to Merge:");
         System.out.println("  (none)");
 
         // print undecided/verbose lists handled by StatusCommand or StatusVerboseOutput

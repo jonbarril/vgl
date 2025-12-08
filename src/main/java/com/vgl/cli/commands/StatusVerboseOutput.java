@@ -4,96 +4,65 @@ import java.util.Set;
 
 public class StatusVerboseOutput {
     public static void printVerbose(Set<String> trackedSet, Set<String> untrackedSet, Set<String> undecidedSet, Set<String> nestedRepos, String localDir, java.util.List<String> filters) {
-        System.out.println("-- Tracked Files:");
-        if (trackedSet.isEmpty()) {
+        java.util.function.Predicate<String> matchesFilter = (p) -> {
+            if (filters == null || filters.isEmpty()) return true;
+            for (String f : filters) {
+                if (f.contains("*") || f.contains("?")) {
+                    String regex = f.replace(".", "\\.").replace("*", ".*").replace("?", ".");
+                    if (p.matches(regex)) return true;
+                } else {
+                    if (p.equals(f) || p.startsWith(f + "/") || p.contains("/" + f)) return true;
+                }
+            }
+            return false;
+        };
+
+        // Order: Undecided, Tracked, Untracked, Ignored
+        System.out.println("  -- Undecided Files:");
+        if (undecidedSet == null || undecidedSet.isEmpty()) {
             System.out.println("  (none)");
         } else {
-            boolean any = false;
+            // Do not print a duplicated preview line; just list entries under the subsection header
+            boolean anyPrinted = false;
+            for (String p : undecidedSet) {
+                if (!matchesFilter.test(p)) continue;
+                System.out.println("  " + ensureTrailingSlash(p, localDir));
+                anyPrinted = true;
+            }
+            if (!anyPrinted) System.out.println("  (none)");
+        }
+
+        System.out.println("  -- Tracked Files:");
+        if (trackedSet == null || trackedSet.isEmpty()) {
+            System.out.println("  (none)");
+        } else {
+            boolean anyPrinted = false;
             for (String p : trackedSet) {
-                if (filters != null && !filters.isEmpty()) {
-                    boolean matched = false;
-                    for (String f : filters) {
-                        if (f.contains("*") || f.contains("?")) {
-                            String regex = f.replace(".", "\\.")
-                                            .replace("*", ".*")
-                                            .replace("?", ".");
-                            if (p.matches(regex)) matched = true;
-                        } else {
-                            if (p.equals(f) || p.startsWith(f + "/") || p.contains("/" + f)) matched = true;
-                        }
-                    }
-                    if (!matched) continue;
-                }
+                if (!matchesFilter.test(p)) continue;
                 System.out.println("  " + ensureTrailingSlash(p, localDir));
-                any = true;
+                anyPrinted = true;
             }
-            if (!any) System.out.println("  (none)");
+            if (!anyPrinted) System.out.println("  (none)");
         }
-        System.out.println("-- Untracked Files:");
-        if (untrackedSet.isEmpty()) {
+
+        System.out.println("  -- Untracked Files:");
+        if (untrackedSet == null || untrackedSet.isEmpty()) {
             System.out.println("  (none)");
         } else {
-            boolean any = false;
+            boolean anyPrinted = false;
             for (String p : untrackedSet) {
-                if (filters != null && !filters.isEmpty()) {
-                    boolean matched = false;
-                    for (String f : filters) {
-                        if (f.contains("*") || f.contains("?")) {
-                            String regex = f.replace(".", "\\.")
-                                            .replace("*", ".*")
-                                            .replace("?", ".");
-                            if (p.matches(regex)) matched = true;
-                        } else {
-                            if (p.equals(f) || p.startsWith(f + "/") || p.contains("/" + f)) matched = true;
-                        }
-                    }
-                    if (!matched) continue;
-                }
+                if (!matchesFilter.test(p)) continue;
                 System.out.println("  " + ensureTrailingSlash(p, localDir));
-                any = true;
+                anyPrinted = true;
             }
-            if (!any) System.out.println("  (none)");
+            if (!anyPrinted) System.out.println("  (none)");
         }
-        System.out.println("-- Undecided Files:");
-        if (undecidedSet.isEmpty()) {
-            System.out.println("  (none)");
-        } else {
-            // Also print a compact header line containing the first filename to satisfy
-            // different regex expectations in tests (some check for filename immediately
-            // following the header on the same line).
-            String firstOut = null;
-            for (String p : undecidedSet) {
-                firstOut = ensureTrailingSlash(p, localDir);
-                break;
-            }
-            if (firstOut != null) System.out.println("-- Undecided Files: " + firstOut);
-            boolean any = false;
-            for (String p : undecidedSet) {
-                if (filters != null && !filters.isEmpty()) {
-                    boolean matched = false;
-                    for (String f : filters) {
-                        if (f.contains("*") || f.contains("?")) {
-                            String regex = f.replace(".", "\\.")
-                                            .replace("*", ".*")
-                                            .replace("?", ".");
-                            if (p.matches(regex)) matched = true;
-                        } else {
-                            if (p.equals(f) || p.startsWith(f + "/") || p.contains("/" + f)) matched = true;
-                        }
-                    }
-                    if (!matched) continue;
-                }
-                System.out.println("  " + ensureTrailingSlash(p, localDir));
-                any = true;
-            }
-            if (!any) System.out.println("  (none)");
-        }
-        System.out.println("-- Ignored Files:");
-        if (nestedRepos.isEmpty()) {
+
+        System.out.println("  -- Ignored Files:");
+        if (nestedRepos == null || nestedRepos.isEmpty()) {
             System.out.println("  (none)");
         } else {
             for (String p : nestedRepos) {
-                // If the ignored file is a directory with .git, mark as repo
                 java.io.File file = new java.io.File(localDir, p);
                 if (file.isDirectory() && new java.io.File(file, ".git").exists()) {
                     System.out.println("  " + (p.endsWith("/") ? p : p + "/") + " (repo)");
@@ -103,6 +72,7 @@ public class StatusVerboseOutput {
             }
         }
     }
+
     private static String ensureTrailingSlash(String path, String localDir) {
         java.io.File file = new java.io.File(localDir, path);
         if (file.isDirectory() && !path.endsWith("/")) {

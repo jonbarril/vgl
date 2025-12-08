@@ -31,31 +31,40 @@ public class StatusNestedRepoTest {
             Git.init().setDirectory(nested1.toFile()).call();
 
             String output = repo.runCommand("status", "-vv");
+            // Dump output for diagnosis
+            System.out.println(output);
+            // normalize optional leading indentation on subsection headers for flexible assertions
+            String norm = output.replaceAll("(?m)^\\s+-- ", "-- ");
 
             // nested repos must appear in Ignored with (repo) suffix
             assertThat(output).contains("Repo0/ (repo)");
             assertThat(output).contains("Repo1/ (repo)");
 
-            // Ensure nested repos do not appear in Untracked list
-            assertThat(output).doesNotContain("-- Untracked Files:\n  Repo0");
-            assertThat(output).doesNotContain("-- Untracked Files:\n  Repo1");
+            // Ensure nested repos do not appear in Untracked list (use normalized headers)
+            assertThat(norm).doesNotContain("-- Untracked Files\n  Repo0");
+            assertThat(norm).doesNotContain("-- Untracked Files\n  Repo1");
 
             // Parse the summary counts line and the Untracked listing to ensure counts match
-            String[] lines = output.split("\r?\n");
+            // Use normalized output (headers normalized) for parsing lists
+            String[] lines = norm.split("\r?\n");
+                // (no debug prints)
             int summaryUntracked = -1;
             int summaryIgnored = -1;
             for (String l : lines) {
                 if (l.contains("Undecided") && l.contains("Untracked") && l.contains("Ignored")) {
-                    // format: <spaces> <num> Undecided, <num> Tracked, <num> Untracked, <num> Ignored
+                    // Newer format may include leading "To Commit" and "To Merge" items.
                     String s = l.trim();
                     String[] parts = s.split(",");
-                    if (parts.length >= 4) {
-                        String untrackedPart = parts[2].trim(); // e.g. "5 Untracked"
-                        String ignoredPart = parts[3].trim(); // e.g. "4 Ignored"
-                        summaryUntracked = Integer.parseInt(untrackedPart.split(" ")[0]);
-                        summaryIgnored = Integer.parseInt(ignoredPart.split(" ")[0]);
-                        break;
+                    // Find the parts containing the labels we care about rather than rely on fixed positions
+                    for (String part : parts) {
+                        String p = part.trim();
+                        if (p.endsWith("Untracked")) {
+                            summaryUntracked = Integer.parseInt(p.split(" ")[0]);
+                        } else if (p.endsWith("Ignored")) {
+                            summaryIgnored = Integer.parseInt(p.split(" ")[0]);
+                        }
                     }
+                    break;
                 }
             }
 

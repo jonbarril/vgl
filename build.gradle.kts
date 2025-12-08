@@ -87,6 +87,28 @@ tasks.jar {
     }
 }
 
+// Strip UTF-8 BOM from Java source files to avoid compiler errors on Windows
+tasks.register("stripBom") {
+    doLast {
+        val javaRoots = listOf(file("src/main/java"), file("src/test/java"))
+        javaRoots.forEach { root ->
+            if (!root.exists()) return@forEach
+            fileTree(root).matching { include("**/*.java") }.forEach { f ->
+                val text = f.readText(Charsets.UTF_8)
+                if (text.isNotEmpty() && text[0] == '\uFEFF') {
+                    val cleaned = text.trimStart('\uFEFF')
+                    f.writeText(cleaned, Charsets.UTF_8)
+                    println("[stripBom] Removed BOM from: ${f.relativeTo(projectDir)}")
+                }
+            }
+        }
+    }
+}
+
+tasks.named("compileJava") {
+    dependsOn("stripBom")
+}
+
 // Ensure the wrapper task uses a compatible Gradle version
 tasks.wrapper {
     gradleVersion = "8.3" // Set to a stable version
