@@ -73,6 +73,12 @@ public class StatusCommand implements Command {
                 untracked.addAll(status.getUntracked());
             }
 
+            // Detect nested repositories (directories containing their own .git)
+            try {
+                java.util.Set<String> found = Utils.listNestedRepos(Paths.get(vgl.getLocalDir()));
+                if (found != null) nested.addAll(found);
+            } catch (Exception ignore) {}
+
             try {
                 VglRepo repo = Utils.findVglRepo(Paths.get(vgl.getLocalDir()));
                 if (repo != null) {
@@ -89,9 +95,30 @@ public class StatusCommand implements Command {
             // Remove undecided files from the untracked set so they appear only in the Undecided section
             untracked.removeAll(undecided);
 
+            // Remove nested repositories from untracked/undecided so they only appear in Ignored
+            if (!nested.isEmpty()) {
+                untracked.removeAll(nested);
+                undecided.removeAll(nested);
+            }
+
             com.vgl.cli.commands.status.StatusFileCounts counts = com.vgl.cli.commands.status.StatusFileCounts.fromStatus(status);
             StatusFileSummary.printFileSummary(counts.modified, counts.added, counts.removed, counts.replaced,
                     undecided, tracked, untracked, nested);
+            // Print latest commit message for verbose and very-verbose modes
+            if (verbose || veryVerbose) {
+                try {
+                    Iterable<org.eclipse.jgit.revwalk.RevCommit> logs = git.log().setMaxCount(1).call();
+                    java.util.Iterator<org.eclipse.jgit.revwalk.RevCommit> it = logs.iterator();
+                    if (it.hasNext()) {
+                        org.eclipse.jgit.revwalk.RevCommit head = it.next();
+                        String shortId = (head.getName() != null && head.getName().length() >= 7) ? head.getName().substring(0, 7) : head.getName();
+                        String msg = head.getShortMessage();
+                        System.out.println(msg + " (" + shortId + ")");
+                    }
+                } catch (Exception ignore) {
+                }
+
+            }
 
             if (verbose || veryVerbose) {
                 com.vgl.cli.commands.status.StatusSyncFiles.printSyncFiles(git, status, remoteUrl, remoteBranch, filters, verbose, veryVerbose, vgl);
@@ -100,20 +127,8 @@ public class StatusCommand implements Command {
                     System.out.println("-- Undecided Files:");
                     if (undecided.isEmpty()) System.out.println("  (none)"); else undecided.forEach(p -> System.out.println("  " + p));
                 }
-
                 if (veryVerbose) {
-                    try {
-                        Iterable<org.eclipse.jgit.revwalk.RevCommit> logs = git.log().setMaxCount(1).call();
-                        java.util.Iterator<org.eclipse.jgit.revwalk.RevCommit> it = logs.iterator();
-                        if (it.hasNext()) {
-                            org.eclipse.jgit.revwalk.RevCommit head = it.next();
-                            String shortId = (head.getName() != null && head.getName().length() >= 7) ? head.getName().substring(0, 7) : head.getName();
-                            String msg = head.getShortMessage();
-                            System.out.println(msg + " (" + shortId + ")");
-                        }
-                    } catch (Exception ignore) {
-                    }
-                    StatusVerboseOutput.printVerbose(tracked, untracked, undecided, nested, vgl.getLocalDir());
+                    StatusVerboseOutput.printVerbose(tracked, untracked, undecided, nested, vgl.getLocalDir(), filters);
                 }
             }
         } catch (Exception e) {
@@ -123,3 +138,4 @@ public class StatusCommand implements Command {
         return 0;
     }
 }
+

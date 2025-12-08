@@ -130,7 +130,17 @@ public final class StatusSyncFiles {
 
         // No remote or remote in sync: print working-tree changes only
         System.out.println("-- Files to Commit:");
-        if (filesToCommit.isEmpty()) System.out.println("  (none)"); else filesToCommit.forEach((k,v)-> System.out.println("  " + v + " " + k));
+        if (filesToCommit.isEmpty()) {
+            System.out.println("  (none)");
+        } else {
+            boolean any = false;
+            for (java.util.Map.Entry<String, String> e : filesToCommit.entrySet()) {
+                if (filters != null && !filters.isEmpty() && !matchesAnyFilter(e.getKey(), filters)) continue;
+                System.out.println("  " + e.getValue() + " " + e.getKey());
+                any = true;
+            }
+            if (!any) System.out.println("  (none)");
+        }
         System.out.println("-- Files to Merge:");
         System.out.println("  (none)");
 

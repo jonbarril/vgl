@@ -361,8 +361,33 @@ public final class Utils {
     }
 
     public static List<String> expandGlobs(List<String> globs) throws IOException {
+        // Prefer repo-root-relative expansion when possible; fall back to CWD-based expansion
+        try {
+            Path repoRoot = getGitRepoRoot(currentDir());
+            if (repoRoot != null) return expandGlobs(globs, repoRoot);
+        } catch (Exception ignored) {}
+        return expandGlobs(globs, null);
+    }
+
+    /**
+     * Expand globs relative to an explicit repo root (if provided). Returns paths
+     * relative to the repo root (or base) using '/' separators.
+     */
+    public static List<String> expandGlobs(List<String> globs, Path repoRoot) throws IOException {
         if (globs == null || globs.isEmpty()) return Collections.emptyList();
-        Path base = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+
+        // If we have a repo root and can open the repository, delegate to the
+        // repo-aware implementation that filters nested repos and ignored files.
+        if (repoRoot != null) {
+            try {
+                Git git = findGitRepo(repoRoot);
+                if (git != null) {
+                    return expandGlobsToFiles(globs, repoRoot.toAbsolutePath().normalize(), git.getRepository());
+                }
+            } catch (Exception ignored) {}
+        }
+
+        Path base = (repoRoot != null) ? repoRoot.toAbsolutePath().normalize() : currentDir();
         Set<String> out = new LinkedHashSet<>();
         for (String g : globs) {
             if ("*".equals(g) || ".".equals(g)) {
@@ -379,6 +404,37 @@ public final class Utils {
             }
         }
         return new ArrayList<>(out);
+    }
+
+    /**
+     * Resolve an effective repo root for callers. Preference order:
+     * 1) explicit `VglCli` configuration (if provided and configurable)
+     * 2) persisted VGL state file (user-level)
+     * 3) git repo root discovered from `cwd`
+     * 4) fallback to `cwd`
+     */
+    public static Path resolveEffectiveRepoRoot(VglCli vgl, Path cwd) {
+        try {
+            if (vgl != null && vgl.isConfigurable()) {
+                String ld = vgl.getLocalDir();
+                if (ld != null && !ld.isBlank()) return Paths.get(ld).toAbsolutePath().normalize();
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            VglStateStore.VglState s = VglStateStore.read();
+            if (s != null && s.localDir != null && !s.localDir.isBlank()) {
+                return Paths.get(s.localDir).toAbsolutePath().normalize();
+            }
+        } catch (Exception ignored) {}
+
+        try {
+            Path start = (cwd != null) ? cwd : currentDir();
+            Path repoRoot = getGitRepoRoot(start);
+            if (repoRoot != null) return repoRoot;
+        } catch (Exception ignored) {}
+
+        return (cwd != null) ? cwd.toAbsolutePath().normalize() : currentDir();
     }
 
     /**
