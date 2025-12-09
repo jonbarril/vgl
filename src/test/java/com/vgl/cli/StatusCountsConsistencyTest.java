@@ -128,7 +128,7 @@ public class StatusCountsConsistencyTest {
 
             boolean sawA = false, sawM = false, sawD = false, sawR = false;
             for (String ln : lines) {
-                String plain = ln.replace("↑ ", "").replace("↓ ", "");
+                String plain = ln.replace("↑ ", "").replace("↓ ", "").replace("AHEAD ", "").replace("BEHIND ", "");
                 if (plain.startsWith("A ") && plain.contains("d.txt")) sawA = true;
                 if (plain.startsWith("M ") && plain.contains("a.txt")) sawM = true;
                 if (plain.startsWith("D ") && plain.contains("b.txt")) sawD = true;
@@ -174,7 +174,7 @@ public class StatusCountsConsistencyTest {
                     String t = l.trim();
                     if (t.isEmpty() || t.equals("(none)")) continue;
                     // section entries are indented lines not starting with '--'
-                    if (!t.startsWith("--") && !t.startsWith("FILES") && !t.startsWith("STATE") && !t.startsWith("LOCAL") && !t.startsWith("REMOTE")) {
+                    if (!t.startsWith("--") && !t.startsWith("FILES") && !t.startsWith("COMMITS") && !t.startsWith("LOCAL") && !t.startsWith("REMOTE")) {
                         sectionCounts.put(current, sectionCounts.getOrDefault(current, 0) + 1);
                     }
                 }

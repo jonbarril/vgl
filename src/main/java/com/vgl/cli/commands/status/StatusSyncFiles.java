@@ -66,8 +66,8 @@ public final class StatusSyncFiles {
                                         case COPY -> "R"; // treat copy as moved/renamed for user-facing summary
                                         default -> "M";
                                     };
-                                    // If this file came from a commit that needs to be pushed, mark it with an up-arrow
-                                    filesToCommit.put(filePath, "↑ " + statusLetter);
+                                    // If this file came from a commit that needs to be pushed, mark it as the change letter
+                                    filesToCommit.put(filePath, statusLetter);
                                 }
                             }
                             reader.close();
@@ -99,8 +99,8 @@ public final class StatusSyncFiles {
                                         case COPY -> "R"; // show copies as renames/moves
                                         default -> "M";
                                     };
-                                    // If this file came from a commit that needs to be pulled, mark it with a down-arrow
-                                    filesToMerge.put(filePath, "↓ " + statusLetter);
+                                    // If this file came from a commit that needs to be pulled, mark it as the change letter
+                                    filesToMerge.put(filePath, statusLetter);
                                 }
                             }
                             reader.close();

@@ -56,7 +56,7 @@ public class StatusFilesRenameCountsTest {
             for (String l : out.split("\\r?\\n")) {
                 String t = l.trim();
                 if (t.isEmpty() || t.equals("(none)")) continue;
-                String plain = t.replace("↑ ", "").replace("↓ ", "");
+                String plain = t.replace("↑ ", "").replace("↓ ", "").replace("AHEAD ", "").replace("BEHIND ", "");
                 if (plain.startsWith("R ")) rCount++;
             }
 

@@ -47,11 +47,11 @@ public class RepoAndStatusTest {
             String basic = repo.runCommand("status");
             assertThat(basic).contains("LOCAL");
             assertThat(basic).contains("REMOTE");
-            assertThat(basic).contains("STATE");
+            assertThat(basic).contains("COMMITS");
             assertThat(basic).contains("FILES");
 
             String v = repo.runCommand("status", "-v");
-            assertThat(v).contains("STATE");
+            assertThat(v).contains("COMMITS");
 
             String vv = repo.runCommand("status", "-vv");
             assertThat(vv).containsAnyOf("initial", "[0-9a-f]{7}");

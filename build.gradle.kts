@@ -109,6 +109,68 @@ tasks.named("compileJava") {
     dependsOn("stripBom")
 }
 
+// Quick JavaExec tasks to run the CLI for manual inspection (status/help)
+val runtimeCp = sourceSets["main"].runtimeClasspath
+
+tasks.register<JavaExec>("vglStatus") {
+    group = "verification"
+    description = "Run vgl status (default verbosity) using the main class"
+    classpath = runtimeCp
+    mainClass.set("com.vgl.cli.VglMain")
+    args = listOf("status")
+}
+
+tasks.register<JavaExec>("vglStatusV") {
+    group = "verification"
+    description = "Run vgl status -v"
+    classpath = runtimeCp
+    mainClass.set("com.vgl.cli.VglMain")
+    args = listOf("status", "-v")
+}
+
+tasks.register<JavaExec>("vglStatusVV") {
+    group = "verification"
+    description = "Run vgl status -vv"
+    classpath = runtimeCp
+    mainClass.set("com.vgl.cli.VglMain")
+    args = listOf("status", "-vv")
+}
+
+tasks.register<JavaExec>("vglHelp") {
+    group = "help"
+    description = "Run vgl help"
+    classpath = runtimeCp
+    mainClass.set("com.vgl.cli.VglMain")
+    args = listOf("help")
+}
+
+tasks.register<JavaExec>("vglHelpV") {
+    group = "help"
+    description = "Run vgl help -v"
+    classpath = runtimeCp
+    mainClass.set("com.vgl.cli.VglMain")
+    args = listOf("help", "-v")
+}
+
+tasks.register<JavaExec>("vglHelpVV") {
+    group = "help"
+    description = "Run vgl help -vv"
+    classpath = runtimeCp
+    mainClass.set("com.vgl.cli.VglMain")
+    args = listOf("help", "-vv")
+}
+
+// Test task to run a single output-only test that prints status/help using the test harness.
+tasks.register<Test>("manualOutputTest") {
+    group = "verification"
+    description = "Run ManualOutputRunner test which prints status/help output to console"
+    useJUnitPlatform()
+    include("**/ManualOutputRunner*")
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    testLogging.showStandardStreams = true
+}
+
 // Ensure the wrapper task uses a compatible Gradle version
 tasks.wrapper {
     gradleVersion = "8.3" // Set to a stable version

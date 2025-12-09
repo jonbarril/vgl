@@ -7,12 +7,40 @@ import org.eclipse.jgit.api.Git;
 
 import java.io.*;
 import java.nio.file.*;
+import java.util.Comparator;
 
 /**
  * Unit tests for VglCli config save/load functionality.
  * Tests cover: null values, same values, directory navigation, file search.
  */
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
+
 public class ConfigManagementTest {
+
+    private String oldUserHome;
+    private Path tempUserHome;
+
+    @BeforeEach
+    void setUpHome() throws Exception {
+        oldUserHome = System.getProperty("user.home");
+        tempUserHome = Files.createTempDirectory("vgl-test-home");
+        System.setProperty("user.home", tempUserHome.toString());
+    }
+
+    @AfterEach
+    void tearDownHome() throws Exception {
+        if (oldUserHome != null) System.setProperty("user.home", oldUserHome); else System.clearProperty("user.home");
+        if (tempUserHome != null && Files.exists(tempUserHome)) {
+            try {
+                Files.walk(tempUserHome)
+                        .sorted(Comparator.reverseOrder())
+                        .forEach(p -> {
+                            try { Files.deleteIfExists(p); } catch (IOException ignore) {}
+                        });
+            } catch (IOException ignore) {}
+        }
+    }
 
     @Test
     void saveAndLoadBasicConfig(@TempDir Path tmp) throws Exception {

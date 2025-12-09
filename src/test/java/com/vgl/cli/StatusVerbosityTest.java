@@ -56,7 +56,7 @@ public class StatusVerbosityTest {
         // New compact format shows these sections
         assertThat(output).contains("LOCAL");
         assertThat(output).contains("REMOTE");
-        assertThat(output).contains("STATE");
+        assertThat(output).contains("COMMITS");
         assertThat(output).contains("FILES");
     }
 

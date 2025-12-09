@@ -137,10 +137,14 @@ public class VglCli {
                 
                 // Only prompt if we are in an interactive environment
                 if (com.vgl.cli.Utils.isInteractive()) {
+                    // Avoid blocking reads from System.in in test environments where
+                    // System.in may be open but offer no data. Use BufferedReader.ready()
+                    // to check for available input before attempting to read.
                     System.err.print("Delete orphaned .vgl file? (y/N): ");
-                    try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
-                        if (scanner.hasNextLine()) {
-                            String response = scanner.nextLine().trim().toLowerCase();
+                    try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(System.in))) {
+                        if (br.ready()) {
+                            String response = br.readLine();
+                            if (response != null) response = response.trim().toLowerCase(); else response = "";
                             if (response.equals("y") || response.equals("yes")) {
                                 Files.delete(configPath);
                                 System.err.println("Deleted .vgl file.");
@@ -149,8 +153,8 @@ public class VglCli {
                                 System.err.println("Kept .vgl file. Remember: .vgl only works with .git");
                             }
                         } else {
-                            // No input available - treat as non-interactive
-                            Files.delete(configPath);
+                            // No input ready - treat as non-interactive
+                            try { Files.delete(configPath); } catch (IOException ignore) {}
                             System.err.println("Deleted orphaned .vgl file (non-interactive mode).");
                             return;
                         }

@@ -38,6 +38,7 @@ public class StatusVerboseTest {
             assertThat(output).contains("-- Files to Commit:");
             assertThat(output).contains("  M test.txt");  // No arrow prefix
             assertThat(output).doesNotContain("↑ M test.txt");
+            assertThat(output).doesNotContain("AHEAD M test.txt");
         }
     }
     
@@ -79,7 +80,7 @@ public class StatusVerboseTest {
             String output = repo.runCommand("status", "-vv");
             
             assertThat(output).contains("-- Files to Commit:");
-            assertThat(output).contains("↑ A file2.txt");  // Up arrow for committed but not pushed
+            assertThat(output).contains("A file2.txt");  // committed but not pushed
         }
     }
     
@@ -151,7 +152,7 @@ public class StatusVerboseTest {
             String output = repo2.runCommand("status", "-vv");
             
             assertThat(output).contains("-- Files to Merge:");
-            assertThat(output).contains("↓ A file1.txt");  // Down arrow for remote changes to pull
+            assertThat(output).contains("A file1.txt");  // remote change to pull (shows as A file1.txt in Files to Merge)
         }
     }
     
@@ -211,7 +212,7 @@ public class StatusVerboseTest {
             String output = repo.runCommand("status", "-vv");
             
             assertThat(output).contains("-- Files to Commit:");
-            assertThat(output).contains("↑ A file2.txt");  // Committed but not pushed, up arrow
+            assertThat(output).contains("A file2.txt");  // Committed but not pushed
             assertThat(output).contains("  M file1.txt");  // Modified but not committed, no arrow
         }
     }
