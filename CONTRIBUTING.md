@@ -1,9 +1,8 @@
 Quick test workflow
 
-- Focused tests first (recommended):
-  - Run focused command/unit tests for the commands you're changing before running the full suite.
-  - Gradle helper: `./gradlew focusedTest`.
-  - The main `test` task runs `focusedTest` first by default.
+- Manual help/status checks (on request):
+  - Use the console-printing test or JavaExec helpers when you want to inspect CLI output.
+  - Gradle helpers: `./gradlew manualOutputTest`, `./gradlew vglStatus`, `./gradlew vglHelp`.
 
 - Fast local pre-push smoke test (optional):
   - Install the git hook (Windows):
@@ -16,4 +15,4 @@ Quick test workflow
 
   .\gradlew.bat integrationTest
 
-- CI recommendation: run `focusedTest` first, then the full `test` suite, and run `integrationTest` on merge or nightly.
+-- CI recommendation: run the full `test` suite and run `integrationTest` on merge or nightly. Use `manualOutputTest` or the JavaExec helpers locally when you need to inspect help/status output.

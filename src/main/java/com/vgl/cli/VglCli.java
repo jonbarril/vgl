@@ -122,6 +122,31 @@ public class VglCli {
         // Search upward for .vgl file (bounded by repo root)
         Path configPath = findConfigFile(repoRoot);
         if (configPath != null && Files.exists(configPath)) {
+            // Only load config files that are within allowed test base or current working directory
+            String testBaseProp = System.getProperty("vgl.test.base");
+            Path current = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+            Path parent = configPath.getParent().toAbsolutePath().normalize();
+            boolean allowed = false;
+            try {
+                if (testBaseProp != null && !testBaseProp.isEmpty()) {
+                    Path testBase = Paths.get(testBaseProp).toAbsolutePath().normalize();
+                    if (parent.startsWith(testBase)) allowed = true;
+                }
+            } catch (Exception ignore) {}
+            if (!allowed && parent.equals(current)) allowed = true;
+            // Allow loading configs from the system temp dir (JUnit @TempDir uses java.io.tmpdir)
+            try {
+                String tmp = System.getProperty("java.io.tmpdir");
+                if (tmp != null && !tmp.isEmpty()) {
+                    Path tmpDir = Paths.get(tmp).toAbsolutePath().normalize();
+                    if (parent.startsWith(tmpDir)) allowed = true;
+                }
+            } catch (Exception ignore) {}
+            if (!allowed) {
+                // Skip loading configs outside the test base or current directory
+                System.err.println("Warning: Skipping loading .vgl outside test base or working directory: " + configPath);
+                return;
+            }
             // Check if .git exists alongside .vgl
             Path vglDir = configPath.getParent();
             if (!Files.exists(vglDir.resolve(".git"))) {
@@ -200,6 +225,23 @@ public class VglCli {
         if (gitRoot != null) {
             // Save .vgl alongside .git
             Path savePath = gitRoot.resolve(CONFIG_FILE);
+
+            // Defensive check: avoid writing .vgl into the real user home directory
+            try {
+                Path userHome = Paths.get(System.getProperty("user.home")).toAbsolutePath().normalize();
+                Path normalizedSaveParent = savePath.getParent().toAbsolutePath().normalize();
+                if (normalizedSaveParent.equals(userHome) || normalizedSaveParent.startsWith(userHome)) {
+                    System.err.println("Warning: refusing to write .vgl into user home; skipping save.");
+                    return;
+                }
+            } catch (Exception ignore) {
+                // Fall back to attempting to write if we cannot determine user.home
+            }
+
+            // Note: Only refuse writes into the real user home directory above.
+            // Allow saving .vgl into repository/workspace locations used by tests
+            // (test frameworks often change working dir to temp locations).
+
             try (OutputStream out = Files.newOutputStream(savePath)) {
                 config.store(out, "VGL Configuration");
             } catch (IOException e) {

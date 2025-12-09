@@ -59,6 +59,14 @@ public final class Utils {
      * @return Git instance, or null if no repository found
      */
     public static Git findGitRepo(Path startPath) throws IOException {
+        // Honor test ceiling when present so tests cannot search above the provided base.
+        try {
+            String testBase = System.getProperty("vgl.test.base");
+            if (testBase != null && !testBase.isEmpty()) {
+                Path ceiling = Paths.get(testBase).toAbsolutePath().normalize();
+                return com.vgl.refactor.GitUtils.findGitRepo(startPath, ceiling);
+            }
+        } catch (Exception ignored) {}
         return com.vgl.refactor.GitUtils.findGitRepo(startPath);
     }
     
@@ -284,18 +292,30 @@ public final class Utils {
      * @return true if user confirms to continue, false otherwise
      */
     public static boolean warnNestedRepo(Path targetDir, Path parentRepo) {
+        // If we are running in a non-interactive environment, do not block
+        if (!isInteractive()) {
+            System.out.println("Warning: Creating a repository inside another Git repository.");
+            System.out.println("Non-interactive environment detected; cancelling create by default.");
+            return false;
+        }
+
         System.out.println("Warning: Creating a repository inside another Git repository.");
         System.out.println("This will create a nested repository and may cause confusion.");
         System.out.println("Parent repository: " + parentRepo);
         System.out.println("New repository: " + targetDir);
         System.out.println();
         System.out.print("Continue? (y/N): ");
-        
-        String response;
+
+        String response = "";
         try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
-            response = scanner.nextLine().trim().toLowerCase();
+            if (scanner.hasNextLine()) {
+                response = scanner.nextLine().trim().toLowerCase();
+            }
+        } catch (Exception e) {
+            // If any error occurs reading stdin, treat as non-interactive and cancel
+            return false;
         }
-        
+
         return response.equals("y") || response.equals("yes");
     }
 

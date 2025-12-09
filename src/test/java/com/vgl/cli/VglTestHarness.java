@@ -45,10 +45,20 @@ public class VglTestHarness {
      * @return Path to the created bare repository
      */
     public static Path createBareRemoteRepo(Path remotePath) throws Exception {
-        Files.createDirectories(remotePath);
-        try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remotePath.toFile()).setBare(true).call()) {
+        // If a test base is provided via system property, prefer creating remotes there
+        String testBaseProp = System.getProperty("vgl.test.base");
+        Path resolvedRemotePath = remotePath;
+        if (testBaseProp != null && !testBaseProp.isEmpty()) {
+            Path testBase = Paths.get(testBaseProp);
+            Files.createDirectories(testBase);
+            // Use the provided remotePath name as a directory name under testBase
+            String name = remotePath.getFileName() != null ? remotePath.getFileName().toString() : "remote";
+            resolvedRemotePath = testBase.resolve(name + "-" + java.util.UUID.randomUUID().toString());
         }
-        return remotePath;
+        Files.createDirectories(resolvedRemotePath);
+        try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(resolvedRemotePath.toFile()).setBare(true).call()) {
+        }
+        return resolvedRemotePath;
     }
     
     /**
@@ -67,15 +77,15 @@ public class VglTestHarness {
      */
     public static Path setupRemoteRepo(VglTestRepo repo, Path remotePath, String branch) throws Exception {
         // Create bare remote
-        createBareRemoteRepo(remotePath);
+        Path actualRemote = createBareRemoteRepo(remotePath);
         
         // Push to remote
         try (Git git = repo.getGit()) {
-            git.push().setRemote(remotePath.toUri().toString()).add(branch).call();
+            git.push().setRemote(actualRemote.toUri().toString()).add(branch).call();
         }
         
         // Set up remote tracking
-        repo.setupRemoteTracking(remotePath.toUri().toString(), branch);
+        repo.setupRemoteTracking(actualRemote.toUri().toString(), branch);
         
         // Fetch to sync refs
         try (Git git = repo.getGit()) {
@@ -84,7 +94,7 @@ public class VglTestHarness {
             // Ignore "nothing to fetch" errors - this can happen if refs are already up to date
         }
         
-        return remotePath;
+        return actualRemote;
     }
     
     /**
@@ -94,10 +104,13 @@ public class VglTestHarness {
         private final Path path;
         private final String originalUserDir;
         private final boolean hasGit;
+        private final String originalVglTestBase;
         
         VglTestRepo(Path path, boolean initGit) throws Exception {
+
             this.path = path;
             this.originalUserDir = System.getProperty("user.dir");
+            this.originalVglTestBase = System.getProperty("vgl.test.base");
             this.hasGit = initGit;
             
             // Create directory if needed
@@ -117,6 +130,11 @@ public class VglTestHarness {
             
             // Set working directory
             System.setProperty("user.dir", path.toString());
+            // During tests, set the vgl.test.base ceiling so repo discovery cannot
+            // escape the per-test temporary directory. Restore on close.
+            try {
+                System.setProperty("vgl.test.base", path.toAbsolutePath().toString());
+            } catch (Exception ignored) {}
         }
         
         /**
@@ -160,7 +178,16 @@ public class VglTestHarness {
                 PrintStream ps = new PrintStream(baos, true, "UTF-8");
                 System.setOut(ps);
                 System.setErr(ps);
-                new VglCli().run(args);
+                // Tests may run with a global non-interactive flag. When a test
+                // explicitly provides stdin input, temporarily allow interactive
+                // behavior so prompt-reading code paths run as expected.
+                String prev = System.getProperty("vgl.noninteractive");
+                try {
+                    System.setProperty("vgl.noninteractive", "false");
+                    new VglCli().run(args);
+                } finally {
+                    if (prev == null) System.getProperties().remove("vgl.noninteractive"); else System.setProperty("vgl.noninteractive", prev);
+                }
                 return baos.toString("UTF-8");
             } finally {
                 System.setIn(oldIn);
@@ -296,6 +323,12 @@ public class VglTestHarness {
         public void close() {
             // Restore original user.dir
             System.setProperty("user.dir", originalUserDir);
+            // Restore original vgl.test.base (if any)
+            if (originalVglTestBase == null) {
+                System.getProperties().remove("vgl.test.base");
+            } else {
+                System.setProperty("vgl.test.base", originalVglTestBase);
+            }
         }
     }
 }
