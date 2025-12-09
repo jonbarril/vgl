@@ -52,7 +52,7 @@ The project produces an installable distribution under `build/install/vgl` and e
 # Code and style notes for AI edits
 
 - Keep the public CLI output format stable. Many tests rely on exact printed lines and section headings
-  (for example `StatusCommand` prints `LOCAL`, `REMOTE`, `STATE`, `FILES` and subsection headings like `-- Commits:`).
+  (for example `StatusCommand` prints `LOCAL`, `REMOTE`, `COMMITS`, `FILES` and subsection headings like `-- Commits:`).
 - Follow existing error handling patterns: commands often print messages to `System.out`/`System.err` and return
   integer exit codes from `run(...)` — mirror that style.
 - Avoid upgrading Java/tooling unless requested: the project explicitly sets Java toolchain to Java 23 in

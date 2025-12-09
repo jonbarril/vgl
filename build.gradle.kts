@@ -46,6 +46,28 @@ tasks.test {
     }
 }
 
+// Focused tests: run a small, fast set of command/unit tests (Status/Help) before running full test suite.
+tasks.register<Test>("focusedTest") {
+    group = "verification"
+    description = "Run focused command/unit tests (status/help) before the full test suite"
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching("com.vgl.cli.*Status*")
+        includeTestsMatching("com.vgl.cli.*Help*")
+    }
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath
+    testLogging {
+        events("standardOut")
+        showStandardStreams = true
+    }
+}
+
+// Ensure focused tests run before the main `test` task to catch regressions early.
+tasks.named("test") {
+    dependsOn("focusedTest")
+}
+
 // Integration test task: run tests tagged with 'integration' and ensure
 // the installed distribution exists so the tests can invoke the `vgl` binary.
 tasks.register<Test>("integrationTest") {

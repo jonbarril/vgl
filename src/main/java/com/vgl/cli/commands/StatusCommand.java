@@ -191,7 +191,7 @@ public class StatusCommand implements Command {
                     StatusFileSummary.printFileSummary(counts.modified, counts.added, counts.removed, 0,
                             mergeCount, undecided, tracked, untracked, ignored);
                 }
-            // Commit message is printed under STATE (handled earlier). Do not duplicate here.
+            // Commit message is printed under COMMITS (handled earlier). Do not duplicate here.
 
             // Print sync-related subsections for -v and -vv (Files to Commit / Files to Merge)
             if (verbose || veryVerbose) {

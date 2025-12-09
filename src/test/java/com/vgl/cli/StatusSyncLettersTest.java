@@ -83,10 +83,9 @@ public class StatusSyncLettersTest {
             }
 
             // We expect to see lines starting with letter + space + filename.
-            // Accept optional arrow prefixes like "↑ " or "↓ ".
             boolean sawA = false, sawM = false, sawD = false, sawR = false;
             for (String ln : lines) {
-                String plain = ln.replace("↑ ", "").replace("↓ ", "").replace("AHEAD ", "").replace("BEHIND ", "");
+                String plain = ln;
                 if (plain.startsWith("A ") && plain.contains("d.txt")) sawA = true;
                 if (plain.startsWith("M ") && plain.contains("a.txt")) sawM = true;
                 if (plain.startsWith("D ") && plain.contains("b.txt")) sawD = true;

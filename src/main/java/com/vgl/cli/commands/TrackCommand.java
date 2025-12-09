@@ -135,7 +135,7 @@ public class TrackCommand implements Command {
             } catch (Exception ignored) {}
 
             List<String> filteredFiles = new java.util.ArrayList<>();
-            // Reject attempts to track nested repos explicitly
+            // Detect explicit nested-repo matches and ignore them (warn instead of failing)
             java.util.List<String> nestedRequests = new java.util.ArrayList<>();
             for (String p : filesToTrack) {
                 Path fp = dir.resolve(p).toAbsolutePath().normalize();
@@ -144,9 +144,13 @@ public class TrackCommand implements Command {
                 }
             }
             if (!nestedRequests.isEmpty()) {
-                System.out.println("Error: Cannot track nested repository paths: " + String.join(" ", nestedRequests));
-                System.out.println("Remove or convert nested repositories to submodules before tracking their files.");
-                return 1;
+                // Warn user and remove nested entries from tracking list
+                System.out.println("Warning: Ignoring nested repository paths: " + String.join(" ", nestedRequests));
+                filesToTrack.removeAll(nestedRequests);
+                if (filesToTrack.isEmpty()) {
+                    System.out.println("No matching files to track after ignoring nested repositories.");
+                    return 1;
+                }
             }
 
             for (String p : filesToTrack) {

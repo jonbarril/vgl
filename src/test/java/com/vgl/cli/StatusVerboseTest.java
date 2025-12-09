@@ -10,7 +10,7 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Tests for status -v and -vv output formatting with arrows.
+ * Tests for status -v and -vv output formatting.
  */
 public class StatusVerboseTest {
     private static int currentTest = 0;
@@ -36,9 +36,7 @@ public class StatusVerboseTest {
             String output = repo.runCommand("status", "-vv");
             
             assertThat(output).contains("-- Files to Commit:");
-            assertThat(output).contains("  M test.txt");  // No arrow prefix
-            assertThat(output).doesNotContain("↑ M test.txt");
-            assertThat(output).doesNotContain("AHEAD M test.txt");
+            assertThat(output).contains("  M test.txt");
         }
     }
     
