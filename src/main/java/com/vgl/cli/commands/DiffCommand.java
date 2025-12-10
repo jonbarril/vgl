@@ -1,5 +1,6 @@
 package com.vgl.cli.commands;
 
+import com.vgl.cli.RepoResolver;
 import com.vgl.cli.Utils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
@@ -30,7 +31,7 @@ public class DiffCommand implements Command {
         List<String> filters = new ArrayList<>();
         for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) filters.add(s);
 
-        try (Git git = Utils.findGitRepoOrWarn()) {
+        try (Git git = RepoResolver.resolveGitRepoForCommand()) {
             if (git == null) {
                 return 1;
             }

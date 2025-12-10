@@ -1,6 +1,6 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.Utils;
+import com.vgl.cli.RepoResolver;
 import org.eclipse.jgit.api.Git;
 
 import java.nio.file.Paths;
@@ -13,7 +13,7 @@ public class CheckinCommand implements Command {
         boolean draft = args.contains("-draft");
         boolean fin = args.contains("-final");
         if (!draft && !fin) { System.out.println("Usage: vgl checkin -draft|-final"); return 1; }
-        try (Git git = Utils.findGitRepoOrWarn()) {
+        try (Git git = RepoResolver.resolveGitRepoForCommand()) {
             if (git == null) {
                 System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());

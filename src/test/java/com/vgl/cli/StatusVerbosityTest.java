@@ -9,12 +9,8 @@ import java.io.*;
 import java.nio.file.*;
 
 public class StatusVerbosityTest {
-    private static int currentTest = 0;
-    private static final int TOTAL_TESTS = 3;
     private static void printProgress(String testName) {
-        currentTest++;
-        System.out.println("[StatusVerbosityTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
-        System.out.flush();
+        TestProgress.print(StatusVerbosityTest.class, testName);
     }
 
     private static String run(Path dir, String... args) throws Exception {

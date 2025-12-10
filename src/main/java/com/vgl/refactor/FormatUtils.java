@@ -1,10 +1,6 @@
 package com.vgl.refactor;
 
 import com.vgl.cli.VglCli;
-import org.eclipse.jgit.api.Git;
-
-import java.nio.file.Path;
-import java.util.List;
 
 public final class FormatUtils {
     private FormatUtils() {}

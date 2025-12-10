@@ -7,8 +7,6 @@ import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 public final class GitUtils {
     private GitUtils() {}
@@ -49,7 +47,7 @@ public final class GitUtils {
         }
     }
 
-    public static Set<String> listNestedRepos(Path repoRoot) {
+    public static java.util.Set<String> listNestedRepos(Path repoRoot) {
         java.util.Set<String> out = new java.util.LinkedHashSet<>();
         if (repoRoot == null) return out;
         try (java.util.stream.Stream<Path> s = java.nio.file.Files.walk(repoRoot)) {

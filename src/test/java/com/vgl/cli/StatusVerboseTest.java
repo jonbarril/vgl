@@ -13,12 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for status -v and -vv output formatting.
  */
 public class StatusVerboseTest {
-    private static int currentTest = 0;
-    private static final int TOTAL_TESTS = 6;
     private static void printProgress(String testName) {
-        currentTest++;
-        System.out.println("[StatusVerboseTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
-        System.out.flush();
+        TestProgress.print(StatusVerboseTest.class, testName);
     }
 
     @Test

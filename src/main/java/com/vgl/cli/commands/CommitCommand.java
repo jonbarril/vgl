@@ -10,6 +10,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.revwalk.RevCommit;
 
+import com.vgl.cli.RepoResolver;
 import com.vgl.cli.Utils;
 import com.vgl.cli.VglRepo;
 
@@ -31,7 +32,7 @@ public class CommitCommand implements Command {
             return 1;
         }
 
-        try (VglRepo vglRepo = Utils.findVglRepoOrWarn()) {
+        try (VglRepo vglRepo = RepoResolver.resolveVglRepoForCommand()) {
             if (vglRepo == null) return 1;
 
             Git git = vglRepo.getGit();

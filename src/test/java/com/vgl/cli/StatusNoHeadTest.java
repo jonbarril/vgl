@@ -8,12 +8,8 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class StatusNoHeadTest {
-    private static int currentTest = 0;
-    private static final int TOTAL_TESTS = 1;
     private static void printProgress(String testName) {
-        currentTest++;
-        System.out.println("[StatusNoHeadTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
-        System.out.flush();
+        TestProgress.print(StatusNoHeadTest.class, testName);
     }
 
     @Test

@@ -52,10 +52,14 @@ public class CreateCommand implements Command {
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir)) Files.createDirectories(dir);
 
-        // Check for nested repository and get confirmation
-        if (Utils.isNestedRepo(dir)) {
+        // Check for nested repository and get confirmation. If the target
+        // directory is inside an existing git repository (but is not itself
+        // the repo root), prompt to confirm creating a nested repository.
+        Path parentRepoRoot = Utils.getGitRepoRoot(dir);
+        boolean nested = (parentRepoRoot != null && !parentRepoRoot.equals(dir));
+        if (nested) {
             if (!force) {
-                if (!Utils.warnNestedRepo(dir, Utils.getGitRepoRoot(dir.getParent()))) {
+                if (!Utils.warnNestedRepo(dir, parentRepoRoot)) {
                     System.out.println("Create cancelled.");
                     return 0;
                 }
@@ -176,12 +180,54 @@ public class CreateCommand implements Command {
         }
         // Case 3: .git exists but no -lb or -bb specified
         else {
-            // Creating a new VGL configuration inside an existing git repository is an anti-pattern.
-            // Preserve historical behavior: error out and advise user how to create or switch branches.
-            System.err.println("Error: Repository already exists at " + dir);
-            System.err.println("To create a new branch, use: vgl create -lb BRANCH");
-            System.err.println("To switch to an existing branch, use: vgl switch -lb BRANCH");
-            return 1;
+            // If a .vgl config already exists, behave as before (do nothing special).
+            Path vglFile = dir.resolve(".vgl");
+            if (!Files.exists(vglFile)) {
+                // Create a minimal VGL config from the existing git repository state.
+                // Historically some flows used -f to force creation inside an
+                // existing .git; treat -f as a silent affirmative to create.
+                try (org.eclipse.jgit.api.Git git = org.eclipse.jgit.api.Git.open(dir.toFile())) {
+                    String currentBranch = null;
+                    try { currentBranch = git.getRepository().getBranch(); } catch (Exception ignore) {}
+                    String remoteName = null;
+                    String remoteUrl = null;
+                    String remoteBranch = null;
+                    try {
+                        if (currentBranch != null) {
+                            remoteName = git.getRepository().getConfig().getString("branch", currentBranch, "remote");
+                        }
+                        if (remoteName == null || remoteName.isBlank()) remoteName = "origin";
+                        remoteUrl = git.getRepository().getConfig().getString("remote", remoteName, "url");
+                        String mergeRef = null;
+                        if (currentBranch != null) mergeRef = git.getRepository().getConfig().getString("branch", currentBranch, "merge");
+                        if (mergeRef != null && mergeRef.startsWith("refs/heads/")) {
+                            remoteBranch = mergeRef.substring("refs/heads/".length());
+                        } else {
+                            remoteBranch = mergeRef;
+                        }
+                    } catch (Exception ignore) {}
+
+                    VglCli newVgl = new VglCli();
+                    newVgl.setLocalDir(dir.toString());
+                    if (currentBranch != null && !currentBranch.isBlank()) newVgl.setLocalBranch(currentBranch);
+                    if (remoteUrl != null && !remoteUrl.isBlank()) newVgl.setRemoteUrl(remoteUrl);
+                    if (remoteBranch != null && !remoteBranch.isBlank()) newVgl.setRemoteBranch(remoteBranch);
+                    newVgl.save();
+
+                    System.out.println("Created.");
+                    Utils.printSwitchState(newVgl);
+                } catch (Exception e) {
+                    System.err.println("Error: Failed to create VGL config: " + e.getMessage());
+                    return 1;
+                }
+            } else {
+                // Creating a new VGL configuration inside an existing git repository is an anti-pattern.
+                // Preserve historical behavior for the case where .vgl already exists: error out and advise user.
+                System.err.println("Error: Repository already exists at " + dir);
+                System.err.println("To create a new branch, use: vgl create -lb BRANCH");
+                System.err.println("To switch to an existing branch, use: vgl switch -lb BRANCH");
+                return 1;
+            }
         }
 
         // Save current state as jump state before creating/switching

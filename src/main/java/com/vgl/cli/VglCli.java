@@ -2,6 +2,8 @@ package com.vgl.cli;
 import com.vgl.cli.commands.StatusCommand;
 
 import com.vgl.cli.commands.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
@@ -11,6 +13,7 @@ public class VglCli {
     private static final String CONFIG_FILE = ".vgl";
     private final Map<String, Command> cmds = new LinkedHashMap<>();
     private final Properties config = new Properties();
+    private static final Logger LOG = LoggerFactory.getLogger(VglCli.class);
 
     public VglCli() {
         loadConfig();
@@ -56,8 +59,9 @@ public class VglCli {
             // Note: Commands that modify configuration are responsible for calling save()
             return result;
         } catch (Exception e) {
+            // Keep top-level user-facing output concise; expose details in debug logs
             System.err.println("Error: " + e.getMessage());
-            e.printStackTrace();
+            LOG.debug("Top-level exception while running command", e);
             return 1;
         }
     }
@@ -110,7 +114,7 @@ public class VglCli {
         // Find git repo root first, then search for .vgl within that boundary
         Path repoRoot = null;
         try {
-            Git git = Utils.findGitRepo();
+            Git git = RepoResolver.resolveGitRepoForCommand();
             if (git != null) {
                 repoRoot = git.getRepository().getWorkTree().toPath();
                 git.close();
@@ -122,80 +126,39 @@ public class VglCli {
         // Search upward for .vgl file (bounded by repo root)
         Path configPath = findConfigFile(repoRoot);
         if (configPath != null && Files.exists(configPath)) {
-            // Only load config files that are within allowed test base or current working directory
+            // If tests set `vgl.test.base`, restrict loading to that base (used by hermetic tests).
+            // For normal end-user runs (no property set) do not restrict loading.
             String testBaseProp = System.getProperty("vgl.test.base");
-            Path current = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
-            Path parent = configPath.getParent().toAbsolutePath().normalize();
-            boolean allowed = false;
-            try {
-                if (testBaseProp != null && !testBaseProp.isEmpty()) {
+            if (testBaseProp != null && !testBaseProp.isEmpty()) {
+                Path current = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+                Path parent = configPath.getParent().toAbsolutePath().normalize();
+                boolean allowed = false;
+                try {
                     Path testBase = Paths.get(testBaseProp).toAbsolutePath().normalize();
                     if (parent.startsWith(testBase)) allowed = true;
+                } catch (Exception ignore) {}
+                if (!allowed && parent.equals(current)) allowed = true;
+                // Allow loading configs from the system temp dir (JUnit @TempDir uses java.io.tmpdir)
+                try {
+                    String tmp = System.getProperty("java.io.tmpdir");
+                    if (tmp != null && !tmp.isEmpty()) {
+                        Path tmpDir = Paths.get(tmp).toAbsolutePath().normalize();
+                        if (parent.startsWith(tmpDir)) allowed = true;
+                    }
+                } catch (Exception ignore) {}
+                if (!allowed) {
+                    // Skip loading configs outside the test base or current directory (test-only behavior)
+                    LOG.debug("Skipping loading .vgl outside test base or working directory: {}", configPath);
+                    return;
                 }
-            } catch (Exception ignore) {}
-            if (!allowed && parent.equals(current)) allowed = true;
-            // Allow loading configs from the system temp dir (JUnit @TempDir uses java.io.tmpdir)
-            try {
-                String tmp = System.getProperty("java.io.tmpdir");
-                if (tmp != null && !tmp.isEmpty()) {
-                    Path tmpDir = Paths.get(tmp).toAbsolutePath().normalize();
-                    if (parent.startsWith(tmpDir)) allowed = true;
-                }
-            } catch (Exception ignore) {}
-            if (!allowed) {
-                // Skip loading configs outside the test base or current directory
-                System.err.println("Warning: Skipping loading .vgl outside test base or working directory: " + configPath);
-                return;
             }
             // Check if .git exists alongside .vgl
             Path vglDir = configPath.getParent();
             if (!Files.exists(vglDir.resolve(".git"))) {
-                // Orphaned .vgl file - .git was deleted or moved
-                System.err.println("Warning: Found .vgl but no .git directory.");
-                System.err.println("The .git repository may have been deleted or moved.");
-                System.err.println();
-                System.err.println("Options:");
-                System.err.println("  - Delete .vgl and start fresh: vgl create <path>");
-                System.err.println("  - Clone from remote: vgl checkout <url>");
-                System.err.println("  - Keep .vgl if you plan to restore .git");
-                System.err.println();
-                
-                // Only prompt if we are in an interactive environment
-                if (com.vgl.cli.Utils.isInteractive()) {
-                    // Avoid blocking reads from System.in in test environments where
-                    // System.in may be open but offer no data. Use BufferedReader.ready()
-                    // to check for available input before attempting to read.
-                    System.err.print("Delete orphaned .vgl file? (y/N): ");
-                    try (java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(System.in))) {
-                        if (br.ready()) {
-                            String response = br.readLine();
-                            if (response != null) response = response.trim().toLowerCase(); else response = "";
-                            if (response.equals("y") || response.equals("yes")) {
-                                Files.delete(configPath);
-                                System.err.println("Deleted .vgl file.");
-                                return;
-                            } else {
-                                System.err.println("Kept .vgl file. Remember: .vgl only works with .git");
-                            }
-                        } else {
-                            // No input ready - treat as non-interactive
-                            try { Files.delete(configPath); } catch (IOException ignore) {}
-                            System.err.println("Deleted orphaned .vgl file (non-interactive mode).");
-                            return;
-                        }
-                    } catch (IOException e) {
-                        System.err.println("Warning: Failed to delete .vgl file.");
-                    }
-                } else {
-                    // Non-interactive mode - just delete it
-                    try {
-                        Files.delete(configPath);
-                        System.err.println("Deleted orphaned .vgl file (non-interactive mode).");
-                    } catch (IOException e) {
-                        System.err.println("Warning: Failed to delete orphaned .vgl file.");
-                    }
-                }
-                // Don't load the orphaned config
+                // Orphaned .vgl file - .git was deleted or moved. This is a user-facing
+                // condition but we keep loadConfig quiet: callers (commands) decide how
+                // to surface messages to users. Log details at DEBUG for troubleshooting.
+                LOG.debug("Found .vgl at {} but no .git directory; treating as orphaned.", configPath);
                 return;
             }
             
@@ -203,12 +166,20 @@ public class VglCli {
             try (InputStream in = Files.newInputStream(configPath)) {
                 config.load(in);
             } catch (IOException e) {
-                System.err.println("Warning: Failed to load configuration file.");
+                LOG.debug("Failed to load configuration file at {}.", configPath, e);
             }
         } else {
             //// System.out.println("Info: No configuration file found. Defaults will
             /// be used.");
         }
+    }
+
+    /**
+     * Reload configuration from disk, replacing any in-memory values.
+     */
+    public void reloadConfig() {
+        config.clear();
+        loadConfig();
     }
 
     private void saveConfig() {
@@ -246,7 +217,7 @@ public class VglCli {
                 config.store(out, "VGL Configuration");
             } catch (IOException e) {
                 System.err.println("Warning: Failed to save configuration file.");
-                e.printStackTrace();
+                LOG.debug("Failed to save configuration file to {}", savePath, e);
             }
         } else {
             //// System.out.println("Info: No local repository found. Configuration file

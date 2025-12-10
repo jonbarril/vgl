@@ -11,12 +11,8 @@ import java.nio.file.*;
  * properly stages files for commit.
  */
 public class TrackCommandTest {
-    private static int currentTest = 0;
-    private static final int TOTAL_TESTS = 8;
     private static void printProgress(String testName) {
-        currentTest++;
-        System.out.println("[TrackCommandTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
-        System.out.flush();
+        TestProgress.print(TrackCommandTest.class, testName);
     }
 
     @Test

@@ -14,12 +14,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for track/untrack commands - verifies Git add/rm operations.
  */
 public class TrackUntrackTest {
-    private static int currentTest = 0;
-    private static final int TOTAL_TESTS = 3;
     private static void printProgress(String testName) {
-        currentTest++;
-        System.out.println("[TrackUntrackTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
-        System.out.flush();
+        TestProgress.print(TrackUntrackTest.class, testName);
     }
 
     @Test

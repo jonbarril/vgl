@@ -1,7 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
-import com.vgl.cli.Utils;
+import com.vgl.cli.RepoResolver;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullResult;
 
@@ -15,7 +15,7 @@ public class PullCommand implements Command {
         boolean force = Args.hasFlag(args, "-f");
         boolean dr = args.contains("-noop");
         if (dr) { System.out.println("(dry run) would pull from remote"); return 0; }
-        try (Git git = Utils.findGitRepoOrWarn()) {
+        try (Git git = RepoResolver.resolveGitRepoForCommand()) {
             if (git == null) {
                 System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());

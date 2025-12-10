@@ -13,12 +13,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Tests for sync and checkin commands - verifies composite operations.
  */
 public class SyncAndCheckinTest {
-    private static int currentTest = 0;
-    private static final int TOTAL_TESTS = 5;
     private static void printProgress(String testName) {
-        currentTest++;
-        System.out.println("[SyncAndCheckinTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
-        System.out.flush();
+        TestProgress.print(SyncAndCheckinTest.class, testName);
     }
 
     @Test

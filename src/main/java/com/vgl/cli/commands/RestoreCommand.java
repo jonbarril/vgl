@@ -1,7 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
-import com.vgl.cli.Utils;
+import com.vgl.cli.RepoResolver;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -27,7 +27,7 @@ public class RestoreCommand implements Command {
         List<String> filters = new ArrayList<>();
         for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) filters.add(s);
 
-        try (Git git = Utils.findGitRepoOrWarn()) {
+        try (Git git = RepoResolver.resolveGitRepoForCommand()) {
             if (git == null) {
                 System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());

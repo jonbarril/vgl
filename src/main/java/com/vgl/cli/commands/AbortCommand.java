@@ -1,6 +1,6 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.Utils;
+import com.vgl.cli.RepoResolver;
 import org.eclipse.jgit.api.Git;
 
 import java.io.File;
@@ -11,7 +11,7 @@ public class AbortCommand implements Command {
     @Override public String name(){ return "abort"; }
 
     @Override public int run(List<String> args) throws Exception {
-        try (Git git = Utils.findGitRepoOrWarn()) {
+        try (Git git = RepoResolver.resolveGitRepoForCommand()) {
             if (git == null) {
                 System.out.println("Warning: No local repository found in: " + 
                     Paths.get(".").toAbsolutePath().normalize());

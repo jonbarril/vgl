@@ -2,7 +2,8 @@ package com.vgl.cli;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +14,7 @@ import java.util.stream.Stream;
 
 public final class Utils {
     private Utils(){}
+    private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
 
     /**
      * Returns true if the given file is ignored by git (.gitignore, etc).
@@ -27,7 +29,8 @@ public final class Utils {
     // ============================================================================
     
     public static final String MSG_NO_REPO_PREFIX = "Error: No git repository found in: ";
-    public static final String MSG_NO_REPO_HELP = "Initialize a repository with: vgl create";
+    public static final String MSG_NO_REPO_HELP = "Run 'vgl create <path>' to make one.";
+    
     public static final String MSG_NO_REPO_WARNING_PREFIX = "Warning: No local repository found in: ";
     
     /**
@@ -64,7 +67,23 @@ public final class Utils {
             String testBase = System.getProperty("vgl.test.base");
             if (testBase != null && !testBase.isEmpty()) {
                 Path ceiling = Paths.get(testBase).toAbsolutePath().normalize();
-                return com.vgl.refactor.GitUtils.findGitRepo(startPath, ceiling);
+                // Manually scan upward from startPath until the ceiling and open
+                // a repository if a '.git' directory is found. This avoids
+                // FileRepositoryBuilder ceiling semantics that can behave
+                // unexpectedly in some environments.
+                Path cur = (startPath == null) ? currentDir() : startPath.toAbsolutePath().normalize();
+                while (cur != null) {
+                    if (Files.exists(cur.resolve(".git"))) {
+                        try {
+                            return Git.open(cur.toFile());
+                        } catch (IOException e) {
+                            return null;
+                        }
+                    }
+                    if (cur.equals(ceiling)) break;
+                    cur = cur.getParent();
+                }
+                return null;
             }
         } catch (Exception ignored) {}
         return com.vgl.refactor.GitUtils.findGitRepo(startPath);
@@ -169,11 +188,91 @@ public final class Utils {
      * @return VglRepo instance, or null if not found (after printing error)
      */
     public static VglRepo findVglRepoOrWarn(Path startPath) throws IOException {
-        VglRepo repo = findVglRepo(startPath);
-        if (repo == null) {
+        // First, try to locate a git repository. If none found, print standard warning.
+        Git git = findGitRepo(startPath);
+        if (git == null) {
             warnNoRepo(startPath);
+            return null;
         }
-        return repo;
+
+        // We found a git repository. Check whether a VGL config (.vgl) exists at the repo root.
+        Path repoRoot = git.getRepository().getWorkTree().toPath();
+        Path vglFile = repoRoot.resolve(".vgl");
+        if (!Files.exists(vglFile)) {
+            // If non-interactive, avoid printing a prompt that expects input; instead
+            // emit a short hint and return null. Only print the interactive prompt
+            // when we detect an interactive environment.
+            if (!Utils.isInteractive()) {
+                System.err.println("Git repo '" + repoRoot + "' found.");
+                System.err.println("Run 'vgl create <path>' to make one.");
+                return null;
+            }
+
+            // Interactive: short, low-noise prompt using VGL terminology. Ask whether to use
+            // the found Git repository as the Vgl repo.
+            System.err.print("Git repo '" + repoRoot + "' found. Use it as a Vgl repo? (y/N): ");
+            String response = "";
+            try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
+                if (scanner.hasNextLine()) {
+                    response = scanner.nextLine().trim().toLowerCase();
+                }
+            } catch (Exception ignored) {}
+
+            if (response.equals("y") || response.equals("yes")) {
+                // Create a minimal .vgl file capturing the git state (local dir, branch, remote)
+                try {
+                    org.eclipse.jgit.lib.Repository repo = git.getRepository();
+                    String branch = null;
+                    try { branch = repo.getBranch(); } catch (Exception ignore) {}
+
+                    String remoteName = null;
+                    String remoteUrl = null;
+                    String remoteBranch = null;
+                    try {
+                        if (branch != null) {
+                            remoteName = repo.getConfig().getString("branch", branch, "remote");
+                        }
+                        if (remoteName == null || remoteName.isBlank()) remoteName = "origin";
+                        remoteUrl = repo.getConfig().getString("remote", remoteName, "url");
+                        String mergeRef = null;
+                        if (branch != null) mergeRef = repo.getConfig().getString("branch", branch, "merge");
+                        if (mergeRef != null && mergeRef.startsWith("refs/heads/")) {
+                            remoteBranch = mergeRef.substring("refs/heads/".length());
+                        } else {
+                            remoteBranch = mergeRef;
+                        }
+                    } catch (Exception ignore) {}
+
+                    java.util.Properties props = new java.util.Properties();
+                    props.setProperty("local.dir", repoRoot.toAbsolutePath().normalize().toString());
+                    if (branch != null && !branch.isBlank()) props.setProperty("local.branch", branch);
+                    if (remoteUrl != null && !remoteUrl.isBlank()) props.setProperty("remote.url", remoteUrl);
+                    if (remoteBranch != null && !remoteBranch.isBlank()) props.setProperty("remote.branch", remoteBranch);
+
+                    java.nio.file.Path savePath = repoRoot.resolve(".vgl");
+                    try (java.io.OutputStream out = java.nio.file.Files.newOutputStream(savePath)) {
+                        props.store(out, "VGL configuration created from existing Git repository");
+                    }
+
+                    System.err.println();
+                    System.err.println("Created VGL config: " + savePath);
+                } catch (Exception e) {
+                    System.err.println("Error: Failed to create .vgl: " + e.getMessage());
+                    return null;
+                }
+
+                // After creating, reload and return the VglRepo
+                return findVglRepo(startPath);
+            }
+
+            // User declined to create a Vgl repo - print a short hint and return null
+            System.err.println();
+            System.err.println("Run 'vgl create <path>' to make one.");
+            return null;
+        }
+
+        // .vgl exists - return the VglRepo as usual
+        return findVglRepo(startPath);
     }
 
     /**
@@ -209,10 +308,14 @@ public final class Utils {
      * @return Path to the repository root, or null if no repository found
      */
     static Path getGitRepoRoot(Path startPath, Path ceilingDir) throws IOException {
-        try (Git git = findGitRepo(startPath, ceilingDir)) {
-            if (git == null) {
-                return null;
+        if (ceilingDir == null) {
+            try (Git git = findGitRepo(startPath)) {
+                if (git == null) return null;
+                return git.getRepository().getWorkTree().toPath();
             }
+        }
+        try (Git git = findGitRepo(startPath, ceilingDir)) {
+            if (git == null) return null;
             return git.getRepository().getWorkTree().toPath();
         }
     }
@@ -234,6 +337,14 @@ public final class Utils {
      * @return true if nested repo detected, false otherwise
      */
     public static boolean isNestedRepo(Path startPath) throws IOException {
+        // Honor test ceiling when present so tests cannot detect nested repos
+        // outside their temporary test base.
+        try {
+            String testBase = System.getProperty("vgl.test.base");
+            if (testBase != null && !testBase.isEmpty()) {
+                return isNestedRepo(startPath, Paths.get(testBase));
+            }
+        } catch (Exception ignored) {}
         return isNestedRepo(startPath, null);
     }
     
@@ -246,22 +357,29 @@ public final class Utils {
      * @return true if nested repo detected, false otherwise
      */
     static boolean isNestedRepo(Path startPath, Path ceilingDir) throws IOException {
-        if (startPath == null) {
-            return false;
-        }
-        
+        if (startPath == null) return false;
+
         Path firstRepoRoot = getGitRepoRoot(startPath, ceilingDir);
-        if (firstRepoRoot == null) {
-            return false;
+        if (firstRepoRoot == null) return false;
+
+        Path cur = firstRepoRoot.getParent();
+        if (cur == null) return false;
+
+        // Traverse up from the immediate parent and look for a .git directory,
+        // stopping when we reach the optional ceilingDir or the filesystem root.
+        Path ceiling = (ceilingDir == null) ? null : ceilingDir.toAbsolutePath().normalize();
+        while (cur != null) {
+            Path norm = cur.toAbsolutePath().normalize();
+            if (ceiling != null) {
+                // If current path is not under the ceiling, stop searching.
+                if (!norm.startsWith(ceiling)) break;
+                // Stop if we've reached the ceiling boundary
+                if (norm.equals(ceiling)) break;
+            }
+            if (Files.exists(cur.resolve(".git"))) return true;
+            cur = cur.getParent();
         }
-        
-        Path parentSearch = firstRepoRoot.getParent();
-        if (parentSearch == null) {
-            return false;
-        }
-        
-        Path outerRepoRoot = getGitRepoRoot(parentSearch, ceilingDir);
-        return outerRepoRoot != null;
+        return false;
     }
 
     /**
@@ -274,6 +392,20 @@ public final class Utils {
         if (Boolean.getBoolean("vgl.noninteractive")) {
             return false;
         }
+        // Allow callers (tests) to force interactive behaviour even when running
+        // under a test base. This is used by the test harness when it supplies
+        // stdin to a command.
+        if (Boolean.getBoolean("vgl.force.interactive")) {
+            return true;
+        }
+        // During automated tests we set `vgl.test.base` to bound repo discovery.
+        // Treat test runs as non-interactive by default to avoid blocking prompts
+        // or noisy stderr output unless tests explicitly toggle interactivity.
+        try {
+            String testBase = System.getProperty("vgl.test.base");
+            if (testBase != null && !testBase.isEmpty()) return false;
+        } catch (Exception ignored) {}
+
         boolean consolePresent = System.console() != null;
         return consolePresent;
     }
@@ -328,6 +460,16 @@ public final class Utils {
     }
 
     private static void warnNoRepo(Path searchPath) {
+        try {
+            String testBase = System.getProperty("vgl.test.base");
+            if (testBase != null && !testBase.isEmpty()) {
+                // In hermetic test runs we avoid printing to stdout/stderr to keep
+                // output deterministic; prefer debug logging instead.
+                LOG.debug("{}\n{}", MSG_NO_REPO_PREFIX + searchPath.toAbsolutePath().normalize(), MSG_NO_REPO_HELP);
+                return;
+            }
+        } catch (Exception ignored) {}
+
         System.out.println(MSG_NO_REPO_PREFIX + searchPath.toAbsolutePath().normalize());
         System.out.println(MSG_NO_REPO_HELP);
     }

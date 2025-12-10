@@ -81,7 +81,26 @@ public class VglTestHarness {
         
         // Push to remote
         try (Git git = repo.getGit()) {
-            git.push().setRemote(actualRemote.toUri().toString()).add(branch).call();
+            // Ensure HEAD resolves to an object. In some test cases the
+            // repository may be newly-initialized but missing an initial
+            // commit (unborn HEAD). JGit will refuse to push in that case.
+            // Create a lightweight empty commit if necessary so the push
+            // succeeds and tests can proceed.
+            org.eclipse.jgit.lib.ObjectId headId = null;
+            try { headId = git.getRepository().resolve("HEAD"); } catch (Exception ignored) {}
+            if (headId == null) {
+                // Create an empty commit to ensure HEAD exists. Use allowEmpty
+                // so we don't require any staged files.
+                try {
+                    git.commit().setMessage("initial (autocreated)").setAllowEmpty(true).call();
+                } catch (Exception e) {
+                    // If commit creation fails, continue and let push surface the error
+                }
+            }
+
+            // Push current HEAD to the remote branch explicitly.
+            String refspec = "HEAD:refs/heads/" + branch;
+            git.push().setRemote(actualRemote.toUri().toString()).setRefSpecs(new org.eclipse.jgit.transport.RefSpec(refspec)).call();
         }
         
         // Set up remote tracking
@@ -120,7 +139,7 @@ public class VglTestHarness {
             
             // Initialize git if requested
             if (initGit) {
-                try (Git git = Git.init().setDirectory(path.toFile()).call()) {
+                try (Git git = Git.init().setDirectory(path.toFile()).setInitialBranch("main").call()) {
                     // Configure git for tests
                     git.getRepository().getConfig().setString("user", null, "email", "test@example.com");
                     git.getRepository().getConfig().setString("user", null, "name", "Test User");
@@ -178,13 +197,60 @@ public class VglTestHarness {
                 PrintStream ps = new PrintStream(baos, true, "UTF-8");
                 System.setOut(ps);
                 System.setErr(ps);
-                // Tests may run with a global non-interactive flag. When a test
-                // explicitly provides stdin input, temporarily allow interactive
-                // behavior so prompt-reading code paths run as expected.
+                // Construct the CLI in non-interactive mode to avoid prompts during
+                // initialization (e.g., config loading). Then enable interactive
+                // mode only for the actual command execution so provided stdin
+                // (like "n\n") can be consumed by prompts the command emits.
                 String prev = System.getProperty("vgl.noninteractive");
                 try {
+                    System.setProperty("vgl.noninteractive", "true");
+                    VglCli cli = new VglCli();
+                    // Enable interactive mode for the actual command execution and
+                    // allow the harness to force interactive behavior even when
+                    // tests run with a test base.
                     System.setProperty("vgl.noninteractive", "false");
-                    new VglCli().run(args);
+                    System.setProperty("vgl.force.interactive", "true");
+                    try {
+                        cli.run(args);
+                    } finally {
+                        // Remove the transient force flag so we don't leak state
+                        System.getProperties().remove("vgl.force.interactive");
+                    }
+                    // Diagnostic dump (opt-in): only enabled when the test JVM
+                    // is started with `-Dvgl.debug.dump=true`. Do NOT auto-enable
+                    // diagnostics for specific commands (commit/diff) because
+                    // many tests assert exact command output.
+                    if (Boolean.getBoolean("vgl.debug.dump")) {
+                        try (org.eclipse.jgit.api.Git dbg = org.eclipse.jgit.api.Git.open(path.toFile())) {
+                            java.io.PrintStream out = ps; // ps is the PrintStream we set for stdout/stderr above
+                            out.println("DEBUG: dumping git state for repo: " + path.toString());
+                            try {
+                                org.eclipse.jgit.lib.ObjectId head = dbg.getRepository().resolve("HEAD");
+                                out.println("DEBUG: HEAD -> " + head);
+                                org.eclipse.jgit.lib.ObjectId headTree = dbg.getRepository().resolve("HEAD^{tree}");
+                                out.println("DEBUG: HEAD^{tree} -> " + headTree);
+                                if (headTree != null) {
+                                    org.eclipse.jgit.treewalk.TreeWalk tw = new org.eclipse.jgit.treewalk.TreeWalk(dbg.getRepository());
+                                    tw.addTree(headTree);
+                                    tw.setRecursive(true);
+                                    while (tw.next()) {
+                                        out.println("DEBUG: tree-entry: " + tw.getPathString());
+                                    }
+                                    tw.close();
+                                }
+                            } catch (Exception e) {
+                                out.println("DEBUG: could not resolve HEAD/tree: " + e.getMessage());
+                            }
+                            try {
+                                org.eclipse.jgit.api.Status st = dbg.status().call();
+                                out.println("DEBUG: status added=" + st.getAdded() + " modified=" + st.getModified() + " untracked=" + st.getUntracked());
+                            } catch (Exception e) {
+                                out.println("DEBUG: status failed: " + e.getMessage());
+                            }
+                        } catch (Exception e) {
+                            ps.println("DEBUG: cannot open git repo for diagnostics: " + e.getMessage());
+                        }
+                    }
                 } finally {
                     if (prev == null) System.getProperties().remove("vgl.noninteractive"); else System.setProperty("vgl.noninteractive", prev);
                 }

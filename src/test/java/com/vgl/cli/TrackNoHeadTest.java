@@ -10,12 +10,8 @@ import java.nio.file.Path;
  * Tests track behavior when the repository has no commits (unborn HEAD).
  */
 public class TrackNoHeadTest {
-    private static int currentTest = 0;
-    private static final int TOTAL_TESTS = 2;
     private static void printProgress(String testName) {
-        currentTest++;
-        System.out.println("[TrackNoHeadTest " + currentTest + "/" + TOTAL_TESTS + ": " + testName + "]...");
-        System.out.flush();
+        TestProgress.print(TrackNoHeadTest.class, testName);
     }
 
     @Test
