@@ -23,7 +23,7 @@ public class StatusRenameSubdirTest {
             Files.move(oldPath, newPath);
 
             // Run status -vv and capture output
-            String out = repo.runCommand("status", "-vv");
+            String out = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
 
             // Should show renamed target as R and not list new file under Undecided
             assertThat(out).containsPattern("R\\s+subdir/qq.txt");
@@ -40,11 +40,11 @@ public class StatusRenameSubdirTest {
             // Use a message with newline
             repo.gitCommit("Multi-line\ncommit message line 2");
 
-            String outV = repo.runCommand("status", "-v");
+            String outV = VglTestHarness.runVglCommand(repo.getPath(), "status", "-v");
             // -v should show short id followed by a single-line message (no newlines)
             assertThat(outV).containsPattern("[0-9a-f]{7} .+commit message line 2");
 
-            String outVV = repo.runCommand("status", "-vv");
+            String outVV = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             // -vv should show full message (including newline content)
             assertThat(outVV).contains("commit message line 2");
         }

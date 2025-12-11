@@ -4,43 +4,35 @@
 This document captures concrete user-facing use cases, edge cases, and the expected VGL behavior. Keep concise, grouped by topic for easy reference for design and test.
 
 **Overview:**
-- **Purpose:** Describe how VGL discovers repos, how `status` behaves, and what prompting/creation flows should do.
-- **Audience:** CLI maintainers, tests, and contributors implementing status/creation logic.
+- **Purpose:** Describe how VGL should work with emphasis on a user's perspective. Describes both main use cases as well as edge cases as they are discovered and addressed. user messaging and actions are kept general as the wording and specifics may change with refinement of design.
+- **Scope:** This document is intended to be consistent with the text in the help command, which describes general command behavior and usage. For commands and use cases that require further elaboration they will be detailed here.
+- **Audience:** CLI maintainers, tests, and contributors implementing command a  and system logic.
+
+**Repo contents:**
+ - **Repo-bound listing:** Glob expansion and file listings must be bounded to the repository (do not walk entire filesystem); use JGit working-tree iterators / index-aware listing.
+- **Nested repos:** Files inside nested repositories (directories that contain their own `.git`) are treated as Ignored for parent-level commands (e.g. status).
+- **.vgl treatment:** By default `.vgl` is included in '.gitignore' when a VGL repo is created. As such it should be treated as Ignored.
+- **Vgl state:** Vgl repo and application state is maintained in the current vgl repo .vgl file. The basic state consists of local and remote current and jump state. Each of these repo states (local current, local jump, remote current, remote jump) consist of the repo path/URL the name of a branch in the repo. The default branch for command repo creation or specification is "main". 
 
 **Repository discovery (resolution):**
 - **Overview:** When a VGL command requires a repository, VGL searches upward from the current working directory and stops at the first directory that contains either a `.git` or a `.vgl`.
 - **Behavior summary (examples):**
-  - Both `.git` and `.vgl`: treat the directory as a valid Vgl repo and proceed; validate and warn if states are inconsistent.
-  - `.git` only: warn the user and offer to convert the Git repo into a Vgl repo (interactive). In non-interactive contexts, print a short hint and fail.
-  - `.vgl` only: warn the user and offer to initialize a Git repository from the `.vgl` state (interactive). In non-interactive contexts, print a short hint and fail.
+  - Both `.git` and `.vgl`: if both are valid and consistent then the directory is considered a valid Vgl repo and the command proceeds. If invalid, instead, warn the user, note the location and problem, suggest the user resolve the problem outside of VGL, and fail.
+  - `.git` only: If valid, warn the user and offer to convert the Git repo into a Vgl repo (interactive). In non-interactive contexts, print a short hint and fail.
+  - `.vgl` only: If valid, warn the user and offer to initialize a Git repository from the `.vgl` state (interactive). In non-interactive contexts, print a short hint and fail.
   - Neither found up to filesystem root: warn and fail the command.
-- **Test Ceiling:** In test or CI, discovery honors `-Dvgl.test.base` to avoid searching above a configured test base directory.
+  **Validation:** An invalid .git/.vgl state is one where either references local or remote repos or branches that do not exist or are inaccessible. If both .git and .vgl are present then their states must be consistent, with local and remote repo and branch matching.
+- **Test Ceiling:** In test or CI, discovery honors `-Dvgl.test.base` to avoid searching above a configured test base directory. This is for safety.
 
-**Status command behavior:**
-  - **No VGL config, no Git repo:** Warn the user that no local repository was found and print a short hint showing how to create one: `Run 'vgl create <path>' to make one.` Do not attempt to open a repository; the command should exit non-zero.
-- **Configured VGL repo:** Only treat `local.dir` as active when the directory contains a valid Git repository (there is a `.git` or an accessible gitdir).
-- **Git repo ancestor + no `.vgl`:** Offer a short, single-line prompt (interactive) or a short hint (non-interactive):
-  - Prompt: `Git repo '<path>' found. Use it as a Vgl repo? (y/N): `
-  - Non-interactive hint: `Run 'vgl create <path>' to make one.`
-
-**Prompt & creation flow:**
-- **Interactive accept:** Create a minimal `.vgl` at the repo root with the following properties:
-  - `local.dir` = absolute repository root
-  - `local.branch` = current branch (if resolvable)
-  - `remote.url` and `remote.branch` if configured/tracking
-  After creation, reload VGL state and continue the original command.
-- **Interactive decline:** Print the short hint (see above) and proceed as if no VGL repo exists.
-- **Non-interactive:** Never prompt. Print the short hint and return null so commands remain non-blocking in CI.
-
-**Relationship to `vgl create` command:**
-- `vgl create` remains the canonical higher-level command for creating repositories and VGL config.
-- The prompt-driven `.vgl` creation is intentionally minimal (write `.vgl`) to avoid altering Git state; it provides a convenient, non-invasive path to make the repository a VGL repo.
-
-**Status counts & file summaries:**
-- **Source of truth:** File counts and categories (Added/Modified/Deleted/Undecided/Tracked/Untracked/Ignored) are derived from JGit `Status` plus repo-index/working-tree listing.
-- **Repo-bound listing:** Glob expansion and file listings must be bounded to the repository (do not walk entire filesystem); use JGit working-tree iterators / index-aware listing.
-- **Nested repos:** Files inside nested repositories (directories that contain their own `.git`) are treated as Ignored for parent-level status; nested repo paths appear in the Ignored set and are excluded from Tracked/Untracked/Undecided lists.
-- **.vgl treatment:** `.vgl` itself must be treated as Ignored and never shown in tracked or undecided lists.
+**Status command:**
+  - **Overview:** The current valid VGL repo is indicated in LOCAL. Although REMOTE may be '(none)' the local repo can never be '(none)' as that would indicate an invalid VGL repo in which case status and any other command needing a VGL repo should fail with a warning. In all cases, info in summary counts shall be consistent with the number of branches, commits and files in subsection lists.
+  - **Default:** Default behavior is when neither -v or -vv flags are present. This prints the minimal status consisting of sections LOCAL/REMOTE/COMMITS/FILES. Each section includes a one or two lline summary of the corresponding aspect of repo status. As needed paths and branch names will be shortened using elipses so that the format remains consistent and column aligned.
+  - **Verbose:** This is when -v is present but -vv is not. Same as Default mode but paths and file names are indicated in full regardless of column formatting. COMMITS adds a subsection listing commit codes and truncated message to maintain a single line format. FILES adds subsections with 'Files to Commit', 'Files to Merge' and 'Undecided Files', which are truncated to a single line.
+  - **Very Verbose:** This is when -vv is present. Same as Verbose mode but LOCAL and REMOTE include branch list subsections, with the current branch (as indicated in the summary line) starred. COMMIT commit list messages are not truncated. FILES file names are not truncated and subsections for 'TRACKED Files', 'Unttracked Files' and 'Ignored Files' are added.
+  - **General:**
+  -- File counts and categories (Added/Modified/Deleted/Undecided/Tracked/Untracked/Ignored) are derived from JGit `Status` plus repo-index/working-tree listing.
+  -- Nested repo paths appear in the Ignored set and are excluded from Undecided/Tracked/Untracked lists.
+  -- Directories that appear in file lists include a trailing "/" indicating it is a directory and not just a file. If a dir is also a nested repo it will have an additional indicator (e.g. '(repo)').
 
 **Interactive vs automated modes:**
 - **Interactive detection:** Use `Utils.isInteractive()`; honor `-Dvgl.noninteractive=true` for tests and CI to suppress prompts.
@@ -60,18 +52,6 @@ This document captures concrete user-facing use cases, edge cases, and the expec
   - Expand globs only returns files within repo and excludes nested-repo files.
 - Use `-Dvgl.test.base` to limit upward searches in tests.
 - Use `VglTestHarness.runCommandWithInput` for simulating interactive input in tests.
-
-**Edge cases & cautions:**
-- **User home `.vgl`:** Avoid loading or writing `.vgl` in the real `user.home` during tests; tests must set `-Duser.home` or code must guard against writing into user home.
-- **Unborn repos:** Handle repos with no commits gracefully (COMMITS shows `(no commits yet)`).
-- **Fail-fast diagnostics:** For long-running filesystem operations, prefer bounding the traversal rather than adding timeouts.
-
-**Change log / future work:**
-- Consider adding a `--create-only` mode to `vgl create` so prompt flow can call a single canonical code path that creates `.vgl` without modifying Git.
-- Audit any remaining uses of unbounded `Files.walk` and replace with JGit-backed listings.
-
----
-Generated by the development session to record expected behavior and use cases for `vgl` CLI discovery, `status`, and prompt/create flows.
 
 **Refactor Policy — Living Use Cases Document**
 - **Review on refactor:** Every time code is refactored (behavioral, architectural, or API changes), the author must review `docs/VglUseCases.md` and update it as necessary.

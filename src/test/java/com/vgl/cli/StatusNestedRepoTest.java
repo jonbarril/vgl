@@ -30,7 +30,7 @@ public class StatusNestedRepoTest {
             Git.init().setDirectory(nested0.toFile()).call();
             Git.init().setDirectory(nested1.toFile()).call();
 
-            String output = repo.runCommand("status", "-vv");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             // Dump output for diagnosis
             System.out.println(output);
             // normalize optional leading indentation on subsection headers for flexible assertions

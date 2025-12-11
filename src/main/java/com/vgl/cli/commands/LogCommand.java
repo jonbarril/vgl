@@ -14,12 +14,15 @@ public class LogCommand implements Command {
     @Override public String name(){ return "log"; }
 
     @Override public int run(List<String> args) throws Exception {
-        try (Git git = RepoResolver.resolveGitRepoForCommand()) {
-            if (git == null) {
-                System.out.println("Warning: No local repository found in: " + 
-                    Paths.get(".").toAbsolutePath().normalize());
-                return 1;
-            }
+        com.vgl.cli.RepoResolution repoRes = RepoResolver.resolveForCommand();
+        if (repoRes.getGit() == null) {
+            String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
+                          "Hint: Run 'vgl create' to initialize a new repo here.";
+            System.err.println(warn);
+            System.out.println(warn);
+            return 1;
+        }
+        try (Git git = repoRes.getGit()) {
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
             Iterable<RevCommit> logs = git.log().call();
             for (RevCommit c : logs) {

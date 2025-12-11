@@ -12,16 +12,25 @@ public class PushCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         boolean noop = args.contains("-noop");
-        try (Git git = RepoResolver.resolveGitRepoForCommand()) {
-            if (git == null) {
-                System.out.println("Warning: No local repository found in: " + 
-                    Paths.get(".").toAbsolutePath().normalize());
-                return 1;
-            }
+        com.vgl.cli.RepoResolution repoRes = RepoResolver.resolveForCommand();
+        if (repoRes.getGit() == null) {
+            String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
+                          "Hint: Run 'vgl create' to initialize a new repo here.";
+            System.err.println(warn);
+            System.out.println(warn);
+            return 1;
+        }
+        try (Git git = repoRes.getGit()) {
             String branch = git.getRepository().getBranch();
             String remoteUrl = git.getRepository().getConfig().getString("remote","origin","url");
-            if (remoteUrl == null) { System.out.println("No remote connected."); return 1; }
-            if (noop) { System.out.println("(dry run) would push local branch '" + branch + "' to remote: " + remoteUrl); return 0; }
+            if (remoteUrl == null) {
+                System.err.println("No remote connected.");
+                return 1;
+            }
+            if (noop) {
+                System.out.println("(dry run) would push local branch '" + branch + "' to remote: " + remoteUrl);
+                return 0;
+            }
             git.push().setRemote("origin").setRefSpecs(new RefSpec(branch+":"+branch)).setForce(false).call();
             System.out.println("Pushed local branch '" + branch + "' to remote: " + remoteUrl);
         }

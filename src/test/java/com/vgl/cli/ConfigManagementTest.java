@@ -24,7 +24,11 @@ public class ConfigManagementTest {
     @BeforeEach
     void setUpHome() throws Exception {
         oldUserHome = System.getProperty("user.home");
-        tempUserHome = Files.createTempDirectory("vgl-test-home");
+        Path testBase = Path.of("build", "tmp", "config-management-test").toAbsolutePath();
+        Files.createDirectories(testBase);
+        tempUserHome = testBase.resolve("home");
+        if (Files.exists(tempUserHome)) deleteRecursively(tempUserHome);
+        Files.createDirectories(tempUserHome);
         System.setProperty("user.home", tempUserHome.toString());
     }
 
@@ -39,6 +43,16 @@ public class ConfigManagementTest {
                             try { Files.deleteIfExists(p); } catch (IOException ignore) {}
                         });
             } catch (IOException ignore) {}
+        }
+    }
+
+    private static void deleteRecursively(Path path) throws java.io.IOException {
+        if (Files.exists(path)) {
+            Files.walk(path)
+                .sorted((a, b) -> b.compareTo(a))
+                .forEach(p -> {
+                    try { Files.delete(p); } catch (java.io.IOException e) { }
+                });
         }
     }
 

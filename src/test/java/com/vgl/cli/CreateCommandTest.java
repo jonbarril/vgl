@@ -120,10 +120,10 @@ public class CreateCommandTest {
             // Create nested directory
             Path nestedDir = tempDir.resolve("nested");
             Files.createDirectories(nestedDir);
-            
+
             // With -f flag, should skip prompt entirely
-            String output = parentRepo.runCommandWithInput("", "create", "-lr", nestedDir.toString(), "-f");
-            
+            String output = VglTestHarness.runVglCommand(nestedDir, "create", "-lr", nestedDir.toString(), "-f");
+
             assertThat(output).doesNotContain("Continue? (y/N):");
             assertThat(output).contains("Created new local repository");
             assertThat(Files.exists(nestedDir.resolve(".git"))).isTrue();

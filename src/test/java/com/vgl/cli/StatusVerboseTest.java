@@ -29,7 +29,7 @@ public class StatusVerboseTest {
             // Modify file (uncommitted)
             repo.writeFile("test.txt", "modified content");
             
-            String output = repo.runCommand("status", "-vv");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             
             assertThat(output).contains("-- Files to Commit:");
             assertThat(output).contains("  M test.txt");
@@ -59,19 +59,19 @@ public class StatusVerboseTest {
                 // Push to remote
                 git.push()
                     .setRemote(remoteRepo.toUri().toString())
-                    .add("master")
+                    .add("main")
                     .call();
             }
             
             // Set up remote tracking
-            repo.setupRemoteTracking(remoteRepo.toUri().toString(), "master");
+            repo.setupRemoteTracking(remoteRepo.toUri().toString(), "main");
             
             // Create another commit (not pushed)
             repo.writeFile("file2.txt", "new file");
             repo.gitAdd("file2.txt");
             repo.gitCommit("Second commit - not pushed");
             
-            String output = repo.runCommand("status", "-vv");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             
             assertThat(output).contains("-- Files to Commit:");
             assertThat(output).contains("A file2.txt");  // committed but not pushed
@@ -84,7 +84,10 @@ public class StatusVerboseTest {
         // Create a bare remote repo
         Path remoteRepo = tmp.resolve("remote");
         Files.createDirectories(remoteRepo);
-        try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
+        try (Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
+            // Set HEAD in bare repo to refs/heads/main to avoid JGit clone/fetch errors
+            Path headPath = remoteRepo.resolve("HEAD");
+            Files.writeString(headPath, "ref: refs/heads/main\n");
         }
         
         // Create first local repo and push
@@ -99,11 +102,11 @@ public class StatusVerboseTest {
             try (Git git = repo1.getGit()) {
                 git.push()
                     .setRemote(remoteRepo.toUri().toString())
-                    .add("master")
+                    .add("main")
                     .call();
             }
             
-            repo1.setupRemoteTracking(remoteRepo.toUri().toString(), "master");
+            repo1.setupRemoteTracking(remoteRepo.toUri().toString(), "main");
             
             // Add more commits
             repo1.writeFile("file1.txt", "from repo1");
@@ -113,12 +116,12 @@ public class StatusVerboseTest {
             try (Git git = repo1.getGit()) {
                 git.push()
                     .setRemote(remoteRepo.toUri().toString())
-                    .add("master")
+                    .add("main")
                     .call();
                 
                 // Update remote tracking ref
-                org.eclipse.jgit.lib.RefUpdate refUpdate = git.getRepository().updateRef("refs/remotes/origin/master");
-                refUpdate.setNewObjectId(git.getRepository().resolve("refs/heads/master"));
+                org.eclipse.jgit.lib.RefUpdate refUpdate = git.getRepository().updateRef("refs/remotes/origin/main");
+                refUpdate.setNewObjectId(git.getRepository().resolve("refs/heads/main"));
                 refUpdate.update();
             }
         }
@@ -141,9 +144,9 @@ public class StatusVerboseTest {
         // Now check status in local2
         try (VglTestHarness.VglTestRepo repo2 = VglTestHarness.createRepo(local2)) {
             // Set up remote tracking
-            repo2.setupRemoteTracking(remoteRepo.toUri().toString(), "master");
+            repo2.setupRemoteTracking(remoteRepo.toUri().toString(), "main");
             
-            String output = repo2.runCommand("status", "-vv");
+            String output = VglTestHarness.runVglCommand(repo2.getPath(), "status", "-vv");
             
             assertThat(output).contains("-- Files to Merge:");
             assertThat(output).contains("A file1.txt");  // remote change to pull (shows as A file1.txt in Files to Merge)
@@ -158,7 +161,7 @@ public class StatusVerboseTest {
             repo.gitAdd("test.txt");
             repo.gitCommit("Initial commit");
             
-            String output = repo.runCommand("status", "-vv");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             
             assertThat(output).contains("-- Files to Commit:");
             assertThat(output).contains("  (none)");  // Or (remote branch not found) depending on state
@@ -203,7 +206,7 @@ public class StatusVerboseTest {
             // Create uncommitted change (modified, not added/committed)
             repo.writeFile("file1.txt", "modified content");
             
-            String output = repo.runCommand("status", "-vv");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             
             assertThat(output).contains("-- Files to Commit:");
             assertThat(output).contains("A file2.txt");  // Committed but not pushed

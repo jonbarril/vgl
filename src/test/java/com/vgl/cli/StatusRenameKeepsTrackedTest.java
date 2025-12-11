@@ -15,10 +15,13 @@ public class StatusRenameKeepsTrackedTest {
 		Path repoDir = td.resolve("repo");
 		Files.createDirectories(repoDir);
 
-		try (Git git = Git.init().setDirectory(repoDir.toFile()).call()) {
+		// Use VglTestHarness helpers to create git repo and vgl config
+		try (Git git = VglTestHarness.createGitRepo(repoDir)) {
 			// create and commit a tracked file
 			Files.writeString(repoDir.resolve("a.txt"), "hello");
-			Files.writeString(repoDir.resolve(".vgl"), "# vgl config");
+			java.util.Properties props = new java.util.Properties();
+			props.setProperty("local.dir", repoDir.toString().replace('\\', '/'));
+			VglTestHarness.createVglConfig(repoDir, props);
 			git.add().addFilepattern(".").call();
 			git.commit().setMessage("initial").call();
 

@@ -1,5 +1,6 @@
 package com.vgl.cli;
 
+import java.util.Properties;
 import org.eclipse.jgit.api.Git;
 import java.io.*;
 import java.nio.file.*;
@@ -7,19 +8,70 @@ import java.nio.file.*;
 /**
  * Test harness for VGL unit and integration tests.
  * Provides consistent, reliable setup/teardown for test repositories.
- * 
- * Usage:
- * <pre>
- * {@literal @}Test
- * void myTest(@TempDir Path tmp) throws Exception {
- *     try (VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
- *         String output = repo.runCommand("status");
- *         assertThat(output).contains("LOCAL");
- *     }
- * }
- * </pre>
  */
 public class VglTestHarness {
+    /**
+     * Creates a per-test temp root under build/tmp and sets vgl.test.base to it.
+     * All test repos and dirs should be created as subdirs of this root.
+     * @return Path to the test root
+     */
+    public static Path createTestRoot() throws IOException {
+        Path testRoot = Paths.get("build", "tmp", "test-" + java.util.UUID.randomUUID()).toAbsolutePath();
+        Files.createDirectories(testRoot);
+        System.setProperty("vgl.test.base", testRoot.toString());
+        return testRoot;
+    }
+
+    /**
+     * Runs the VGL CLI command in-process, capturing stdout and stderr.
+     * Sets the working directory to the given path for the duration of the call.
+     * Returns the combined output as a String.
+     * Usage: VglTestHarness.runVglCommand(repoPath, "status", "-v")
+     */
+    public static String runVglCommand(Path workingDir, String... args) throws Exception {
+        String originalUserDir = System.getProperty("user.dir");
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream oldOut = System.out;
+        PrintStream oldErr = System.err;
+        try {
+            System.setProperty("user.dir", workingDir.toString());
+            PrintStream ps = new PrintStream(baos, true, "UTF-8");
+            System.setOut(ps);
+            System.setErr(ps);
+            // Use VglMain for CLI entry point (or VglCli if preferred)
+            VglMain.main(args);
+            return baos.toString("UTF-8");
+        } finally {
+            System.setProperty("user.dir", originalUserDir);
+            System.setOut(oldOut);
+            System.setErr(oldErr);
+        }
+    }
+
+    // Centralized helpers for .git/.vgl creation and update using RepoManager/RepoResolver
+    public static Git createGitRepo(Path repoPath) throws Exception {
+        // Use default branch 'main' and minimal config
+        return RepoManager.createVglRepo(repoPath, "main", null);
+    }
+
+    public static void createVglConfig(Path repoPath, java.util.Properties props) throws Exception {
+        RepoManager.updateVglConfig(repoPath, props);
+    }
+
+    public static void updateVglProperty(Path repoPath, String key, String value) throws Exception {
+        Properties props = new Properties();
+        Path vglFile = repoPath.resolve(".vgl");
+        if (Files.exists(vglFile)) {
+            try (InputStream in = Files.newInputStream(vglFile)) { props.load(in); }
+        }
+        props.setProperty(key, value);
+        RepoManager.updateVglConfig(repoPath, props);
+    }
+
+    public static void updateGitConfig(Git git, String section, String name, String value) throws Exception {
+        git.getRepository().getConfig().setString(section, null, name, value);
+        git.getRepository().getConfig().save();
+    }
     
     /**
      * Creates a test repository with .git initialized.
@@ -27,13 +79,17 @@ public class VglTestHarness {
      * Returns an AutoCloseable that restores user.dir on close.
      */
     public static VglTestRepo createRepo(Path repoPath) throws Exception {
+        // Always create a valid VGL repo (with .git, .vgl, .gitignore) using RepoManager
+        RepoManager.createVglRepo(repoPath, "main", null);
         return new VglTestRepo(repoPath, true);
     }
-    
+
     /**
      * Creates a test directory WITHOUT .git (for testing error cases).
      */
     public static VglTestRepo createDir(Path dirPath) throws Exception {
+        // Only create the directory, do not initialize git or vgl
+        if (!Files.exists(dirPath)) Files.createDirectories(dirPath);
         return new VglTestRepo(dirPath, false);
     }
     
@@ -126,17 +182,14 @@ public class VglTestHarness {
         private final String originalVglTestBase;
         
         VglTestRepo(Path path, boolean initGit) throws Exception {
-
             this.path = path;
             this.originalUserDir = System.getProperty("user.dir");
             this.originalVglTestBase = System.getProperty("vgl.test.base");
             this.hasGit = initGit;
-            
             // Create directory if needed
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
             }
-            
             // Initialize git if requested
             if (initGit) {
                 try (Git git = Git.init().setDirectory(path.toFile()).setInitialBranch("main").call()) {
@@ -146,14 +199,9 @@ public class VglTestHarness {
                     git.getRepository().getConfig().save();
                 }
             }
-            
             // Set working directory
             System.setProperty("user.dir", path.toString());
-            // During tests, set the vgl.test.base ceiling so repo discovery cannot
-            // escape the per-test temporary directory. Restore on close.
-            try {
-                System.setProperty("vgl.test.base", path.toAbsolutePath().toString());
-            } catch (Exception ignored) {}
+            // vgl.test.base is set once per test via createTestRoot()
         }
         
         /**
@@ -177,90 +225,7 @@ public class VglTestHarness {
          * @param args Command arguments (e.g., "status", "-v")
          * @return Combined stdout and stderr
          */
-        public String runCommand(String... args) throws Exception {
-            return runCommandWithInput("n\n", args);
-        }
-        
-        /**
-         * Run a VGL command with custom stdin input.
-         * @param input String to provide to stdin (e.g., "y\n" or "")
-         * @param args Command arguments
-         * @return Combined stdout and stderr
-         */
-        public String runCommandWithInput(String input, String... args) throws Exception {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            InputStream oldIn = System.in;
-            PrintStream oldOut = System.out;
-            PrintStream oldErr = System.err;
-            try {
-                System.setIn(new java.io.ByteArrayInputStream(input.getBytes("UTF-8")));
-                PrintStream ps = new PrintStream(baos, true, "UTF-8");
-                System.setOut(ps);
-                System.setErr(ps);
-                // Construct the CLI in non-interactive mode to avoid prompts during
-                // initialization (e.g., config loading). Then enable interactive
-                // mode only for the actual command execution so provided stdin
-                // (like "n\n") can be consumed by prompts the command emits.
-                String prev = System.getProperty("vgl.noninteractive");
-                try {
-                    System.setProperty("vgl.noninteractive", "true");
-                    VglCli cli = new VglCli();
-                    // Enable interactive mode for the actual command execution and
-                    // allow the harness to force interactive behavior even when
-                    // tests run with a test base.
-                    System.setProperty("vgl.noninteractive", "false");
-                    System.setProperty("vgl.force.interactive", "true");
-                    try {
-                        cli.run(args);
-                    } finally {
-                        // Remove the transient force flag so we don't leak state
-                        System.getProperties().remove("vgl.force.interactive");
-                    }
-                    // Diagnostic dump (opt-in): only enabled when the test JVM
-                    // is started with `-Dvgl.debug.dump=true`. Do NOT auto-enable
-                    // diagnostics for specific commands (commit/diff) because
-                    // many tests assert exact command output.
-                    if (Boolean.getBoolean("vgl.debug.dump")) {
-                        try (org.eclipse.jgit.api.Git dbg = org.eclipse.jgit.api.Git.open(path.toFile())) {
-                            java.io.PrintStream out = ps; // ps is the PrintStream we set for stdout/stderr above
-                            out.println("DEBUG: dumping git state for repo: " + path.toString());
-                            try {
-                                org.eclipse.jgit.lib.ObjectId head = dbg.getRepository().resolve("HEAD");
-                                out.println("DEBUG: HEAD -> " + head);
-                                org.eclipse.jgit.lib.ObjectId headTree = dbg.getRepository().resolve("HEAD^{tree}");
-                                out.println("DEBUG: HEAD^{tree} -> " + headTree);
-                                if (headTree != null) {
-                                    org.eclipse.jgit.treewalk.TreeWalk tw = new org.eclipse.jgit.treewalk.TreeWalk(dbg.getRepository());
-                                    tw.addTree(headTree);
-                                    tw.setRecursive(true);
-                                    while (tw.next()) {
-                                        out.println("DEBUG: tree-entry: " + tw.getPathString());
-                                    }
-                                    tw.close();
-                                }
-                            } catch (Exception e) {
-                                out.println("DEBUG: could not resolve HEAD/tree: " + e.getMessage());
-                            }
-                            try {
-                                org.eclipse.jgit.api.Status st = dbg.status().call();
-                                out.println("DEBUG: status added=" + st.getAdded() + " modified=" + st.getModified() + " untracked=" + st.getUntracked());
-                            } catch (Exception e) {
-                                out.println("DEBUG: status failed: " + e.getMessage());
-                            }
-                        } catch (Exception e) {
-                            ps.println("DEBUG: cannot open git repo for diagnostics: " + e.getMessage());
-                        }
-                    }
-                } finally {
-                    if (prev == null) System.getProperties().remove("vgl.noninteractive"); else System.setProperty("vgl.noninteractive", prev);
-                }
-                return baos.toString("UTF-8");
-            } finally {
-                System.setIn(oldIn);
-                System.setOut(oldOut);
-                System.setErr(oldErr);
-            }
-        }
+        // Remove runCommand and runCommandWithInput for create command; all repo setup should use RepoManager/RepoResolver directly.
         
         /**
          * Run a VGL command expecting it to fail.

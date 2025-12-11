@@ -21,7 +21,6 @@ public class CommitCommand implements Command {
         String msg;
         boolean amend = false;
         List<String> rest = new ArrayList<>(args);
-        
         if (!rest.isEmpty() && ("-new".equals(rest.get(0)) || "-add".equals(rest.get(0))) && rest.size() >= 2) {
             amend = true;
             msg = rest.get(1);
@@ -32,9 +31,15 @@ public class CommitCommand implements Command {
             return 1;
         }
 
-        try (VglRepo vglRepo = RepoResolver.resolveVglRepoForCommand()) {
-            if (vglRepo == null) return 1;
-
+        com.vgl.cli.RepoResolution repoRes = RepoResolver.resolveForCommand();
+        if (repoRes.getVglRepo() == null || repoRes.getGit() == null) {
+            String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
+                          "Hint: Run 'vgl create' to initialize a new repo here.";
+            System.err.println(warn);
+            System.out.println(warn);
+            return 1;
+        }
+        try (VglRepo vglRepo = repoRes.getVglRepo()) {
             Git git = vglRepo.getGit();
 
             // First get status to see what needs to be added. Some JGit environments

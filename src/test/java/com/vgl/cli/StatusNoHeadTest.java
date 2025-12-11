@@ -17,7 +17,7 @@ public class StatusNoHeadTest {
         printProgress("statusHandlesNoCommits");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             // Do NOT create any commits
-            String output = repo.runCommand("status", "-v");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-v");
             assertThat(output).contains("(no commits yet)");
             // Should still show FILES line
             assertThat(output).contains("FILES");

@@ -1,3 +1,13 @@
+    private static void deleteRecursively(java.nio.file.Path path) throws java.io.IOException {
+        if (java.nio.file.Files.exists(path)) {
+            java.nio.file.Files.walk(path)
+                .sorted((a, b) -> b.compareTo(a))
+                .forEach(p -> {
+                    try { java.nio.file.Files.delete(p); } catch (java.io.IOException e) { }
+                });
+        }
+    }
+
 package com.vgl.cli;
 
 import org.eclipse.jgit.api.Git;
@@ -10,9 +20,22 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class StatusRenameUnionTest {
 
+    private static void deleteRecursively(java.nio.file.Path path) throws java.io.IOException {
+        if (java.nio.file.Files.exists(path)) {
+            java.nio.file.Files.walk(path)
+                .sorted((a, b) -> b.compareTo(a))
+                .forEach(p -> {
+                    try { java.nio.file.Files.delete(p); } catch (java.io.IOException e) { }
+                });
+        }
+    }
+
     @Test
     public void commitAndWorkingRenamesAreUnioned() throws Exception {
-        Path repo = Files.createTempDirectory("vgl-rename-test-");
+        Path testBase = Path.of("build", "tmp", "status-rename-union-test").toAbsolutePath();
+        Files.createDirectories(testBase);
+        Path repo = testBase.resolve("repo");
+        if (Files.exists(repo)) deleteRecursively(repo);
         Git git = Git.init().setDirectory(repo.toFile()).call();
 
         // Create initial file and commit

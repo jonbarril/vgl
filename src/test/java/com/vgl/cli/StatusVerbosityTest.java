@@ -13,42 +13,28 @@ public class StatusVerbosityTest {
         TestProgress.print(StatusVerbosityTest.class, testName);
     }
 
-    private static String run(Path dir, String... args) throws Exception {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream oldOut = System.out;
-        PrintStream oldErr = System.err;
-        String oldUserDir = System.getProperty("user.dir");
-        try {
-            System.setProperty("user.dir", dir.toString());
-            PrintStream ps = new PrintStream(baos, true, "UTF-8");
-            System.setOut(ps);
-            System.setErr(ps);
-            new VglCli().run(args);
-            return baos.toString("UTF-8");
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
-            System.setOut(oldOut);
-            System.setErr(oldErr);
-        }
-    }
+    // Use VglTestHarness.runVglCommand for CLI invocation
 
     @Test
     void statusShowsBasicSections(@TempDir Path tmp) throws Exception {
-            printProgress("statusShowsBasicSections");
-        // Create a test repository with a commit
-        try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-            // Create initial commit
+        printProgress("statusShowsBasicSections");
+        // Create a test repository with a commit using VglTestHarness helpers
+        try (Git git = VglTestHarness.createGitRepo(tmp)) {
             Path testFile = tmp.resolve("test.txt");
             Files.writeString(testFile, "hello");
             git.add().addFilepattern("test.txt").call();
             git.commit().setMessage("initial").call();
+            // Create .vgl config with more properties
+            java.util.Properties props = new java.util.Properties();
+            props.setProperty("local.dir", tmp.toString().replace('\\', '/'));
+            props.setProperty("local.branch", "main");
+            props.setProperty("remote.url", "none");
+            props.setProperty("remote.branch", "none");
+            VglTestHarness.createVglConfig(tmp, props);
         }
-        
-        // Create .vgl config
-        new VglCli(); // This will create the .vgl in tmp directory
-        
-        String output = run(tmp, "status");
-        
+
+        String output = VglTestHarness.runVglCommand(tmp, "status");
+
         // New compact format shows these sections
         assertThat(output).contains("LOCAL");
         assertThat(output).contains("REMOTE");
@@ -58,35 +44,43 @@ public class StatusVerbosityTest {
 
     @Test
     void statusVerboseShowsCommitInfo(@TempDir Path tmp) throws Exception {
-            printProgress("statusVerboseShowsCommitInfo");
-        // Create a test repository with a commit
-        try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
+        printProgress("statusVerboseShowsCommitInfo");
+        // Create a test repository with a commit using VglTestHarness helpers
+        try (Git git = VglTestHarness.createGitRepo(tmp)) {
             Path testFile = tmp.resolve("test.txt");
             Files.writeString(testFile, "hello");
             git.add().addFilepattern("test.txt").call();
             git.commit().setMessage("initial").call();
+            // Create .vgl config
+            java.util.Properties props = new java.util.Properties();
+            props.setProperty("local.dir", tmp.toString().replace('\\', '/'));
+            VglTestHarness.createVglConfig(tmp, props);
         }
-        
-        String output = run(tmp, "status", "-v");
-        
+
+        String output = VglTestHarness.runVglCommand(tmp, "status", "-v");
+
         // -v should show commit hashes
         assertThat(output).containsPattern("[0-9a-f]{7}");
     }
 
     @Test
     void statusVeryVerboseShowsTrackedSection(@TempDir Path tmp) throws Exception {
-            printProgress("statusVeryVerboseShowsTrackedSection");
-        // Create a test repository with a commit and an undecided file
-        try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
+        printProgress("statusVeryVerboseShowsTrackedSection");
+        // Create a test repository with a commit and an undecided file using VglTestHarness helpers
+        try (Git git = VglTestHarness.createGitRepo(tmp)) {
             Path trackedFile = tmp.resolve("tracked.txt");
             Path undecidedFile = tmp.resolve("undecided.txt");
             Files.writeString(trackedFile, "tracked");
             Files.writeString(undecidedFile, "undecided");
             git.add().addFilepattern("tracked.txt").call();
-            git.commit().setMessage("initial").call();
+            git.commit().setMessage("initial");
+            // Create .vgl config
+            java.util.Properties props = new java.util.Properties();
+            props.setProperty("local.dir", tmp.toString().replace('\\', '/'));
+            VglTestHarness.createVglConfig(tmp, props);
         }
 
-        String output = run(tmp, "status", "-vv");
+        String output = VglTestHarness.runVglCommand(tmp, "status", "-vv");
 
         // -vv should always show these sections
         assertThat(output).contains("-- Tracked Files:");

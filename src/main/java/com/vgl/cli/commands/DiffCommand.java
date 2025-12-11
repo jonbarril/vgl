@@ -31,33 +31,37 @@ public class DiffCommand implements Command {
         List<String> filters = new ArrayList<>();
         for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) filters.add(s);
 
-        try (Git git = RepoResolver.resolveGitRepoForCommand()) {
-            if (git == null) {
-                return 1;
-            }
-            String remoteUrl = git.getRepository().getConfig().getString("remote","origin","url");
+        com.vgl.cli.RepoResolution res = RepoResolver.resolveForCommand();
+        if (res.getGit() == null) {
+            String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
+                          "Hint: Run 'vgl create' to initialize a new repo here.";
+            System.err.println(warn);
+            System.out.println(warn);
+            return 1;
+        }
+        Git git = res.getGit();
+        String remoteUrl = git.getRepository().getConfig().getString("remote","origin","url");
 
-            // Validate remote exists if -rb is used
-            if (rb && remoteUrl == null) {
-                System.out.println("No remote connected.");
-                return 1;
-            }
+        // Validate remote exists if -rb is used
+        if (rb && remoteUrl == null) {
+            System.err.println("No remote connected.");
+            return 1;
+        }
 
-            // Determine comparison mode
-            if (!lb && !rb) {
-                lb = true; // default: working vs local
-            }
+        // Determine comparison mode
+        if (!lb && !rb) {
+            lb = true; // default: working vs local
+        }
 
-            if (lb && rb) {
-                // Compare local branch vs remote branch
-                return compareLocalVsRemote(git, filters);
-            } else if (rb) {
-                // Compare working files vs remote branch
-                return compareWorkingVsRemote(git, filters);
-            } else {
-                // Compare working files vs local branch
-                return compareWorkingVsLocal(git, filters);
-            }
+        if (lb && rb) {
+            // Compare local branch vs remote branch
+            return compareLocalVsRemote(git, filters);
+        } else if (rb) {
+            // Compare working files vs remote branch
+            return compareWorkingVsRemote(git, filters);
+        } else {
+            // Compare working files vs local branch
+            return compareWorkingVsLocal(git, filters);
         }
     }
 
@@ -132,7 +136,7 @@ public class DiffCommand implements Command {
         org.eclipse.jgit.lib.ObjectId remoteHead = git.getRepository().resolve("origin/" + currentBranch);
         
         if (remoteHead == null) {
-            System.out.println("Remote branch not found.");
+            System.err.println("Remote branch not found.");
             return 1;
         }
         
@@ -183,7 +187,7 @@ public class DiffCommand implements Command {
             return 0;
         }
         if (remoteHead == null) {
-            System.out.println("Remote branch not found.");
+            System.err.println("Remote branch not found.");
             return 1;
         }
         

@@ -24,18 +24,15 @@ public class MergeCommand implements Command {
     @Override
     public int run(List<String> args) throws Exception {
         VglCli vgl = new VglCli();
-        
         // Parse direction flags
         boolean mergeFrom = Args.hasFlag(args, "-from");
         boolean mergeInto = Args.hasFlag(args, "-into");
-        
         // Parse target/source flags
         String localDir = Args.getFlag(args, "-lr");
         String localBranch = Args.getFlag(args, "-lb");
         String remoteUrl = Args.getFlag(args, "-rr");
         String remoteBranch = Args.getFlag(args, "-rb");
         String bothBranch = Args.getFlag(args, "-bb");
-        
         // Validate direction
         if (!mergeFrom && !mergeInto) {
             System.out.println("Usage: vgl merge -from|-into [-lr [DIR]] [-lb [BRANCH]] [-rr [URL]] [-rb [BRANCH]] [-bb [BRANCH]]");
@@ -45,18 +42,15 @@ public class MergeCommand implements Command {
             System.out.println("  vgl merge -from -bb feature    Merge feature from both local and remote");
             return 1;
         }
-        
         if (mergeFrom && mergeInto) {
-            System.out.println("Error: Cannot specify both -from and -into.");
+            System.err.println("Error: Cannot specify both -from and -into.");
             return 1;
         }
-        
         // Apply switch state defaults
         String switchLocalDir = vgl.getLocalDir();
         String switchLocalBranch = vgl.getLocalBranch();
         String switchRemoteUrl = vgl.getRemoteUrl();
         String switchRemoteBranch = vgl.getRemoteBranch();
-        
         // Handle -bb flag (both branches with same name)
         if (bothBranch != null) {
             if (localBranch != null || remoteBranch != null) {
@@ -84,38 +78,36 @@ public class MergeCommand implements Command {
         // Determine working directory
         String workingDir = (localDir != null) ? localDir : switchLocalDir;
         Path dir = Paths.get(workingDir).toAbsolutePath().normalize();
-        
-        if (!Files.exists(dir.resolve(".git"))) {
-            System.out.println("Error: No Git repository found at: " + dir);
+        com.vgl.cli.RepoResolution repoRes = com.vgl.cli.RepoResolver.resolveForCommand(dir);
+        if (repoRes.getGit() == null) {
+            String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
+                          "Hint: Run 'vgl create' to initialize a new repo here.";
+            System.err.println(warn);
+            System.out.println(warn);
             return 1;
         }
-        
-        try (Git git = Git.open(dir.toFile())) {
+        try (Git git = repoRes.getGit()) {
             String currentBranch = git.getRepository().getBranch();
-            
             // Check for uncommitted changes
             org.eclipse.jgit.api.Status status = git.status().call();
-            boolean hasChanges = !status.getModified().isEmpty() || !status.getChanged().isEmpty() || 
+            boolean hasChanges = !status.getModified().isEmpty() || !status.getChanged().isEmpty() ||
                                 !status.getAdded().isEmpty() || !status.getRemoved().isEmpty();
-            
             if (hasChanges) {
-                System.out.println("Error: You have uncommitted changes.");
-                System.out.println("Commit them before merging:");
-                status.getModified().forEach(f -> System.out.println("  M " + f));
-                status.getChanged().forEach(f -> System.out.println("  M " + f));
-                status.getAdded().forEach(f -> System.out.println("  A " + f));
-                status.getRemoved().forEach(f -> System.out.println("  D " + f));
-                System.out.println("\nUse 'vgl commit \"message\"' to save your changes first.");
+                System.err.println("Error: You have uncommitted changes.");
+                System.err.println("Commit them before merging:");
+                status.getModified().forEach(f -> System.err.println("  M " + f));
+                status.getChanged().forEach(f -> System.err.println("  M " + f));
+                status.getAdded().forEach(f -> System.err.println("  A " + f));
+                status.getRemoved().forEach(f -> System.err.println("  D " + f));
+                System.err.println("\nUse 'vgl commit \"message\"' to save your changes first.");
                 return 1;
             }
-            
             // Save current state as jump state
             vgl.setJumpLocalDir(workingDir);
             vgl.setJumpLocalBranch(currentBranch);
             vgl.setJumpRemoteUrl(vgl.getRemoteUrl());
             vgl.setJumpRemoteBranch(vgl.getRemoteBranch());
             vgl.save();
-            
             String sourceBranchName;
             String targetBranchName;
             
@@ -127,14 +119,12 @@ public class MergeCommand implements Command {
                     // Merge from remote
                     String effectiveRemoteUrl = (remoteUrl != null) ? remoteUrl : switchRemoteUrl;
                     if (effectiveRemoteUrl == null || effectiveRemoteUrl.isBlank()) {
-                        System.out.println("Error: No remote configured.");
-                        System.out.println("Use 'vgl switch -rr URL' to configure a remote first.");
+                        System.err.println("Error: No remote configured.");
+                        System.err.println("Use 'vgl switch -rr URL' to configure a remote first.");
                         return 1;
                     }
-                    
                     System.out.println("Fetching from remote...");
                     git.fetch().setRemote("origin").call();
-                    
                     sourceBranchName = "origin/" + remoteBranch;
                 } else if (localBranch != null) {
                     // Merge from local branch
@@ -142,22 +132,19 @@ public class MergeCommand implements Command {
                     List<Ref> branches = git.branchList().call();
                     boolean branchExists = branches.stream()
                         .anyMatch(ref -> ref.getName().equals("refs/heads/" + sourceBranch));
-                    
                     if (!branchExists) {
-                        System.out.println("Error: Branch '" + sourceBranch + "' does not exist.");
-                        System.out.println("Available branches:");
-                        branches.forEach(ref -> System.out.println("  " + ref.getName().replace("refs/heads/", "")));
+                        System.err.println("Error: Branch '" + sourceBranch + "' does not exist.");
+                        System.err.println("Available branches:");
+                        branches.forEach(ref -> System.err.println("  " + ref.getName().replace("refs/heads/", "")));
                         return 1;
                     }
-                    
                     if (sourceBranch.equals(currentBranch)) {
-                        System.out.println("Error: Cannot merge branch '" + sourceBranch + "' into itself.");
+                        System.err.println("Error: Cannot merge branch '" + sourceBranch + "' into itself.");
                         return 1;
                     }
-                    
                     sourceBranchName = sourceBranch;
                 } else {
-                    System.out.println("Error: Must specify -lb or -rb with -from.");
+                    System.err.println("Error: Must specify -lb or -rb with -from.");
                     return 1;
                 }
             } else {
@@ -166,28 +153,24 @@ public class MergeCommand implements Command {
                 
                 if (localBranch != null) {
                     targetBranchName = localBranch;
-                    
                     // Verify target branch exists
                     List<Ref> branches = git.branchList().call();
                     boolean branchExists = branches.stream()
                         .anyMatch(ref -> ref.getName().equals("refs/heads/" + targetBranchName));
-                    
                     if (!branchExists) {
-                        System.out.println("Error: Target branch '" + targetBranchName + "' does not exist.");
-                        System.out.println("Available branches:");
-                        branches.forEach(ref -> System.out.println("  " + ref.getName().replace("refs/heads/", "")));
+                        System.err.println("Error: Target branch '" + targetBranchName + "' does not exist.");
+                        System.err.println("Available branches:");
+                        branches.forEach(ref -> System.err.println("  " + ref.getName().replace("refs/heads/", "")));
                         return 1;
                     }
-                    
                     if (targetBranchName.equals(currentBranch)) {
-                        System.out.println("Error: Cannot merge branch '" + currentBranch + "' into itself.");
+                        System.err.println("Error: Cannot merge branch '" + currentBranch + "' into itself.");
                         return 1;
                     }
-                    
                     // Switch to target branch first
                     git.checkout().setName(targetBranchName).call();
                 } else {
-                    System.out.println("Error: Must specify -lb with -into.");
+                    System.err.println("Error: Must specify -lb with -into.");
                     return 1;
                 }
             }

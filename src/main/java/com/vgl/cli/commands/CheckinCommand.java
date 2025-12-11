@@ -12,13 +12,19 @@ public class CheckinCommand implements Command {
     @Override public int run(List<String> args) throws Exception {
         boolean draft = args.contains("-draft");
         boolean fin = args.contains("-final");
-        if (!draft && !fin) { System.out.println("Usage: vgl checkin -draft|-final"); return 1; }
-        try (Git git = RepoResolver.resolveGitRepoForCommand()) {
-            if (git == null) {
-                System.out.println("Warning: No local repository found in: " + 
-                    Paths.get(".").toAbsolutePath().normalize());
-                return 1;
-            }
+        if (!draft && !fin) {
+            System.out.println("Usage: vgl checkin -draft|-final");
+            return 1;
+        }
+        com.vgl.cli.RepoResolution repoRes = RepoResolver.resolveForCommand();
+        if (repoRes.getGit() == null) {
+            String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
+                          "Hint: Run 'vgl create' to initialize a new repo here.";
+            System.err.println(warn);
+            System.out.println(warn);
+            return 1;
+        }
+        try (Git git = repoRes.getGit()) {
             String branch = git.getRepository().getBranch();
             String url = git.getRepository().getConfig().getString("remote","origin","url");
             if (url != null && url.contains("github.com")) {

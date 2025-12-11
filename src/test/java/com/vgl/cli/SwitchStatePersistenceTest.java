@@ -1,6 +1,5 @@
 package com.vgl.cli;
 
-import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Files;
@@ -12,29 +11,41 @@ public class SwitchStatePersistenceTest {
 
     @Test
     public void persistedStateTakesPrecedenceOverCwd() throws Exception {
-        Path dir1 = Files.createTempDirectory("vgl-test-repo1-");
-        Path dir2 = Files.createTempDirectory("vgl-test-repo2-");
-        // Init simple git repos
-        Git g1 = Git.init().setDirectory(dir1.toFile()).call();
-        g1.close();
-        Git g2 = Git.init().setDirectory(dir2.toFile()).call();
-        g2.close();
+        // Use VglTestHarness to create two repos in build/tmp (never user home)
+        Path testBase = Path.of("build", "tmp", "switch-state-test").toAbsolutePath();
+        Files.createDirectories(testBase);
+        Path dir1 = testBase.resolve("repo1");
+        Path dir2 = testBase.resolve("repo2");
+        if (Files.exists(dir1)) deleteRecursively(dir1);
+        if (Files.exists(dir2)) deleteRecursively(dir2);
+        try (VglTestHarness.VglTestRepo repo1 = VglTestHarness.createRepo(dir1)) {
+            try (VglTestHarness.VglTestRepo repo2 = VglTestHarness.createRepo(dir2)) {
+                // Use a temp state file so tests do not touch user.home
+                Path stateFile = Files.createTempFile("vgl-state-", ".properties");
+                System.setProperty("vgl.state", stateFile.toString());
 
-        // Use a temp state file so tests do not touch user.home
-        Path stateFile = Files.createTempFile("vgl-state-", ".properties");
-        System.setProperty("vgl.state", stateFile.toString());
+                // Write persisted state pointing at repo1
+                VglCli vgl = new VglCli();
+                vgl.setLocalDir(repo1.getPath().toString());
+                vgl.save();
 
-        // Write persisted state pointing at dir1
-        VglStateStore.VglState s = new VglStateStore.VglState();
-        s.localDir = dir1.toAbsolutePath().toString();
-        VglStateStore.write(s);
+                // Simulate user wandering to repo2
+                System.setProperty("user.dir", repo2.getPath().toString());
 
-        // Simulate user wandering to dir2
-        System.setProperty("user.dir", dir2.toAbsolutePath().toString());
+                // resolveEffectiveRepoRoot should prefer persisted state (repo1) and not repo2
+                java.nio.file.Path resolved = Utils.resolveEffectiveRepoRoot(vgl, java.nio.file.Paths.get(System.getProperty("user.dir")));
+                assertEquals(repo1.getPath().toAbsolutePath().normalize(), resolved.toAbsolutePath().normalize());
+            }
+        }
+    }
 
-        VglCli vgl = new VglCli();
-        // resolveEffectiveRepoRoot should prefer persisted state (dir1) and not dir2
-        java.nio.file.Path resolved = Utils.resolveEffectiveRepoRoot(vgl, java.nio.file.Paths.get(System.getProperty("user.dir")));
-        assertEquals(dir1.toAbsolutePath().normalize(), resolved.toAbsolutePath().normalize());
+    private static void deleteRecursively(Path path) throws java.io.IOException {
+        if (Files.exists(path)) {
+            Files.walk(path)
+                .sorted((a, b) -> b.compareTo(a))
+                .forEach(p -> {
+                    try { Files.delete(p); } catch (java.io.IOException e) { }
+                });
+        }
     }
 }

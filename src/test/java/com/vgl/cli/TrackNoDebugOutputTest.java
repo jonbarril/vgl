@@ -18,8 +18,10 @@ public class TrackNoDebugOutputTest {
             r.writeFile("aa.txt", "one");
             r.writeFile("subdir/q.txt", "two");
             // create a .vgl config so -all path is exercised
-            String cfg = "local.dir=" + repo.toAbsolutePath().toString().replace('\\','/') + "\nlocal.branch=main\n";
-            Files.writeString(repo.resolve(".vgl"), cfg);
+            java.util.Properties props = new java.util.Properties();
+            props.setProperty("local.dir", repo.toAbsolutePath().toString().replace('\\','/'));
+            props.setProperty("local.branch", "main");
+            VglTestHarness.createVglConfig(repo, props);
 
             String out = r.runCommand("track", "-all");
             // Ensure no debug markers are printed

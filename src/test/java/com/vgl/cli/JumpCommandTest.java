@@ -8,40 +8,34 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.*;
 
 class JumpCommandTest {
-    private Path tempDir;
+    private Path testRoot;
     private Path repo1;
     private Path repo2;
 
     @BeforeEach
     void setUp() throws Exception {
-        tempDir = Files.createTempDirectory("vgl-jump-test");
-        repo1 = tempDir.resolve("repo1");
-        repo2 = tempDir.resolve("repo2");
-        
-        // Create two repos
-        Files.createDirectories(repo1);
-        Files.createDirectories(repo2);
-        
-        // Initialize repo1
-        runCommand(repo1, "git", "init");
-        runCommand(repo1, "git", "config", "user.email", "test@test.com");
-        runCommand(repo1, "git", "config", "user.name", "Test User");
-        Files.writeString(repo1.resolve("file1.txt"), "content1");
-        runCommand(repo1, "git", "add", ".");
-        runCommand(repo1, "git", "commit", "-m", "Initial commit repo1");
-        
-        // Initialize repo2
-        runCommand(repo2, "git", "init");
-        runCommand(repo2, "git", "config", "user.email", "test@test.com");
-        runCommand(repo2, "git", "config", "user.name", "Test User");
-        Files.writeString(repo2.resolve("file2.txt"), "content2");
-        runCommand(repo2, "git", "add", ".");
-        runCommand(repo2, "git", "commit", "-m", "Initial commit repo2");
+        testRoot = VglTestHarness.createTestRoot();
+        repo1 = testRoot.resolve("repo1");
+        repo2 = testRoot.resolve("repo2");
+        if (Files.exists(repo1)) deleteRecursively(repo1);
+        if (Files.exists(repo2)) deleteRecursively(repo2);
+
+        // Create two VGL repos using harness
+        try (VglTestHarness.VglTestRepo r1 = VglTestHarness.createRepo(repo1)) {
+            r1.writeFile("file1.txt", "content1");
+            r1.gitAdd("file1.txt");
+            r1.gitCommit("Initial commit repo1");
+        }
+        try (VglTestHarness.VglTestRepo r2 = VglTestHarness.createRepo(repo2)) {
+            r2.writeFile("file2.txt", "content2");
+            r2.gitAdd("file2.txt");
+            r2.gitCommit("Initial commit repo2");
+        }
     }
 
     @AfterEach
     void tearDown() throws Exception {
-        deleteRecursively(tempDir);
+        if (Files.exists(testRoot)) deleteRecursively(testRoot);
     }
 
     @Test
@@ -111,15 +105,7 @@ class JumpCommandTest {
         assertThat(result).isEqualTo(0);
     }
 
-    private void runCommand(Path dir, String... command) throws Exception {
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.directory(dir.toFile());
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
-        process.waitFor();
-    }
-
-    private void deleteRecursively(Path path) throws IOException {
+    private static void deleteRecursively(Path path) throws IOException {
         if (Files.exists(path)) {
             Files.walk(path)
                 .sorted((a, b) -> b.compareTo(a))

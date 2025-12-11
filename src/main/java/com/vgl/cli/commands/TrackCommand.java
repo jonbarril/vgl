@@ -1,13 +1,11 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Utils;
-import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.NoFilepatternException;
 
 import java.nio.file.Path;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.nio.file.FileSystems;
 import java.nio.file.PathMatcher;
 import java.util.List;
@@ -21,40 +19,38 @@ public class TrackCommand implements Command {
             return 1;
         }
 
-        VglCli vgl = new VglCli();
-        String localDir = vgl.getLocalDir();
-        Path dir = Paths.get(localDir).toAbsolutePath().normalize();
-
-        if (!vgl.isConfigurable()) {
-            System.out.println(Utils.MSG_NO_REPO_WARNING_PREFIX + dir);
+        // Use the current working directory as the starting point for repo resolution
+        Path startDir = java.nio.file.Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        com.vgl.cli.RepoResolution res = com.vgl.cli.RepoResolver.resolveForCommand(startDir);
+        if (res.getVglRepo() == null) {
+            String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
+                          "Hint: Run 'vgl create' to initialize a new repo here.";
+            System.err.println(warn);
+            System.out.println(warn);
             return 1;
         }
+        com.vgl.cli.VglRepo vglRepo = res.getVglRepo();
+        Path dir = vglRepo.getRepoRoot();
 
         // Load undecided files from .vgl if -all is specified
         boolean useAll = args.size() == 1 && args.get(0).equals("-all");
         List<String> filesToTrack;
-        com.vgl.cli.VglRepo vglRepo = com.vgl.cli.RepoResolver.resolveVglRepoForCommand(dir);
-        if (vglRepo != null) {
-            try (Git git = Git.open(dir.toFile())) {
-                // Only update undecided files before main logic
-                org.eclipse.jgit.lib.Repository repo = git.getRepository();
-                try {
-                    if (Utils.hasCommits(repo)) {
-                        org.eclipse.jgit.api.Status status = git.status().call();
-                        vglRepo.updateUndecidedFilesFromWorkingTree(git, status);
-                    } else {
-                        vglRepo.updateUndecidedFilesFromWorkingTree(git);
-                    }
-                } catch (Exception e) {
-                    // ignore status read failures during undecided update
+        try (Git git = Git.open(dir.toFile())) {
+            // Only update undecided files before main logic
+            org.eclipse.jgit.lib.Repository repo = git.getRepository();
+            try {
+                if (Utils.hasCommits(repo)) {
+                    org.eclipse.jgit.api.Status status = git.status().call();
+                    vglRepo.updateUndecidedFilesFromWorkingTree(git, status);
+                } else {
+                    vglRepo.updateUndecidedFilesFromWorkingTree(git);
                 }
+            } catch (Exception e) {
+                // ignore status read failures during undecided update
             }
         }
         if (useAll) {
-            if (vglRepo == null) {
-                System.out.println("No .vgl repo found for undecided files.");
-                return 1;
-            }
+            // vglRepo null check is now handled above; unreachable here
             // When using -all, exclude any undecided files that are inside nested repositories.
             filesToTrack = new java.util.ArrayList<>(vglRepo.getUndecidedFiles());
             try {

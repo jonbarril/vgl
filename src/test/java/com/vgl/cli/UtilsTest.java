@@ -144,14 +144,14 @@ public class UtilsTest {
 
     @Test
     public void findVglRepoFindsGitAndConfig(@TempDir Path tmp) throws Exception {
-        // Create git repo
-        try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-        }
-        
-        // Create .vgl config - use forward slashes to avoid escaping issues in Properties format
+        // Create git repo and .vgl config using VglTestHarness helpers
         String localDirValue = tmp.toString().replace('\\', '/');
-        Files.writeString(tmp.resolve(".vgl"), "local.dir=" + localDirValue);
-        
+        try (Git git = VglTestHarness.createGitRepo(tmp)) {
+            java.util.Properties props = new java.util.Properties();
+            props.setProperty("local.dir", localDirValue);
+            VglTestHarness.createVglConfig(tmp, props);
+        }
+
         // Find VGL repo
         try (VglRepo vglRepo = Utils.findVglRepo(tmp)) {
             assertThat(vglRepo).isNotNull();

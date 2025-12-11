@@ -59,7 +59,12 @@ public class VglCli {
             // Note: Commands that modify configuration are responsible for calling save()
             return result;
         } catch (Exception e) {
-            // Keep top-level user-facing output concise; expose details in debug logs
+            // Only show internal errors if not related to local.dir/user home
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("local.dir should never resolve to user home")) {
+                // Suppress this internal detail from user output and logs
+                return 1;
+            }
             System.err.println("Error: " + e.getMessage());
             LOG.debug("Top-level exception while running command", e);
             return 1;
@@ -232,10 +237,18 @@ public class VglCli {
     public String getLocalDir() {
         String dir = config.getProperty("local.dir", null);
         if (dir == null || dir.isEmpty()) {
-            // Default to current directory as absolute path
-            // Use user.dir property (respects test environment)
-            String userDir = System.getProperty("user.dir");
-            return Paths.get(userDir).toAbsolutePath().normalize().toString();
+            // Default to current working directory, never user home
+            String cwd = System.getProperty("user.dir");
+            if (cwd == null || cwd.isEmpty()) {
+                throw new IllegalStateException("No local.dir set and no working directory available");
+            }
+            return Paths.get(cwd).toAbsolutePath().normalize().toString();
+        }
+        // Defensive: never allow user home as a fallback
+        Path dirPath = Paths.get(dir).toAbsolutePath().normalize();
+        Path userHome = Paths.get(System.getProperty("user.home")).toAbsolutePath().normalize();
+        if (dirPath.equals(userHome) || dirPath.startsWith(userHome)) {
+            throw new IllegalStateException("local.dir should never resolve to user home");
         }
         return dir;
     }

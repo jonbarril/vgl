@@ -66,38 +66,16 @@ public class CreateCommand implements Command {
             }
         }
 
-        // Case 1: No .git exists - create new repository
+        // Case 1: No .git exists - create new repository (use RepoManager)
         if (!Files.exists(dir.resolve(".git"))) {
-            try (Git git = Git.init().setDirectory(dir.toFile()).call()) {
+            java.util.Properties vglProps = new java.util.Properties();
+            vglProps.setProperty("local.dir", dir.toString());
+            vglProps.setProperty("local.branch", finalBranch);
+            try (Git git = com.vgl.cli.RepoManager.createVglRepo(dir, finalBranch, vglProps)) {
                 System.out.println("Created new local repository: " + dir);
-                git.getRepository().updateRef("HEAD").link("refs/heads/" + finalBranch);
-                System.out.println("Created new branch: " + finalBranch);
+                System.out.println("Created new local branch: " + finalBranch);
             }
-
-            // Create default .gitignore
-            Path gi = dir.resolve(".gitignore");
-            if (!Files.exists(gi)) {
-                String content = String.join("\n",
-                    "# VGL configuration",
-                    ".vgl",
-                    "# Compiled class files",
-                    "*.class",
-                    "# Log files",
-                    "*.log",
-                    "# Build directories",
-                    "/build/",
-                    "/out/",
-                    "# IDE files",
-                    ".idea/",
-                    ".vscode/",
-                    "# Gradle",
-                    ".gradle/",
-                    "# Mac files",
-                    ".DS_Store"
-                );
-                Files.writeString(gi, content);
-            }
-        } 
+        }
         // Case 2: .git exists and -b specified - create new branch
         else if (branchSpecified) {
             try (Git git = Git.open(dir.toFile())) {
@@ -108,7 +86,7 @@ public class CreateCommand implements Command {
                     git.branchCreate().setName(finalBranch).call();
                     System.out.println("Created new local branch: " + finalBranch);
                 } else {
-                    System.out.println("Warning: Branch '" + finalBranch + "' already exists.");
+                    System.out.println("Warning: Local branch '" + finalBranch + "' already exists.");
                     return 0;
                 }
                 
@@ -173,61 +151,17 @@ public class CreateCommand implements Command {
                             .setRemote("origin")
                             .add(finalBranch)
                             .call();
-                        System.out.println("Pushed branch '" + finalBranch + "' to remote.");
+                        System.out.println("Pushed branch '" + finalBranch + "' to remote branch '");
                     }
                 }
             }
         }
         // Case 3: .git exists but no -lb or -bb specified
         else {
-            // If a .vgl config already exists, behave as before (do nothing special).
-            Path vglFile = dir.resolve(".vgl");
-            if (!Files.exists(vglFile)) {
-                // Create a minimal VGL config from the existing git repository state.
-                // Historically some flows used -f to force creation inside an
-                // existing .git; treat -f as a silent affirmative to create.
-                try (org.eclipse.jgit.api.Git git = org.eclipse.jgit.api.Git.open(dir.toFile())) {
-                    String currentBranch = null;
-                    try { currentBranch = git.getRepository().getBranch(); } catch (Exception ignore) {}
-                    String remoteName = null;
-                    String remoteUrl = null;
-                    String remoteBranch = null;
-                    try {
-                        if (currentBranch != null) {
-                            remoteName = git.getRepository().getConfig().getString("branch", currentBranch, "remote");
-                        }
-                        if (remoteName == null || remoteName.isBlank()) remoteName = "origin";
-                        remoteUrl = git.getRepository().getConfig().getString("remote", remoteName, "url");
-                        String mergeRef = null;
-                        if (currentBranch != null) mergeRef = git.getRepository().getConfig().getString("branch", currentBranch, "merge");
-                        if (mergeRef != null && mergeRef.startsWith("refs/heads/")) {
-                            remoteBranch = mergeRef.substring("refs/heads/".length());
-                        } else {
-                            remoteBranch = mergeRef;
-                        }
-                    } catch (Exception ignore) {}
-
-                    VglCli newVgl = new VglCli();
-                    newVgl.setLocalDir(dir.toString());
-                    if (currentBranch != null && !currentBranch.isBlank()) newVgl.setLocalBranch(currentBranch);
-                    if (remoteUrl != null && !remoteUrl.isBlank()) newVgl.setRemoteUrl(remoteUrl);
-                    if (remoteBranch != null && !remoteBranch.isBlank()) newVgl.setRemoteBranch(remoteBranch);
-                    newVgl.save();
-
-                    System.out.println("Created.");
-                    Utils.printSwitchState(newVgl);
-                } catch (Exception e) {
-                    System.err.println("Error: Failed to create VGL config: " + e.getMessage());
-                    return 1;
-                }
-            } else {
-                // Creating a new VGL configuration inside an existing git repository is an anti-pattern.
-                // Preserve historical behavior for the case where .vgl already exists: error out and advise user.
-                System.err.println("Error: Repository already exists at " + dir);
-                System.err.println("To create a new branch, use: vgl create -lb BRANCH");
-                System.err.println("To switch to an existing branch, use: vgl switch -lb BRANCH");
-                return 1;
-            }
+            // Creating a new VGL configuration inside an existing git repository without explicit branch is an anti-pattern.
+            // Error and do not create/overwrite .vgl
+            System.err.println("Error: Repository already exists");
+            return 1;
         }
 
         // Save current state as jump state before creating/switching
