@@ -8,20 +8,24 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - **Scope:** This document is intended to be consistent with the text in the help command, which describes general command behavior and usage. For commands and use cases that require further elaboration they will be detailed here.
 - **Audience:** CLI maintainers, tests, and contributors implementing command a  and system logic.
 
-**Repo contents:**
- - **Repo-bound listing:** Glob expansion and file listings must be bounded to the repository (do not walk entire filesystem); use JGit working-tree iterators / index-aware listing.
-- **Nested repos:** Files inside nested repositories (directories that contain their own `.git`) are treated as Ignored for parent-level commands (e.g. status).
-- **.vgl treatment:** By default `.vgl` is included in '.gitignore' when a VGL repo is created. As such it should be treated as Ignored.
-- **Vgl state:** Vgl repo and application state is maintained in the current vgl repo .vgl file. The basic state consists of local and remote current and jump state. Each of these repo states (local current, local jump, remote current, remote jump) consist of the repo path/URL the name of a branch in the repo. The default branch for command repo creation or specification is "main". 
 
-**Repository discovery (resolution):**
-- **Overview:** When a VGL command requires a repository, VGL searches upward from the current working directory and stops at the first directory that contains either a `.git` or a `.vgl`.
+**VGL State and Arguments:**
+- **VGL state:** VGL application state is maintained in the current repo’s `.vgl` file. The current VGL repo is always the one resolved from the user’s current working directory (unless a command arg specifies one). 
+- **Repo context:** Specifies the working local and remote repo state. Consists of the local repo path and branch name, and the remote repo URL and branch name. By definition, the local repo is that resolved from the user’s current working directory.
+- **Default args:** The default branch (i.e. no branch name specified) for local and remote repo creation is "main". Otherwise, commands that reference a local and/or remote repo/branch default to the current repo context in the VGL state.
+- **File args:** Glob expansion and file listings must be bounded to the repository (do not walk the entire filesystem); use JGit working-tree iterators / index-aware listing.
+- **Nested repos:** Files inside nested repositories (directories that contain their own `.git`) are treated as Ignored for parent-level commands (e.g., status, glob expansion).
+- **.vgl treatment:** By default, `.vgl` is included in `.gitignore` when a VGL repo is created. As such, it should be treated as Ignored.
+- **Internal state:** The `.vgl` file may also store internal state such as undecided files, but this is not typically surfaced to the user.
+
+**Repository Resolution:**
+- **Overview:** When VGL requires the local repo, VGL searches upward from the current working directory and stops at the first directory that contains either a `.git` or a `.vgl`.
 - **Behavior summary (examples):**
-  - Both `.git` and `.vgl`: if both are valid and consistent then the directory is considered a valid Vgl repo and the command proceeds. If invalid, instead, warn the user, note the location and problem, suggest the user resolve the problem outside of VGL, and fail.
-  - `.git` only: If valid, warn the user and offer to convert the Git repo into a Vgl repo (interactive). In non-interactive contexts, print a short hint and fail.
+  - Both `.git` and `.vgl`: If both are valid and consistent, then the directory is considered a valid VGL repo and the command proceeds. If invalid, warn the user, note the location and problem, suggest the user resolve the problem outside of VGL, and fail.
+  - `.git` only: If valid, warn the user and offer to convert the Git repo into a VGL repo (interactive). In non-interactive contexts, print a short hint and fail.
   - `.vgl` only: If valid, warn the user and offer to initialize a Git repository from the `.vgl` state (interactive). In non-interactive contexts, print a short hint and fail.
-  - Neither found up to filesystem root: warn and fail the command.
-  **Validation:** An invalid .git/.vgl state is one where either references local or remote repos or branches that do not exist or are inaccessible. If both .git and .vgl are present then their states must be consistent, with local and remote repo and branch matching.
+  - Neither found up to filesystem root: Warn and fail the command.
+  **Validation:** An invalid .git/.vgl state is one where either references local or remote repos or branches that do not exist or are inaccessible. If both .git and .vgl are present, then their states must be consistent, with local and remote repo and branch matching.
 - **Test Ceiling:** In test or CI, discovery honors `-Dvgl.test.base` to avoid searching above a configured test base directory. This is for safety.
 
 **Status command:**
