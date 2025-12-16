@@ -176,6 +176,23 @@ public class VglTestHarness {
      * Represents a test repository with automatic cleanup.
      */
     public static class VglTestRepo implements AutoCloseable {
+                /**
+                 * Returns a list of local branch names in this repo.
+                 */
+                public java.util.List<String> getBranches() throws Exception {
+                    java.util.List<String> branches = new java.util.ArrayList<>();
+                    try (Git git = getGit()) {
+                        for (org.eclipse.jgit.lib.Ref ref : git.branchList().call()) {
+                            String name = ref.getName();
+                            if (name.startsWith("refs/heads/")) {
+                                branches.add(name.substring("refs/heads/".length()));
+                            } else {
+                                branches.add(name);
+                            }
+                        }
+                    }
+                    return branches;
+                }
         private final Path path;
         private final String originalUserDir;
         private final boolean hasGit;
@@ -216,6 +233,37 @@ public class VglTestHarness {
          */
         public boolean hasGit() {
             return hasGit;
+        }
+
+        /**
+         * Run a VGL command in this repo and capture output.
+         * Sets user.dir to the repo path for the duration of the call.
+         * Automatically provides "n\n" to stdin to decline any prompts.
+         * @param args Command arguments (e.g., "status", "-v")
+         * @return Combined stdout and stderr
+         */
+        public String runCommand(String... args) throws Exception {
+            String originalUserDir = System.getProperty("user.dir");
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            PrintStream oldOut = System.out;
+            PrintStream oldErr = System.err;
+            InputStream oldIn = System.in;
+            try {
+                System.setProperty("user.dir", path.toString());
+                PrintStream ps = new PrintStream(baos, true, "UTF-8");
+                System.setOut(ps);
+                System.setErr(ps);
+                // Provide "n\n" to stdin to decline prompts
+                ByteArrayInputStream fakeIn = new ByteArrayInputStream("n\n".getBytes("UTF-8"));
+                System.setIn(fakeIn);
+                VglMain.main(args);
+                return baos.toString("UTF-8");
+            } finally {
+                System.setProperty("user.dir", originalUserDir);
+                System.setOut(oldOut);
+                System.setErr(oldErr);
+                System.setIn(oldIn);
+            }
         }
         
         /**

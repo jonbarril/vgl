@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.eclipse.jgit.api.Git;
 
-import java.io.*;
 import java.nio.file.*;
 
 public class StatusVerbosityTest {

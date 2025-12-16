@@ -42,8 +42,9 @@ public class StatusVerboseTest {
         // Create a bare remote repo
         Path remoteRepo = tmp.resolve("remote");
         Files.createDirectories(remoteRepo);
-        try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
-        }
+            try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
+                // unused
+            }
         
         // Create local repo
         Path localRepo = tmp.resolve("local");
@@ -84,7 +85,7 @@ public class StatusVerboseTest {
         // Create a bare remote repo
         Path remoteRepo = tmp.resolve("remote");
         Files.createDirectories(remoteRepo);
-        try (Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
+        try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
             // Set HEAD in bare repo to refs/heads/main to avoid JGit clone/fetch errors
             Path headPath = remoteRepo.resolve("HEAD");
             Files.writeString(headPath, "ref: refs/heads/main\n");
@@ -177,6 +178,7 @@ public class StatusVerboseTest {
         Path remoteRepo = tmp.resolve("remote");
         Files.createDirectories(remoteRepo);
         try (@SuppressWarnings("unused") Git remoteGit = Git.init().setDirectory(remoteRepo.toFile()).setBare(true).call()) {
+            // unused
         }
         
         Path localRepo = tmp.resolve("local");

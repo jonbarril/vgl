@@ -1,11 +1,10 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
-import com.vgl.cli.RepoResolver;
+import com.vgl.cli.utils.RepoResolver;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullResult;
 
-import java.nio.file.Paths;
 import java.util.List;
 
 public class PullCommand implements Command {

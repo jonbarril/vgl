@@ -4,7 +4,7 @@
 This document captures concrete user-facing use cases, edge cases, and the expected VGL behavior. Keep concise, grouped by topic for easy reference for design and test.
 
 **Overview:**
-- **Purpose:** Describe how VGL should work with emphasis on a user's perspective. Describes both main use cases as well as edge cases as they are discovered and addressed. user messaging and actions are kept general as the wording and specifics may change with refinement of design.
+- **Purpose:** Describe how VGL should work with emphasis on a user's perspective. Describes both main use cases as well as edge cases as they are discovered and addressed. User messaging and actions are kept general as the wording and specifics may change with refinement of design.
 - **Scope:** This document is intended to be consistent with the text in the help command, which describes general command behavior and usage. For commands and use cases that require further elaboration they will be detailed here.
 - **Audience:** CLI maintainers, tests, and contributors implementing command a  and system logic.
 

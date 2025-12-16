@@ -1,7 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
-import com.vgl.cli.Utils;
+import com.vgl.cli.utils.Utils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;
@@ -32,7 +32,7 @@ public class SplitCommand implements Command {
         String localBranch = Args.getFlag(args, "-lb");
         String remoteUrl = Args.getFlag(args, "-rr");
         String remoteBranch = Args.getFlag(args, "-rb");
-        String bothBranch = Args.getFlag(args, "-bb");
+        boolean hasBbFlag = Args.hasFlag(args, "-bb");
         
         // Validate direction
         if (!splitInto && !splitFrom) {
@@ -56,13 +56,12 @@ public class SplitCommand implements Command {
         String switchRemoteBranch = vgl.getRemoteBranch();
         
         // Handle -bb flag (both branches with same name)
-        if (bothBranch != null) {
-            if (localBranch != null || remoteBranch != null) {
-                System.out.println("Error: Cannot specify -bb with -lb or -rb.");
+        if (hasBbFlag) {
+            if (localBranch == null) {
+                System.out.println("Error: Must specify branch name with -lb when using -bb.");
                 return 1;
             }
-            localBranch = bothBranch;
-            remoteBranch = bothBranch;
+            remoteBranch = localBranch;
         }
         
         // Apply defaults for unspecified values
@@ -198,7 +197,7 @@ public class SplitCommand implements Command {
             Utils.printSwitchState(vgl);
             
             // If -bb flag or remote specified, push to remote
-            if (bothBranch != null || remoteBranch != null) {
+            if (hasBbFlag || remoteBranch != null) {
                 String effectiveRemoteUrl = (remoteUrl != null) ? remoteUrl : switchRemoteUrl;
                 if (effectiveRemoteUrl == null || effectiveRemoteUrl.isBlank()) {
                     System.out.println("Warning: No remote configured. Cannot create remote branch.");

@@ -10,6 +10,7 @@ import java.nio.file.*;
  * Unit tests for the TrackCommand - verifies that the 'vgl track' command
  * properly stages files for commit.
  */
+import com.vgl.cli.utils.Utils;
 public class TrackCommandTest {
     private static void printProgress(String testName) {
         TestProgress.print(TrackCommandTest.class, testName);

@@ -10,8 +10,8 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.revwalk.RevCommit;
 
-import com.vgl.cli.RepoResolver;
-import com.vgl.cli.Utils;
+import com.vgl.cli.utils.RepoResolver;
+import com.vgl.cli.utils.Utils;
 import com.vgl.cli.VglRepo;
 
 public class CommitCommand implements Command {

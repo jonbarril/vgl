@@ -1,13 +1,11 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.VglCli;
 // VglRepo is referenced via RepoResolution; avoid direct import here.
-import com.vgl.cli.Utils;
-import com.vgl.cli.RepoResolver;
+import com.vgl.cli.utils.Utils;
+import com.vgl.cli.utils.RepoResolver;
 import com.vgl.cli.RepoResolution;
 import org.eclipse.jgit.api.Git;
 
-import java.nio.file.Paths;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;

@@ -1,10 +1,9 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.RepoResolver;
+import com.vgl.cli.utils.RepoResolver;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.revwalk.RevCommit;
 
-import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;

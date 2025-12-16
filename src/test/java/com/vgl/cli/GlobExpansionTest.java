@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
  * Tests for Utils.expandGlobs() glob pattern expansion.
  * These are integration tests that work with the actual project files.
  */
+import com.vgl.cli.utils.Utils;
 public class GlobExpansionTest {
 
     @Test

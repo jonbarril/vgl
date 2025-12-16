@@ -1,9 +1,9 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
-import com.vgl.cli.Utils;
+import com.vgl.cli.utils.Utils;
+import com.vgl.cli.utils.RepoResolver;
 import com.vgl.cli.VglCli;
-import com.vgl.cli.RepoResolver;
 import com.vgl.cli.RepoResolution;
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;

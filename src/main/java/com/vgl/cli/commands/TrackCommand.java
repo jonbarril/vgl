@@ -1,6 +1,6 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.Utils;
+import com.vgl.cli.utils.Utils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.NoFilepatternException;
 
@@ -21,7 +21,7 @@ public class TrackCommand implements Command {
 
         // Use the current working directory as the starting point for repo resolution
         Path startDir = java.nio.file.Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
-        com.vgl.cli.RepoResolution res = com.vgl.cli.RepoResolver.resolveForCommand(startDir);
+        com.vgl.cli.RepoResolution res = com.vgl.cli.utils.RepoResolver.resolveForCommand(startDir);
         if (res.getVglRepo() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";

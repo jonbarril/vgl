@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Tests for CreateCommand behavior.
  */
+import com.vgl.cli.utils.Utils;
 public class CreateCommandTest {
 
     @Test
@@ -102,6 +103,7 @@ public class CreateCommandTest {
     public void warnsAndPromptsWhenCreatingNestedRepository(@TempDir Path tempDir) throws Exception {
         // Create parent repo
         try (@SuppressWarnings("unused") Git parentGit = Git.init().setDirectory(tempDir.toFile()).call()) {
+            // unused
         }
         
         // Verify isNestedRepo detects it
@@ -116,7 +118,7 @@ public class CreateCommandTest {
     @Test
     public void forceFlagSkipsNestedRepoWarning(@TempDir Path tempDir) throws Exception {
         // Create parent repo
-        try (VglTestHarness.VglTestRepo parentRepo = VglTestHarness.createRepo(tempDir)) {
+        try (@SuppressWarnings("unused") VglTestHarness.VglTestRepo ignored = VglTestHarness.createRepo(tempDir)) {
             // Create nested directory
             Path nestedDir = tempDir.resolve("nested");
             Files.createDirectories(nestedDir);

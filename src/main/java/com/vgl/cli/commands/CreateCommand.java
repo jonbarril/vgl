@@ -1,7 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
-import com.vgl.cli.Utils;
+import com.vgl.cli.utils.Utils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 
@@ -71,14 +71,14 @@ public class CreateCommand implements Command {
             java.util.Properties vglProps = new java.util.Properties();
             vglProps.setProperty("local.dir", dir.toString());
             vglProps.setProperty("local.branch", finalBranch);
-            try (Git git = com.vgl.cli.RepoManager.createVglRepo(dir, finalBranch, vglProps)) {
+            try (@SuppressWarnings("unused") Git git = com.vgl.cli.RepoManager.createVglRepo(dir, finalBranch, vglProps)) {
                 System.out.println("Created new local repository: " + dir);
                 System.out.println("Created new local branch: " + finalBranch);
             }
         }
         // Case 2: .git exists and -b specified - create new branch
         else if (branchSpecified) {
-            try (Git git = Git.open(dir.toFile())) {
+              try (Git git = Git.open(dir.toFile())) {
                 boolean branchExists = git.branchList().call().stream()
                     .anyMatch(ref -> ref.getName().equals("refs/heads/" + finalBranch));
                 

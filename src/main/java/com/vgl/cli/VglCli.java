@@ -1,6 +1,6 @@
 package com.vgl.cli;
-import com.vgl.cli.commands.StatusCommand;
 
+import com.vgl.cli.commands.StatusCommand;
 import com.vgl.cli.commands.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +8,7 @@ import java.io.*;
 import java.nio.file.*;
 import java.util.*;
 import org.eclipse.jgit.api.Git;
+import com.vgl.cli.utils.RepoResolver;
 
 public class VglCli {
     private static final String CONFIG_FILE = ".vgl";
@@ -22,7 +23,6 @@ public class VglCli {
         register(new DeleteCommand());
         register(new CheckoutCommand());
         register(new SwitchCommand());
-        register(new JumpCommand());
         register(new SplitCommand());
         register(new MergeCommand());
         register(new TrackCommand());
@@ -46,23 +46,20 @@ public class VglCli {
     public int run(String[] argv) {
         List<String> args = new ArrayList<>(Arrays.asList(argv));
 
-        // Insert "help" as the default command if no command is provided
-        if (args.isEmpty() || cmds.get(args.get(0)) == null) {
+        // If no command or first arg is a flag (starts with '-') or is not a known command, default to help
+        if (args.isEmpty() || args.get(0).startsWith("-") || !cmds.containsKey(args.get(0))) {
             args.add(0, "help");
         }
 
-        String commandName = args.remove(0); // Extract the command name
+        String commandName = args.remove(0);
         Command command = cmds.get(commandName);
 
         try {
             int result = command.run(Collections.unmodifiableList(args));
-            // Note: Commands that modify configuration are responsible for calling save()
             return result;
         } catch (Exception e) {
-            // Only show internal errors if not related to local.dir/user home
             String msg = e.getMessage();
             if (msg != null && msg.contains("local.dir should never resolve to user home")) {
-                // Suppress this internal detail from user output and logs
                 return 1;
             }
             System.err.println("Error: " + e.getMessage());

@@ -19,7 +19,7 @@ class RepoManagerTest {
         Properties props = new Properties();
         props.setProperty("custom.key", "customValue");
 
-        Git git = RepoManager.createVglRepo(repoDir, branch, props);
+        // Git git = RepoManager.createVglRepo(repoDir, branch, props);
         assertThat(Files.exists(repoDir.resolve(".git"))).isTrue();
         assertThat(Files.exists(repoDir.resolve(".vgl"))).isTrue();
         assertThat(Files.exists(repoDir.resolve(".gitignore"))).isTrue();
@@ -41,7 +41,7 @@ class RepoManagerTest {
     @Test
     void updateVglConfig_overwritesVglFile(@TempDir Path tmp) throws Exception {
         Path repoDir = tmp.resolve("repo");
-        Git git = RepoManager.createVglRepo(repoDir, "main", null);
+        // Git git = RepoManager.createVglRepo(repoDir, "main", null);
         Properties props = new Properties();
         props.setProperty("foo", "bar");
         RepoManager.updateVglConfig(repoDir, props);

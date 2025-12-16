@@ -8,6 +8,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.vgl.cli.utils.RepoResolver;
 public class RepoResolverTest {
 
     @Test

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.vgl.cli.utils.Utils;
 @Tag("smoke")
 public class SmokeTest {
     @Test

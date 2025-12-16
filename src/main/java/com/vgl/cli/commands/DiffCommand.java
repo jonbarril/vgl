@@ -1,7 +1,7 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.RepoResolver;
-import com.vgl.cli.Utils;
+import com.vgl.cli.utils.RepoResolver;
+import com.vgl.cli.utils.Utils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.diff.DiffEntry;

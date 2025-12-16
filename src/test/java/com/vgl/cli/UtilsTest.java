@@ -14,6 +14,7 @@ import org.junit.jupiter.api.io.TempDir;
 /**
  * Tests for Utils helper methods.
  */
+import com.vgl.cli.utils.Utils;
 public class UtilsTest {
 
     @Test
@@ -59,11 +60,11 @@ public class UtilsTest {
     public void openGitReturnsNullForNonGitDirectory(@TempDir Path tempDir) throws Exception {
         // Utils searches upward, so it might find parent .git directories
         // This test verifies the method doesn't crash on non-git directories
-        Git git = Utils.findGitRepo(tempDir);
+        Git found = Utils.findGitRepo(tempDir);
         // May be null or may find a parent git repo
         // The key is it doesn't throw an exception
-        if (git != null) {
-            git.close();
+        if (found != null) {
+            found.close();
         }
     }
     
@@ -129,9 +130,9 @@ public class UtilsTest {
         Files.createDirectories(isolated);
         
         // Should return null or find a parent repo (depending on test environment)
-        Git git = Utils.findGitRepo(isolated);
-        if (git != null) {
-            git.close();
+        Git found = Utils.findGitRepo(isolated);
+        if (found != null) {
+            found.close();
         }
     }
 
@@ -146,7 +147,7 @@ public class UtilsTest {
     public void findVglRepoFindsGitAndConfig(@TempDir Path tmp) throws Exception {
         // Create git repo and .vgl config using VglTestHarness helpers
         String localDirValue = tmp.toString().replace('\\', '/');
-        try (Git git = VglTestHarness.createGitRepo(tmp)) {
+        try (@SuppressWarnings("unused") Git git = VglTestHarness.createGitRepo(tmp)) {
             java.util.Properties props = new java.util.Properties();
             props.setProperty("local.dir", localDirValue);
             VglTestHarness.createVglConfig(tmp, props);

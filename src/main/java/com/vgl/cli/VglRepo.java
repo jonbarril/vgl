@@ -1,5 +1,6 @@
 
 package com.vgl.cli;
+import com.vgl.cli.utils.Utils;
 
 import java.util.List;
 
@@ -222,7 +223,7 @@ public class VglRepo implements Closeable {
      * @param repoRoot The root directory of the git repository
      * @return Loaded properties, or empty properties if no .vgl file
      */
-    static Properties loadConfig(Path repoRoot) {
+    public static Properties loadConfig(Path repoRoot) {
         Properties config = new Properties();
         
         if (repoRoot == null) {

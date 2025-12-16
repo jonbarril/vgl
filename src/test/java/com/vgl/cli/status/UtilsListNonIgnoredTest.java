@@ -1,7 +1,7 @@
 package com.vgl.cli.status;
 
 import com.vgl.cli.VglTestHarness;
-import com.vgl.cli.Utils;
+import com.vgl.cli.utils.Utils;
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

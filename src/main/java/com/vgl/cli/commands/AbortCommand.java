@@ -1,10 +1,9 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.RepoResolver;
+import com.vgl.cli.utils.RepoResolver;
 import org.eclipse.jgit.api.Git;
 
 import java.io.File;
-import java.nio.file.Paths;
 import java.util.List;
 
 public class AbortCommand implements Command {

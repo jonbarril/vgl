@@ -1,12 +1,3 @@
-    private static void deleteRecursively(java.nio.file.Path path) throws java.io.IOException {
-        if (java.nio.file.Files.exists(path)) {
-            java.nio.file.Files.walk(path)
-                .sorted((a, b) -> b.compareTo(a))
-                .forEach(p -> {
-                    try { java.nio.file.Files.delete(p); } catch (java.io.IOException e) { }
-                });
-        }
-    }
 
 package com.vgl.cli;
 
