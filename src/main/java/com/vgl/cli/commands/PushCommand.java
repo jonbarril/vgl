@@ -1,6 +1,5 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.utils.RepoResolver;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.transport.RefSpec;
 
@@ -11,7 +10,9 @@ public class PushCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         boolean noop = args.contains("-noop");
-        com.vgl.cli.services.RepoResolution repoRes = RepoResolver.resolveForCommand();
+            java.nio.file.Path cwd = java.nio.file.Paths.get("").toAbsolutePath();
+            boolean interactive = true;
+            com.vgl.cli.services.RepoResolution repoRes = com.vgl.cli.commands.helpers.VglRepoInitHelper.ensureVglConfig(cwd, interactive);
         if (repoRes.getGit() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";

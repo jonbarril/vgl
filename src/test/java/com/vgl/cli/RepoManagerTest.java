@@ -21,7 +21,7 @@ class RepoManagerTest {
         Properties props = new Properties();
         props.setProperty("custom.key", "customValue");
 
-        // Git git = RepoManager.createVglRepo(repoDir, branch, props);
+        RepoManager.createVglRepo(repoDir, branch, props);
         assertThat(Files.exists(repoDir.resolve(".git"))).isTrue();
         assertThat(Files.exists(repoDir.resolve(".vgl"))).isTrue();
         assertThat(Files.exists(repoDir.resolve(".gitignore"))).isTrue();

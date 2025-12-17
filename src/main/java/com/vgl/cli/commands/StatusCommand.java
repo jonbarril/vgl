@@ -2,7 +2,6 @@ package com.vgl.cli.commands;
 
 // VglRepo is referenced via RepoResolution; avoid direct import here.
 import com.vgl.cli.utils.Utils;
-import com.vgl.cli.utils.RepoResolver;
 import com.vgl.cli.commands.helpers.StatusSyncFiles;
 import com.vgl.cli.services.RepoResolution;
 
@@ -19,14 +18,11 @@ public class StatusCommand implements Command {
 
     @Override
     public int run(List<String> args) throws Exception {
-        RepoResolution resolution;
-        try {
-            resolution = RepoResolver.resolveForCommand(java.nio.file.Paths.get("").toAbsolutePath());
-        } catch (Exception e) {
-            resolution = null;
-        }
 
-        // Fail fast for all repo resolution failures; print message from RepoResolution
+        // Use helper to ensure .vgl config exists if only Git is present
+        java.nio.file.Path cwd = java.nio.file.Paths.get("").toAbsolutePath();
+        boolean interactive = !args.contains("-y"); // Example: -y disables prompts
+        RepoResolution resolution = com.vgl.cli.commands.helpers.VglRepoInitHelper.ensureVglConfig(cwd, interactive);
         if (resolution == null || resolution.getKind() != RepoResolution.ResolutionKind.FOUND_BOTH) {
             String warn = (resolution != null && resolution.getMessage() != null) ? resolution.getMessage() : "WARNING: No VGL repository found in this directory or any parent.\nHint: Run 'vgl create' to initialize a new repo here.";
             System.err.println(warn);

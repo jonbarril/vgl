@@ -21,8 +21,8 @@ repositories {
 }
 
 dependencies {
-    runtimeOnly("org.slf4j:slf4j-simple:2.0.13")
-    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.13") // Ensure SLF4J logger binding is present during tests
+        testImplementation("ch.qos.logback:logback-classic:1.4.14")
+        testImplementation("ch.qos.logback:logback-core:1.4.14")
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -39,9 +39,7 @@ tasks.test {
     useJUnitPlatform {
         excludeTags("integration")
     }
-    filter {
-        includeTestsMatching("*")
-    }
+    // Do not force includeTestsMatching("*") here; this allows --tests CLI filtering to work
     include("**/*.class")
     
     // Show test output in real-time

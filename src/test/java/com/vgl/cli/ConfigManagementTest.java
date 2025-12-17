@@ -15,6 +15,9 @@ import java.util.Comparator;
  */
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import org.slf4j.LoggerFactory;
 
 public class ConfigManagementTest {
 
@@ -334,18 +337,42 @@ public class ConfigManagementTest {
     @org.junit.jupiter.api.Timeout(30)
     void orphanedVglWithoutGitIsDeleted(@TempDir Path tmp) throws Exception {
         String oldUserDir = System.getProperty("user.dir");
-        ByteArrayOutputStream errCapture = new ByteArrayOutputStream();
-        PrintStream oldErr = System.err;
+        // Set up log capturing on both the root logger and the VglCli logger to ensure all logs are caught
+        ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Logger vglLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(VglCli.class);
+        ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
+        listAppender.setName("TEST_APPENDER");
+        listAppender.start();
+        rootLogger.addAppender(listAppender);
+        vglLogger.addAppender(listAppender);
+        // Set level to DEBUG to capture all logs
+        ch.qos.logback.classic.Level originalRootLevel = rootLogger.getLevel();
+        ch.qos.logback.classic.Level originalVglLevel = vglLogger.getLevel();
+        rootLogger.setLevel(ch.qos.logback.classic.Level.DEBUG);
+        vglLogger.setLevel(ch.qos.logback.classic.Level.DEBUG);
         try {
             System.setProperty("user.dir", tmp.toString());
-            System.setErr(new PrintStream(errCapture));
-            
+            // Print logger implementation class
+            System.out.println("SLF4J LoggerFactory: " + org.slf4j.LoggerFactory.getILoggerFactory().getClass());
+            // Emit a test LOG.warn and check if it is captured
+            org.slf4j.Logger testLogger = org.slf4j.LoggerFactory.getLogger("com.vgl.cli.VglCli");
+            testLogger.warn("TEST: This is a test warning from ConfigManagementTest");
+            // Print all captured log events after test LOG.warn
+            System.out.println("Captured log messages after test LOG.warn:");
+            for (var e : listAppender.list) {
+                System.out.println(
+                    "LOGGER: " + e.getLoggerName() +
+                    " | LEVEL: " + e.getLevel() +
+                    " | THREAD: " + e.getThreadName() +
+                    " | MESSAGE: " + e.getMessage() +
+                    " | FORMATTED: " + e.getFormattedMessage()
+                );
+            }
+
             // Create .vgl without .git
             Path vglFile = tmp.resolve(".vgl");
             Files.writeString(vglFile, "local.dir=" + tmp + "\nlocal.branch=orphaned\n");
-            
             assertThat(Files.exists(vglFile)).isTrue();
-            
             // Force non-interactive mode and load should detect orphaned .vgl and delete it
             System.setProperty("vgl.noninteractive", "true");
             try {
@@ -353,17 +380,31 @@ public class ConfigManagementTest {
             } finally {
                 System.clearProperty("vgl.noninteractive");
             }
-            
             // .vgl should be deleted
             assertThat(Files.exists(vglFile)).isFalse();
-            
-            // Should have printed warning
-            String errOutput = errCapture.toString();
-            assertThat(errOutput).contains("Warning: Found .vgl but no .git directory");
-            assertThat(errOutput).contains("Deleted orphaned .vgl file");
+            // Should have printed warning in logs
+            boolean foundWarning = listAppender.list.stream().anyMatch(e -> e.getFormattedMessage().contains("Warning: Found .vgl but no .git directory"));
+            boolean foundDeleted = listAppender.list.stream().anyMatch(e -> e.getFormattedMessage().contains("Deleted orphaned .vgl file"));
+            if (!foundWarning || !foundDeleted) {
+                System.out.println("Captured log messages (full details):");
+                for (var e : listAppender.list) {
+                    System.out.println(
+                        "LOGGER: " + e.getLoggerName() +
+                        " | LEVEL: " + e.getLevel() +
+                        " | THREAD: " + e.getThreadName() +
+                        " | MESSAGE: " + e.getMessage() +
+                        " | FORMATTED: " + e.getFormattedMessage()
+                    );
+                }
+            }
+            assertThat(foundWarning).isTrue();
+            assertThat(foundDeleted).isTrue();
         } finally {
             System.setProperty("user.dir", oldUserDir);
-            System.setErr(oldErr);
+            rootLogger.detachAppender(listAppender);
+            vglLogger.detachAppender(listAppender);
+            rootLogger.setLevel(originalRootLevel);
+            vglLogger.setLevel(originalVglLevel);
         }
     }
 

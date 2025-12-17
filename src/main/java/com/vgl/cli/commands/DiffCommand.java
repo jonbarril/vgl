@@ -1,7 +1,12 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.utils.RepoResolver;
-import com.vgl.cli.utils.Utils;
+import java.io.ByteArrayOutputStream;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.diff.DiffEntry;
@@ -9,12 +14,7 @@ import org.eclipse.jgit.diff.DiffFormatter;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 
-import java.io.ByteArrayOutputStream;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
+import com.vgl.cli.utils.Utils;
 
 /**
  * DiffCommand supports three comparison modes:
@@ -31,7 +31,9 @@ public class DiffCommand implements Command {
         List<String> filters = new ArrayList<>();
         for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) filters.add(s);
 
-        com.vgl.cli.services.RepoResolution res = RepoResolver.resolveForCommand();
+            java.nio.file.Path cwd = java.nio.file.Paths.get("").toAbsolutePath();
+            boolean interactive = true; // Could be set from args if needed
+            com.vgl.cli.services.RepoResolution res = com.vgl.cli.commands.helpers.VglRepoInitHelper.ensureVglConfig(cwd, interactive);
         if (res.getGit() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";

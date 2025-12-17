@@ -103,8 +103,13 @@ public final class RepoResolver {
 			return new RepoResolution(null, null, null, RepoResolution.ResolutionKind.NONE, false, false, Utils.isInteractive(), msg, new HashMap<>());
 		}
 		if (foundGit && !foundVgl) {
-			String msg = "Found Git repository but no .vgl (non-interactive)";
-			return new RepoResolution(null, null, foundRoot, RepoResolution.ResolutionKind.FOUND_GIT_ONLY, false, false, Utils.isInteractive(), msg, new HashMap<>());
+			String msg = "Found Git repository but no .vgl";
+			try {
+				org.eclipse.jgit.api.Git g = org.eclipse.jgit.api.Git.open(foundRoot.toFile());
+				return new RepoResolution(g, null, foundRoot, RepoResolution.ResolutionKind.FOUND_GIT_ONLY, false, false, Utils.isInteractive(), msg, new HashMap<>());
+			} catch (Exception e) {
+				return new RepoResolution(null, null, foundRoot, RepoResolution.ResolutionKind.FOUND_GIT_ONLY, false, false, Utils.isInteractive(), msg + " (Failed to open Git repo: " + e.getMessage() + ")", new HashMap<>());
+			}
 		}
 		// If both found, try to open and validate
 		if (foundGit && foundVgl) {

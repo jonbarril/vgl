@@ -50,24 +50,45 @@ public class RepoManager {
         } catch (Exception e) {
             throw new IOException("Failed to initialize or open git repo: " + e.getMessage(), e);
         }
-        // Ensure .gitignore exists and includes .vgl
+        // Ensure .gitignore exists and includes .vgl (atomic write)
         Path gi = dir.resolve(".gitignore");
-        if (!Files.exists(gi)) {
-            Files.writeString(gi, GITIGNORE_CONTENT);
-        } else {
-            // Ensure .vgl is present in .gitignore
+        String newGitignoreContent = GITIGNORE_CONTENT;
+        if (Files.exists(gi)) {
             String content = Files.readString(gi);
             if (!content.contains(".vgl")) {
-                Files.writeString(gi, ".vgl\n" + content);
+                newGitignoreContent = ".vgl\n" + content;
+            } else {
+                newGitignoreContent = content;
             }
         }
-        // Write .vgl config
+        // Write atomically
+        Path tmpGi = dir.resolve(".gitignore.tmp");
+        if (!Files.exists(tmpGi.getParent())) {
+            Files.createDirectories(tmpGi.getParent());
+        }
+        Files.writeString(tmpGi, newGitignoreContent);
+        try {
+            Files.move(tmpGi, gi, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(tmpGi, gi, StandardCopyOption.REPLACE_EXISTING);
+        }
+
+        // Write .vgl config atomically
         Path vglFile = dir.resolve(".vgl");
         if (vglProps == null) vglProps = new Properties();
         vglProps.setProperty("local.dir", dir.toAbsolutePath().normalize().toString());
         if (!vglProps.containsKey("local.branch")) vglProps.setProperty("local.branch", branch);
-        try (java.io.OutputStream out = Files.newOutputStream(vglFile)) {
+        Path tmpVgl = dir.resolve(".vgl.tmp");
+        if (!Files.exists(tmpVgl.getParent())) {
+            Files.createDirectories(tmpVgl.getParent());
+        }
+        try (java.io.OutputStream out = Files.newOutputStream(tmpVgl)) {
             vglProps.store(out, "VGL Configuration");
+        }
+        try {
+            Files.move(tmpVgl, vglFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(tmpVgl, vglFile, StandardCopyOption.REPLACE_EXISTING);
         }
         return git;
     }
@@ -77,8 +98,17 @@ public class RepoManager {
      */
     public static void updateVglConfig(Path dir, Properties vglProps) throws IOException {
         Path vglFile = dir.resolve(".vgl");
-        try (java.io.OutputStream out = Files.newOutputStream(vglFile)) {
+        Path tmpVgl = dir.resolve(".vgl.tmp");
+        if (!Files.exists(tmpVgl.getParent())) {
+            Files.createDirectories(tmpVgl.getParent());
+        }
+        try (java.io.OutputStream out = Files.newOutputStream(tmpVgl)) {
             vglProps.store(out, "VGL Configuration");
+        }
+        try {
+            Files.move(tmpVgl, vglFile, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+        } catch (AtomicMoveNotSupportedException e) {
+            Files.move(tmpVgl, vglFile, StandardCopyOption.REPLACE_EXISTING);
         }
     }
 }

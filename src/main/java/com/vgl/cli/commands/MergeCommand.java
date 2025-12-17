@@ -77,7 +77,8 @@ public class MergeCommand implements Command {
         // Determine working directory
         String workingDir = (localDir != null) ? localDir : switchLocalDir;
         Path dir = Paths.get(workingDir).toAbsolutePath().normalize();
-        com.vgl.cli.services.RepoResolution repoRes = com.vgl.cli.utils.RepoResolver.resolveForCommand(dir);
+            boolean interactive = true;
+            com.vgl.cli.services.RepoResolution repoRes = com.vgl.cli.commands.helpers.VglRepoInitHelper.ensureVglConfig(dir, interactive);
         if (repoRes.getGit() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";

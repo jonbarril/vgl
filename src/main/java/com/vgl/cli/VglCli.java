@@ -157,9 +157,17 @@ public class VglCli {
             // Check if .git exists alongside .vgl
             Path vglDir = configPath.getParent();
             if (!Files.exists(vglDir.resolve(".git"))) {
-                // Orphaned .vgl file - .git was deleted or moved. This is a user-facing
-                // condition but we keep loadConfig quiet: callers (commands) decide how
-                // to surface messages to users. Log details at DEBUG for troubleshooting.
+                // Orphaned .vgl file - .git was deleted or moved. Print warning and delete .vgl
+                String warn = "Warning: Found .vgl but no .git directory";
+                String del = "Deleted orphaned .vgl file";
+                String fail = "Failed to delete orphaned .vgl file: ";
+                LOG.warn(warn);
+                try {
+                    Files.deleteIfExists(configPath);
+                    LOG.warn(del);
+                } catch (IOException e) {
+                    LOG.warn(fail + e.getMessage());
+                }
                 LOG.debug("Found .vgl at {} but no .git directory; treating as orphaned.", configPath);
                 return;
             }
