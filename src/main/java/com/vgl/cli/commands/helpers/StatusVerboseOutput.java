@@ -1,4 +1,4 @@
-package com.vgl.cli.commands.status;
+package com.vgl.cli.commands.helpers;
 
 import java.util.Set;
 
@@ -22,7 +22,6 @@ public class StatusVerboseOutput {
         if (undecidedSet == null || undecidedSet.isEmpty()) {
             System.out.println("  (none)");
         } else {
-            // Do not print a duplicated preview line; just list entries under the subsection header
             boolean anyPrinted = false;
             for (String p : undecidedSet) {
                 if (!matchesFilter.test(p)) continue;

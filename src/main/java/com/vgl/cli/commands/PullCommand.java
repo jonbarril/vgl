@@ -17,7 +17,7 @@ public class PullCommand implements Command {
             System.out.println("(dry run) would pull from remote");
             return 0;
         }
-        com.vgl.cli.RepoResolution repoRes = RepoResolver.resolveForCommand();
+        com.vgl.cli.services.RepoResolution repoRes = RepoResolver.resolveForCommand();
         if (repoRes.getGit() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";

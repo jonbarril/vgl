@@ -31,7 +31,7 @@ public class DiffCommand implements Command {
         List<String> filters = new ArrayList<>();
         for (String s : args) if (!s.equals("-lb") && !s.equals("-rb")) filters.add(s);
 
-        com.vgl.cli.RepoResolution res = RepoResolver.resolveForCommand();
+        com.vgl.cli.services.RepoResolution res = RepoResolver.resolveForCommand();
         if (res.getGit() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";

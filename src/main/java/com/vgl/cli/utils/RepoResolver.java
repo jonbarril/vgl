@@ -2,9 +2,10 @@
 
 
 package com.vgl.cli.utils;
-import com.vgl.cli.VglRepo;
-import com.vgl.cli.RepoResolution;
-import com.vgl.cli.VglStateStore;
+import com.vgl.cli.services.RepoResolution;
+import com.vgl.cli.services.VglRepo;
+import com.vgl.cli.services.VglStateStore;
+
 import org.eclipse.jgit.api.Git;
 import java.io.IOException;
 import java.nio.file.Path;

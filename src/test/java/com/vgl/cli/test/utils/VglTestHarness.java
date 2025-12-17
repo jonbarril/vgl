@@ -1,7 +1,13 @@
-package com.vgl.cli;
+// This file has been moved to com.vgl.cli.testutil
+package com.vgl.cli.test.utils;
 
 import java.util.Properties;
 import org.eclipse.jgit.api.Git;
+
+import com.vgl.cli.VglCli;
+import com.vgl.cli.VglMain;
+import com.vgl.cli.services.RepoManager;
+
 import java.io.*;
 import java.nio.file.*;
 
@@ -23,29 +29,56 @@ public class VglTestHarness {
     }
 
     /**
-     * Runs the VGL CLI command in-process, capturing stdout and stderr.
+     * Runs the VGL CLI command as a subprocess, capturing stdout and stderr.
      * Sets the working directory to the given path for the duration of the call.
      * Returns the combined output as a String.
      * Usage: VglTestHarness.runVglCommand(repoPath, "status", "-v")
      */
     public static String runVglCommand(Path workingDir, String... args) throws Exception {
-        String originalUserDir = System.getProperty("user.dir");
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        PrintStream oldOut = System.out;
-        PrintStream oldErr = System.err;
-        try {
-            System.setProperty("user.dir", workingDir.toString());
-            PrintStream ps = new PrintStream(baos, true, "UTF-8");
-            System.setOut(ps);
-            System.setErr(ps);
-            // Use VglMain for CLI entry point (or VglCli if preferred)
-            VglMain.main(args);
-            return baos.toString("UTF-8");
-        } finally {
-            System.setProperty("user.dir", originalUserDir);
-            System.setOut(oldOut);
-            System.setErr(oldErr);
+        // Path to the installed CLI script (vgl.bat for Windows)
+        String vglScript = workingDir.getFileSystem().getSeparator().equals("\\")
+            ? "build/install/vgl/bin/vgl.bat"
+            : "build/install/vgl/bin/vgl";
+        Path vglPath = Paths.get(vglScript).toAbsolutePath();
+        if (!Files.exists(vglPath)) {
+            throw new IOException("VGL CLI not found at " + vglPath + ". Did you run 'gradlew installDist'?");
         }
+
+        // Build the command
+        String[] cmd = new String[args.length + 1];
+        cmd[0] = vglPath.toString();
+        System.arraycopy(args, 0, cmd, 1, args.length);
+
+        ProcessBuilder pb = new ProcessBuilder(cmd)
+            .directory(workingDir.toFile());
+
+        // Inherit test environment, but set user.dir and vgl.test.base for isolation
+        pb.environment().put("user.dir", workingDir.toString());
+        String vglTestBase = System.getProperty("vgl.test.base");
+        if (vglTestBase != null) {
+            pb.environment().put("vgl.test.base", vglTestBase);
+        }
+        pb.environment().put("vgl.noninteractive", "true");
+
+        // Provide "n\n" to stdin to decline prompts
+        pb.redirectErrorStream(true);
+        Process proc = pb.start();
+        try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream()))) {
+            writer.write("n\n");
+            writer.flush();
+        }
+        StringBuilder output = new StringBuilder();
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                output.append(line).append(System.lineSeparator());
+            }
+        }
+        int exitCode = proc.waitFor();
+        if (exitCode != 0) {
+            output.append("[VGL CLI exited with code ").append(exitCode).append("]");
+        }
+        return output.toString();
     }
 
     // Centralized helpers for .git/.vgl creation and update using RepoManager/RepoResolver
@@ -77,6 +110,9 @@ public class VglTestHarness {
      * Creates a test repository with .git initialized.
      * Automatically sets user.dir to the repo path.
      * Returns an AutoCloseable that restores user.dir on close.
+     * <p>
+     * <b>SAFETY:</b> This method will throw if the repoPath is the user home directory or a parent of it.
+     * Always use @TempDir or createTestRoot() to ensure isolation.
      */
     public static VglTestRepo createRepo(Path repoPath) throws Exception {
         // Always create a valid VGL repo (with .git, .vgl, .gitignore) using RepoManager
@@ -198,11 +234,26 @@ public class VglTestHarness {
         private final boolean hasGit;
         private final String originalVglTestBase;
         
+        /**
+         * Creates a test repo wrapper. Throws if path is user home or a parent of it.
+         */
         VglTestRepo(Path path, boolean initGit) throws Exception {
             this.path = path;
             this.originalUserDir = System.getProperty("user.dir");
             this.originalVglTestBase = System.getProperty("vgl.test.base");
             this.hasGit = initGit;
+            // SAFETY: Prevent using a repo path outside the temp root (ceiling)
+            String tempRootStr = System.getenv("JUNIT_TEMP_ROOT");
+            if (tempRootStr == null || tempRootStr.isEmpty()) {
+                tempRootStr = System.getProperty("junit.temp.root");
+            }
+            if (tempRootStr != null && !tempRootStr.isEmpty()) {
+                Path tempRoot = Paths.get(tempRootStr).toAbsolutePath().normalize();
+                Path absPath = path.toAbsolutePath().normalize();
+                if (!absPath.startsWith(tempRoot)) {
+                    throw new IllegalArgumentException("Test repo path must be under the temp root: " + tempRoot + ", got: " + absPath);
+                }
+            }
             // Create directory if needed
             if (!Files.exists(path)) {
                 Files.createDirectories(path);

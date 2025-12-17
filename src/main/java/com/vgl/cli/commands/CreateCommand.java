@@ -71,7 +71,7 @@ public class CreateCommand implements Command {
             java.util.Properties vglProps = new java.util.Properties();
             vglProps.setProperty("local.dir", dir.toString());
             vglProps.setProperty("local.branch", finalBranch);
-            try (@SuppressWarnings("unused") Git git = com.vgl.cli.RepoManager.createVglRepo(dir, finalBranch, vglProps)) {
+            try (@SuppressWarnings("unused") Git git = com.vgl.cli.services.RepoManager.createVglRepo(dir, finalBranch, vglProps)) {
                 System.out.println("Created new local repository: " + dir);
                 System.out.println("Created new local branch: " + finalBranch);
             }

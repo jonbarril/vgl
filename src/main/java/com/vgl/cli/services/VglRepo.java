@@ -1,5 +1,5 @@
 
-package com.vgl.cli;
+package com.vgl.cli.services;
 import com.vgl.cli.utils.Utils;
 
 import java.util.List;
@@ -54,13 +54,13 @@ public class VglRepo implements Closeable {
                 // Compute working-tree renames so we don't treat renamed tracked files as undecided
                 java.util.Map<String,String> workingRenames = new java.util.HashMap<>();
                 try {
-                    workingRenames = com.vgl.cli.commands.status.StatusSyncFiles.computeWorkingRenames(git);
+                    workingRenames = com.vgl.cli.commands.helpers.StatusSyncFiles.computeWorkingRenames(git);
                 } catch (Exception ignoredEx) {}
                 // Also compute commit-derived rename targets (fallback detection) so committed renames
                 // are not considered undecided either.
                 java.util.Set<String> commitRenameTargets = new java.util.HashSet<>();
                 try {
-                    java.util.Set<String> cr = com.vgl.cli.commands.status.StatusSyncFiles.computeCommitRenamedSet(git, status, "", "main");
+                    java.util.Set<String> cr = com.vgl.cli.commands.helpers.StatusSyncFiles.computeCommitRenamedSet(git, status, "", "main");
                     if (cr != null) commitRenameTargets.addAll(cr);
                 } catch (Exception ignoredEx) {}
 

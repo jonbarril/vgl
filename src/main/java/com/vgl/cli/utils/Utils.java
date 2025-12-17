@@ -2,9 +2,10 @@
 
 
 package com.vgl.cli.utils;
-import com.vgl.cli.VglRepo;
 import com.vgl.cli.VglCli;
-import com.vgl.cli.VglStateStore;
+import com.vgl.cli.services.VglRepo;
+import com.vgl.cli.services.VglStateStore;
+
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Repository;
 import org.slf4j.Logger;
@@ -24,7 +25,7 @@ public final class Utils {
 	 * Uses JGit's StatusCommand.
 	 */
 	public static boolean isGitIgnored(Path file, org.eclipse.jgit.lib.Repository repo) {
-		return com.vgl.refactor.IgnoreUtils.isGitIgnored(file, repo);
+		return com.vgl.cli.utils.IgnoreUtils.isGitIgnored(file, repo);
 	}
 
 	// ============================================================================
@@ -89,7 +90,7 @@ public final class Utils {
 				return null;
 			}
 		} catch (Exception ignored) {}
-		return com.vgl.refactor.GitUtils.findGitRepo(startPath);
+		return com.vgl.cli.utils.GitUtils.findGitRepo(startPath);
 	}
     
 	/**
@@ -101,7 +102,7 @@ public final class Utils {
 	 * @return Git instance, or null if no repository found
 	 */
 	static Git findGitRepo(Path startPath, Path ceilingDir) throws IOException {
-		return com.vgl.refactor.GitUtils.findGitRepo(startPath, ceilingDir);
+		return com.vgl.cli.utils.GitUtils.findGitRepo(startPath, ceilingDir);
 	}
 
 	/**
@@ -361,28 +362,8 @@ public final class Utils {
 	 */
 	public static boolean isNestedRepo(Path startPath, Path ceilingDir) throws IOException {
 		if (startPath == null) return false;
-
-		Path firstRepoRoot = getGitRepoRoot(startPath, ceilingDir);
-		if (firstRepoRoot == null) return false;
-
-		Path cur = firstRepoRoot.getParent();
-		if (cur == null) return false;
-
-		// Traverse up from the immediate parent and look for a .git directory,
-		// stopping when we reach the optional ceilingDir or the filesystem root.
-		Path ceiling = (ceilingDir == null) ? null : ceilingDir.toAbsolutePath().normalize();
-		while (cur != null) {
-			Path norm = cur.toAbsolutePath().normalize();
-			if (ceiling != null) {
-				// If current path is not under the ceiling, stop searching.
-				if (!norm.startsWith(ceiling)) break;
-				// Stop if we've reached the ceiling boundary
-				if (norm.equals(ceiling)) break;
-			}
-			if (Files.exists(cur.resolve(".git"))) return true;
-			cur = cur.getParent();
-		}
-		return false;
+		Path repoRoot = getGitRepoRoot(startPath, ceilingDir);
+		return repoRoot != null && !repoRoot.equals(startPath.toAbsolutePath().normalize());
 	}
 
 	/**
@@ -482,7 +463,7 @@ public final class Utils {
 	}
     
 	public static Repository openNearestGitRepo(File start, File ceiling) throws IOException {
-		return com.vgl.refactor.GitUtils.openNearestGitRepo(start, ceiling);
+		return com.vgl.cli.utils.GitUtils.openNearestGitRepo(start, ceiling);
 	}
 
 	// ============================================================================
@@ -646,7 +627,7 @@ public final class Utils {
 	 * under repoRoot that contain their own .git directory (nested repositories).
 	 */
 	public static java.util.Set<String> listNestedRepos(Path repoRoot) {
-		return com.vgl.refactor.GitUtils.listNestedRepos(repoRoot);
+		return com.vgl.cli.utils.GitUtils.listNestedRepos(repoRoot);
 	}
 
 	/**
@@ -658,7 +639,7 @@ public final class Utils {
 	 * Returns repo-relative paths using '/' separators.
 	 */
 	public static java.util.List<String> expandGlobsToFiles(java.util.List<String> globs, Path repoRoot, org.eclipse.jgit.lib.Repository repo) throws IOException {
-		return com.vgl.refactor.IgnoreUtils.expandGlobsToFiles(globs, repoRoot, repo);
+		return com.vgl.cli.utils.IgnoreUtils.expandGlobsToFiles(globs, repoRoot, repo);
 	}
 
 	/**

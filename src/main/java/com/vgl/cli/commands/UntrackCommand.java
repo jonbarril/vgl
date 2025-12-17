@@ -31,7 +31,7 @@ public class UntrackCommand implements Command {
         // Load undecided files from .vgl if -all is specified
         boolean useAll = args.size() == 1 && args.get(0).equals("-all");
         List<String> filesToUntrack;
-        com.vgl.cli.VglRepo vglRepo = com.vgl.cli.utils.RepoResolver.resolveVglRepoForCommand(dir);
+        com.vgl.cli.services.VglRepo vglRepo = com.vgl.cli.utils.RepoResolver.resolveVglRepoForCommand(dir);
         if (vglRepo != null) {
             try (Git git = Git.open(dir.toFile())) {
                 // Only update undecided files before main logic

@@ -3,6 +3,8 @@ package com.vgl.cli;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.vgl.cli.test.utils.VglTestHarness;
+
 import java.nio.file.*;
 
 public class TrackCommitDebugTest {

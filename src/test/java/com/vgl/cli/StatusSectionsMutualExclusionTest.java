@@ -11,6 +11,7 @@ import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.vgl.cli.services.VglRepo;
 import com.vgl.cli.utils.Utils;
 public class StatusSectionsMutualExclusionTest {
 

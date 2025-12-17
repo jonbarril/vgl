@@ -4,6 +4,8 @@ import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.vgl.cli.services.RepoManager;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Properties;

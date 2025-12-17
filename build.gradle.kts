@@ -22,6 +22,7 @@ repositories {
 
 dependencies {
     runtimeOnly("org.slf4j:slf4j-simple:2.0.13")
+    testRuntimeOnly("org.slf4j:slf4j-simple:2.0.13") // Ensure SLF4J logger binding is present during tests
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")

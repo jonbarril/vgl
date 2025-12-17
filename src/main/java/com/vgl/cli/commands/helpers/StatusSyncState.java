@@ -1,4 +1,4 @@
-package com.vgl.cli.commands.status;
+package com.vgl.cli.commands.helpers;
 
 import org.eclipse.jgit.api.Git;
 // import org.eclipse.jgit.lib.BranchTrackingStatus;
@@ -46,7 +46,7 @@ public class StatusSyncState {
                             for (org.eclipse.jgit.revwalk.RevCommit commit : logs) {
                                 String shortId = (commit.getName() != null && commit.getName().length() >= 7) ? commit.getName().substring(0, 7) : commit.getName();
                                 String fullMsg = commit.getFullMessage();
-                                String[] lines = fullMsg.split("\\r?\\n", -1);
+                                String[] lines = fullMsg.split("\r?\n", -1);
                                 if (lines.length > 0) {
                                     System.out.println("  " + shortId + " " + lines[0]);
                                     for (int i = 1; i < lines.length; i++) System.out.println("  " + lines[i]);
@@ -58,8 +58,11 @@ public class StatusSyncState {
                     }
                 }
             } catch (Exception e) {
-                // ...truncated for brevity...
+                System.out.println("(error reading commits)");
             }
+        } else {
+            // ...existing code for remote-aware summary...
+            System.out.println("(remote summary not implemented in this helper)");
         }
     }
 }

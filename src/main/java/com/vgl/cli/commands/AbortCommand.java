@@ -10,7 +10,7 @@ public class AbortCommand implements Command {
     @Override public String name(){ return "abort"; }
 
     @Override public int run(List<String> args) throws Exception {
-        com.vgl.cli.RepoResolution repoRes = RepoResolver.resolveForCommand();
+        com.vgl.cli.services.RepoResolution repoRes = RepoResolver.resolveForCommand();
         if (repoRes.getGit() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Path;
 
+import com.vgl.cli.test.utils.VglTestHarness;
 import com.vgl.cli.utils.Utils;
 public class DebugNestedDetectionTest {
     @Test

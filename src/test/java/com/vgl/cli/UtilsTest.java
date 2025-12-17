@@ -11,6 +11,8 @@ import org.eclipse.jgit.lib.Repository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.vgl.cli.services.VglRepo;
+import com.vgl.cli.test.utils.VglTestHarness;
 /**
  * Tests for Utils helper methods.
  */

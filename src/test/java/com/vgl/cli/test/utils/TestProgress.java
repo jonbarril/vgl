@@ -1,4 +1,4 @@
-package com.vgl.cli;
+package com.vgl.cli.test.utils;
 
 import org.junit.jupiter.api.Test;
 

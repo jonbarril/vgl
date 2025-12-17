@@ -3,7 +3,9 @@ package com.vgl.cli.commands;
 // VglRepo is referenced via RepoResolution; avoid direct import here.
 import com.vgl.cli.utils.Utils;
 import com.vgl.cli.utils.RepoResolver;
-import com.vgl.cli.RepoResolution;
+import com.vgl.cli.commands.helpers.StatusSyncFiles;
+import com.vgl.cli.services.RepoResolution;
+
 import org.eclipse.jgit.api.Git;
 
 import java.util.LinkedHashSet;
@@ -88,7 +90,7 @@ public class StatusCommand implements Command {
         // Print verbose/very-verbose file and commit subsections if requested
         if (verbose || veryVerbose) {
             // Print sync files (files to commit/merge)
-            com.vgl.cli.commands.status.StatusSyncFiles.printSyncFiles(
+            StatusSyncFiles.printSyncFiles(
                 git, 
                 (git != null) ? safeStatus(git) : null, 
                 remoteUrl, 

@@ -1,4 +1,4 @@
-package com.vgl.cli.commands.status;
+package com.vgl.cli.commands.helpers;
 
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;

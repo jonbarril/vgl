@@ -4,7 +4,8 @@ import com.vgl.cli.Args;
 import com.vgl.cli.utils.Utils;
 import com.vgl.cli.utils.RepoResolver;
 import com.vgl.cli.VglCli;
-import com.vgl.cli.RepoResolution;
+import com.vgl.cli.services.RepoResolution;
+
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;
 import java.nio.file.Path;

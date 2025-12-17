@@ -3,6 +3,8 @@ package com.vgl.cli;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import com.vgl.cli.test.utils.VglTestHarness;
+
 public class PrintHelpManual {
     public static void main(String[] args) throws Exception {
         Path tmp = Files.createTempDirectory("vgl-manual-help");

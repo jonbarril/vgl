@@ -49,8 +49,8 @@ public class StatusRenameUnionTest {
 
         // Compute sets
         org.eclipse.jgit.api.Status status = git.status().call();
-        java.util.Set<String> commitRenames = com.vgl.cli.commands.status.StatusSyncFiles.computeCommitRenamedSet(git, status, "", "main");
-        java.util.Map<String, String> workingRenames = com.vgl.cli.commands.status.StatusSyncFiles.computeWorkingRenames(git);
+        java.util.Set<String> commitRenames = com.vgl.cli.commands.helpers.StatusSyncFiles.computeCommitRenamedSet(git, status, "", "main");
+        java.util.Map<String, String> workingRenames = com.vgl.cli.commands.helpers.StatusSyncFiles.computeWorkingRenames(git);
 
         // commitRenames should include b.txt (the committed rename target)
         assertTrue(commitRenames.contains("b.txt"), "commitRenames should include b.txt");

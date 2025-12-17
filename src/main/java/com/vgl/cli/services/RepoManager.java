@@ -1,4 +1,4 @@
-package com.vgl.cli;
+package com.vgl.cli.services;
 
 import org.eclipse.jgit.api.Git;
 import java.io.IOException;

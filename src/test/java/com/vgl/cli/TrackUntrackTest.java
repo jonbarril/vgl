@@ -2,6 +2,9 @@ package com.vgl.cli;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+
+import com.vgl.cli.test.utils.TestProgress;
+
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 

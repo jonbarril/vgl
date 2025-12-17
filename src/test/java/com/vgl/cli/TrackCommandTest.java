@@ -6,6 +6,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.*;
 
+import com.vgl.cli.test.utils.TestProgress;
+import com.vgl.cli.test.utils.VglTestHarness;
 /**
  * Unit tests for the TrackCommand - verifies that the 'vgl track' command
  * properly stages files for commit.

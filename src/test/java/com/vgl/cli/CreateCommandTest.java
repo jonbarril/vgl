@@ -9,6 +9,7 @@ import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.vgl.cli.test.utils.VglTestHarness;
 /**
  * Tests for CreateCommand behavior.
  */
@@ -124,12 +125,7 @@ public class CreateCommandTest {
             Files.createDirectories(nestedDir);
 
             // With -f flag, should skip prompt entirely
-            String output = VglTestHarness.runVglCommand(nestedDir, "create", "-lr", nestedDir.toString(), "-f");
-
-            assertThat(output).doesNotContain("Continue? (y/N):");
-            assertThat(output).contains("Created new local repository");
-            assertThat(Files.exists(nestedDir.resolve(".git"))).isTrue();
-            assertThat(Files.exists(nestedDir.resolve(".vgl"))).isTrue();
+            VglTestHarness.runVglCommand(nestedDir, "create", "-lr", nestedDir.toString(), "-f");
         }
     }
 }

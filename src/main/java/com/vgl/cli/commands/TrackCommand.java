@@ -21,7 +21,7 @@ public class TrackCommand implements Command {
 
         // Use the current working directory as the starting point for repo resolution
         Path startDir = java.nio.file.Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
-        com.vgl.cli.RepoResolution res = com.vgl.cli.utils.RepoResolver.resolveForCommand(startDir);
+        com.vgl.cli.services.RepoResolution res = com.vgl.cli.utils.RepoResolver.resolveForCommand(startDir);
         if (res.getVglRepo() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";
@@ -29,7 +29,7 @@ public class TrackCommand implements Command {
             System.out.println(warn);
             return 1;
         }
-        com.vgl.cli.VglRepo vglRepo = res.getVglRepo();
+        com.vgl.cli.services.VglRepo vglRepo = res.getVglRepo();
         Path dir = vglRepo.getRepoRoot();
 
         // Load undecided files from .vgl if -all is specified

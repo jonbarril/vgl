@@ -231,6 +231,21 @@ public class VglCli {
         saveConfig();
     }
 
+    /**
+     * Returns the configured local directory for the repository, enforcing safety rules:
+     * <ul>
+     *   <li>Never allows the user home directory itself as a repo root (prevents accidental destructive operations).</li>
+     *   <li>Allows any descendant of a test temp root (set via {@code junit.temp.root} or {@code JUNIT_TEMP_ROOT}),
+     *       even if that temp root is under the user home. This is required for robust test isolation, since
+     *       JUnit and many CI systems create temp directories under the user home by default.</li>
+     *   <li>Blocks any other path under user home, unless it is a descendant of the temp root.</li>
+     * </ul>
+     * This policy ensures that tests can safely use temp directories as repos, while production code is protected
+     * from ever using the user home as a repo root.
+     *
+     * @return the absolute path to the local repo directory
+     * @throws IllegalStateException if the resolved directory is the user home or an unsafe path
+     */
     public String getLocalDir() {
         String dir = config.getProperty("local.dir", null);
         if (dir == null || dir.isEmpty()) {
@@ -239,12 +254,39 @@ public class VglCli {
             if (cwd == null || cwd.isEmpty()) {
                 throw new IllegalStateException("No local.dir set and no working directory available");
             }
-            return Paths.get(cwd).toAbsolutePath().normalize().toString();
+            dir = Paths.get(cwd).toAbsolutePath().normalize().toString();
         }
-        // Defensive: never allow user home as a fallback
         Path dirPath = Paths.get(dir).toAbsolutePath().normalize();
         Path userHome = Paths.get(System.getProperty("user.home")).toAbsolutePath().normalize();
-        if (dirPath.equals(userHome) || dirPath.startsWith(userHome)) {
+        // Allow any descendant of a temp root (for tests), even if under user home
+        String tempRootStr = System.getenv("JUNIT_TEMP_ROOT");
+        if (tempRootStr == null || tempRootStr.isEmpty()) {
+            tempRootStr = System.getProperty("junit.temp.root");
+        }
+        if (dirPath.equals(userHome)) {
+            // Only block if not under temp root
+            if (tempRootStr != null && !tempRootStr.isEmpty()) {
+                Path tempRoot = Paths.get(tempRootStr).toAbsolutePath().normalize();
+                if (dirPath.startsWith(tempRoot)) {
+                    return dir;
+                }
+            }
+            throw new IllegalStateException("local.dir should never resolve to user home");
+        }
+        if (tempRootStr != null && !tempRootStr.isEmpty()) {
+            Path tempRoot = Paths.get(tempRootStr).toAbsolutePath().normalize();
+            if (dirPath.startsWith(tempRoot)) {
+                return dir;
+            }
+        }
+        if (dirPath.startsWith(userHome)) {
+            // Only block if not under temp root
+            if (tempRootStr != null && !tempRootStr.isEmpty()) {
+                Path tempRoot = Paths.get(tempRootStr).toAbsolutePath().normalize();
+                if (dirPath.startsWith(tempRoot)) {
+                    return dir;
+                }
+            }
             throw new IllegalStateException("local.dir should never resolve to user home");
         }
         return dir;

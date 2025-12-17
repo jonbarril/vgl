@@ -1,4 +1,4 @@
-package com.vgl.cli;
+package com.vgl.cli.services;
 
 import java.io.IOException;
 import java.io.InputStream;

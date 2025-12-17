@@ -1,4 +1,4 @@
-package com.vgl.cli.commands.status;
+package com.vgl.cli.commands.helpers;
 
 import java.util.Set;
 import java.util.List;

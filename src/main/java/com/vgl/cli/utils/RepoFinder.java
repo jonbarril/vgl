@@ -1,4 +1,4 @@
-package com.vgl.refactor;
+package com.vgl.cli.utils;
 
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder;
 

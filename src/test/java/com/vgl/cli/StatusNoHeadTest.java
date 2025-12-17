@@ -3,6 +3,9 @@ package com.vgl.cli;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.vgl.cli.test.utils.TestProgress;
+import com.vgl.cli.test.utils.VglTestHarness;
+
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;

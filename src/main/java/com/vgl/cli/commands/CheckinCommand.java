@@ -15,7 +15,7 @@ public class CheckinCommand implements Command {
             System.out.println("Usage: vgl checkin -draft|-final");
             return 1;
         }
-        com.vgl.cli.RepoResolution repoRes = RepoResolver.resolveForCommand();
+        com.vgl.cli.services.RepoResolution repoRes = RepoResolver.resolveForCommand();
         if (repoRes.getGit() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";

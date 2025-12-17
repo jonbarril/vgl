@@ -1,6 +1,8 @@
 package com.vgl.cli;
 
 import com.vgl.cli.commands.JumpCommand;
+import com.vgl.cli.test.utils.VglTestHarness;
+
 import org.junit.jupiter.api.*;
 import java.io.*;
 import java.nio.file.*;

@@ -1,4 +1,4 @@
-package com.vgl.refactor;
+package com.vgl.cli.services;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;

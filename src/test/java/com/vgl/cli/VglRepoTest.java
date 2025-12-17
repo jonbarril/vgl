@@ -10,6 +10,9 @@ import java.util.Collections;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+
+import com.vgl.cli.services.VglRepo;
+import com.vgl.cli.test.utils.TestProgress;
 import com.vgl.cli.utils.Utils;
 
 public class VglRepoTest {

@@ -10,9 +10,9 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.revwalk.RevCommit;
 
+import com.vgl.cli.services.VglRepo;
 import com.vgl.cli.utils.RepoResolver;
 import com.vgl.cli.utils.Utils;
-import com.vgl.cli.VglRepo;
 
 public class CommitCommand implements Command {
     @Override public String name(){ return "commit"; }
@@ -31,7 +31,7 @@ public class CommitCommand implements Command {
             return 1;
         }
 
-        com.vgl.cli.RepoResolution repoRes = RepoResolver.resolveForCommand();
+        com.vgl.cli.services.RepoResolution repoRes = RepoResolver.resolveForCommand();
         if (repoRes.getVglRepo() == null || repoRes.getGit() == null) {
             String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
                           "Hint: Run 'vgl create' to initialize a new repo here.";
