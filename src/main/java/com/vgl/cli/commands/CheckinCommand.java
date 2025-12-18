@@ -1,6 +1,5 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.utils.RepoResolver;
 import org.eclipse.jgit.api.Git;
 
 import java.util.List;

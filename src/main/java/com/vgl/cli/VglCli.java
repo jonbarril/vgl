@@ -2,8 +2,6 @@ package com.vgl.cli;
 
 import com.vgl.cli.commands.StatusCommand;
 import com.vgl.cli.commands.*;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
@@ -14,7 +12,7 @@ public class VglCli {
     private static final String CONFIG_FILE = ".vgl";
     private final Map<String, Command> cmds = new LinkedHashMap<>();
     private final Properties config = new Properties();
-    private static final Logger LOG = LoggerFactory.getLogger(VglCli.class);
+    // Logger removed; use System.err for warnings/errors
 
     public VglCli() {
         loadConfig();
@@ -63,7 +61,6 @@ public class VglCli {
                 return 1;
             }
             System.err.println("Error: " + e.getMessage());
-            LOG.debug("Top-level exception while running command", e);
             return 1;
         }
     }
@@ -150,7 +147,7 @@ public class VglCli {
                 } catch (Exception ignore) {}
                 if (!allowed) {
                     // Skip loading configs outside the test base or current directory (test-only behavior)
-                    LOG.debug("Skipping loading .vgl outside test base or working directory: {}", configPath);
+                    // System.err.println("Skipping loading .vgl outside test base or working directory: " + configPath);
                     return;
                 }
             }
@@ -161,14 +158,15 @@ public class VglCli {
                 String warn = "Warning: Found .vgl but no .git directory";
                 String del = "Deleted orphaned .vgl file";
                 String fail = "Failed to delete orphaned .vgl file: ";
-                LOG.warn(warn);
+                System.err.println(warn);
                 try {
                     Files.deleteIfExists(configPath);
-                    LOG.warn(del);
+                    System.err.println(del);
                 } catch (IOException e) {
-                    LOG.warn(fail + e.getMessage());
+                    System.err.println(fail + e.getMessage());
                 }
-                LOG.debug("Found .vgl at {} but no .git directory; treating as orphaned.", configPath);
+                // For test/debug: print to stderr
+                // System.err.println("[DEBUG] Orphaned .vgl handling complete for " + configPath);
                 return;
             }
             
@@ -176,7 +174,7 @@ public class VglCli {
             try (InputStream in = Files.newInputStream(configPath)) {
                 config.load(in);
             } catch (IOException e) {
-                LOG.debug("Failed to load configuration file at {}.", configPath, e);
+                // System.err.println("Failed to load configuration file at " + configPath + ": " + e.getMessage());
             }
         } else {
             //// System.out.println("Info: No configuration file found. Defaults will
@@ -227,7 +225,7 @@ public class VglCli {
                 config.store(out, "VGL Configuration");
             } catch (IOException e) {
                 System.err.println("Warning: Failed to save configuration file.");
-                LOG.debug("Failed to save configuration file to {}", savePath, e);
+                // System.err.println("[DEBUG] Failed to save configuration file to " + savePath + ": " + e.getMessage());
             }
         } else {
             //// System.out.println("Info: No local repository found. Configuration file

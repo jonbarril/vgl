@@ -8,8 +8,7 @@ import com.vgl.cli.services.VglStateStore;
 
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Repository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+// Logging removed
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
@@ -18,7 +17,7 @@ import java.util.stream.Stream;
 
 public final class Utils {
 	private Utils(){}
-	private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
+	// Logger removed
 
 	/**
 	 * Returns true if the given file is ignored by git (.gitignore, etc).
@@ -449,7 +448,7 @@ public final class Utils {
 			if (testBase != null && !testBase.isEmpty()) {
 				// In hermetic test runs we avoid printing to stdout/stderr to keep
 				// output deterministic; prefer debug logging instead.
-				LOG.debug("{}\n{}", MSG_NO_REPO_PREFIX + searchPath.toAbsolutePath().normalize(), MSG_NO_REPO_HELP);
+				// System.err.println(MSG_NO_REPO_PREFIX + searchPath.toAbsolutePath().normalize() + "\n" + MSG_NO_REPO_HELP);
 				return;
 			}
 		} catch (Exception ignored) {}

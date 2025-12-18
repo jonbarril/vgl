@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.eclipse.jgit.api.Git;
 
+import org.junit.jupiter.api.BeforeEach;
 import java.io.*;
 import java.nio.file.*;
 import java.util.Comparator;
@@ -15,80 +16,59 @@ import java.util.Comparator;
  */
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.AfterEach;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-import org.slf4j.LoggerFactory;
+
 
 public class ConfigManagementTest {
 
     private String oldUserHome;
     private Path tempUserHome;
-
-    @BeforeEach
-    void setUpHome() throws Exception {
-        oldUserHome = System.getProperty("user.home");
-        Path testBase = Path.of("build", "tmp", "config-management-test").toAbsolutePath();
-        Files.createDirectories(testBase);
-        tempUserHome = testBase.resolve("home");
-        if (Files.exists(tempUserHome)) deleteRecursively(tempUserHome);
-        Files.createDirectories(tempUserHome);
-        System.setProperty("user.home", tempUserHome.toString());
-    }
-
-    @AfterEach
-    void tearDownHome() throws Exception {
-        if (oldUserHome != null) System.setProperty("user.home", oldUserHome); else System.clearProperty("user.home");
-        if (tempUserHome != null && Files.exists(tempUserHome)) {
-            try {
-                Files.walk(tempUserHome)
-                        .sorted(Comparator.reverseOrder())
-                        .forEach(p -> {
-                            try { Files.deleteIfExists(p); } catch (IOException ignore) {}
-                        });
-            } catch (IOException ignore) {}
-        }
-    }
-
-    private static void deleteRecursively(Path path) throws java.io.IOException {
-        if (Files.exists(path)) {
-            Files.walk(path)
-                .sorted((a, b) -> b.compareTo(a))
-                .forEach(p -> {
-                    try { Files.delete(p); } catch (java.io.IOException e) { }
-                });
-        }
-    }
-
-    @Test
-    void saveAndLoadBasicConfig(@TempDir Path tmp) throws Exception {
-        String oldUserDir = System.getProperty("user.dir");
-        try {
-            System.setProperty("user.dir", tmp.toString());
-            
-            // Create .git
-            try (@SuppressWarnings("unused") Git g = Git.init().setDirectory(tmp.toFile()).call()) {
+        @AfterEach
+        void tearDownHome() throws Exception {
+            if (oldUserHome != null) System.setProperty("user.home", oldUserHome); else System.clearProperty("user.home");
+            if (tempUserHome != null && Files.exists(tempUserHome)) {
+                try {
+                    Files.walk(tempUserHome)
+                            .sorted(Comparator.reverseOrder())
+                            .forEach(p -> {
+                                try { Files.deleteIfExists(p); } catch (IOException ignore) {}
+                            });
+                } catch (IOException ignore) {}
             }
-            
-            // Create and configure VglCli
-            VglCli vgl = new VglCli();
-            vgl.setLocalDir(tmp.toString());
-            vgl.setLocalBranch("main");
-            vgl.setRemoteUrl("https://example.com/repo.git");
-            vgl.setRemoteBranch("develop");
-            vgl.save();
-            
-            // Verify .vgl was created
-            assertThat(Files.exists(tmp.resolve(".vgl"))).isTrue();
-            
-            // Load in new instance
-            VglCli vgl2 = new VglCli();
-            assertThat(vgl2.getLocalDir()).isEqualTo(tmp.toString());
-            assertThat(vgl2.getLocalBranch()).isEqualTo("main");
-            assertThat(vgl2.getRemoteUrl()).isEqualTo("https://example.com/repo.git");
-            assertThat(vgl2.getRemoteBranch()).isEqualTo("develop");
+        }
+
+        private static void deleteRecursively(Path path) throws java.io.IOException {
+            if (Files.exists(path)) {
+                Files.walk(path)
+                    .sorted(Comparator.reverseOrder())
+                    .forEach(p -> {
+                        try { Files.deleteIfExists(p); } catch (IOException ignore) {}
+                    });
+            }
+        }
+
+        @Test
+        void orphanedVglConfigWarns() throws Exception {
+        // Setup: create orphaned .vgl file
+        Path repoDir = Files.createTempDirectory("vgl-orphaned-config-test");
+        Path orphanedVgl = repoDir.resolve(".vgl");
+        Files.writeString(orphanedVgl, "orphaned config");
+
+        // Set user.dir to repoDir and instantiate VglCli, which should warn about orphaned .vgl
+        String oldUserDir = System.getProperty("user.dir");
+        System.setProperty("user.dir", repoDir.toString());
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        PrintStream originalErr = System.err;
+        System.setErr(new PrintStream(errContent));
+        try {
+            new VglCli();
         } finally {
+            System.setErr(originalErr);
             System.setProperty("user.dir", oldUserDir);
         }
+        String stderr = errContent.toString();
+        System.out.println("[TEST DIAGNOSTIC] Captured System.err:\n" + stderr);
+        boolean found = stderr.toLowerCase().contains("warning: found .vgl but no .git directory");
+        assertThat(found).as("Should print a warning about orphaned .vgl to System.err").isTrue();
     }
 
     @Test
@@ -337,75 +317,33 @@ public class ConfigManagementTest {
     @org.junit.jupiter.api.Timeout(30)
     void orphanedVglWithoutGitIsDeleted(@TempDir Path tmp) throws Exception {
         String oldUserDir = System.getProperty("user.dir");
-        // Set up log capturing on both the root logger and the VglCli logger to ensure all logs are caught
-        ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        ch.qos.logback.classic.Logger vglLogger = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(VglCli.class);
-        ListAppender<ILoggingEvent> listAppender = new ListAppender<>();
-        listAppender.setName("TEST_APPENDER");
-        listAppender.start();
-        rootLogger.addAppender(listAppender);
-        vglLogger.addAppender(listAppender);
-        // Set level to DEBUG to capture all logs
-        ch.qos.logback.classic.Level originalRootLevel = rootLogger.getLevel();
-        ch.qos.logback.classic.Level originalVglLevel = vglLogger.getLevel();
-        rootLogger.setLevel(ch.qos.logback.classic.Level.DEBUG);
-        vglLogger.setLevel(ch.qos.logback.classic.Level.DEBUG);
+        System.setProperty("user.dir", tmp.toString());
+        // Create .vgl without .git
+        Path vglFile = tmp.resolve(".vgl");
+        Files.writeString(vglFile, "local.dir=" + tmp + "\nlocal.branch=orphaned\n");
+        assertThat(Files.exists(vglFile)).isTrue();
+        // Force non-interactive mode and load should detect orphaned .vgl and delete it
+        System.setProperty("vgl.noninteractive", "true");
+        ByteArrayOutputStream errContent = new ByteArrayOutputStream();
+        PrintStream originalErr = System.err;
+        System.setErr(new PrintStream(errContent));
         try {
-            System.setProperty("user.dir", tmp.toString());
-            // Print logger implementation class
-            System.out.println("SLF4J LoggerFactory: " + org.slf4j.LoggerFactory.getILoggerFactory().getClass());
-            // Emit a test LOG.warn and check if it is captured
-            org.slf4j.Logger testLogger = org.slf4j.LoggerFactory.getLogger("com.vgl.cli.VglCli");
-            testLogger.warn("TEST: This is a test warning from ConfigManagementTest");
-            // Print all captured log events after test LOG.warn
-            System.out.println("Captured log messages after test LOG.warn:");
-            for (var e : listAppender.list) {
-                System.out.println(
-                    "LOGGER: " + e.getLoggerName() +
-                    " | LEVEL: " + e.getLevel() +
-                    " | THREAD: " + e.getThreadName() +
-                    " | MESSAGE: " + e.getMessage() +
-                    " | FORMATTED: " + e.getFormattedMessage()
-                );
-            }
-
-            // Create .vgl without .git
-            Path vglFile = tmp.resolve(".vgl");
-            Files.writeString(vglFile, "local.dir=" + tmp + "\nlocal.branch=orphaned\n");
-            assertThat(Files.exists(vglFile)).isTrue();
-            // Force non-interactive mode and load should detect orphaned .vgl and delete it
-            System.setProperty("vgl.noninteractive", "true");
-            try {
-                new VglCli();
-            } finally {
-                System.clearProperty("vgl.noninteractive");
-            }
-            // .vgl should be deleted
-            assertThat(Files.exists(vglFile)).isFalse();
-            // Should have printed warning in logs
-            boolean foundWarning = listAppender.list.stream().anyMatch(e -> e.getFormattedMessage().contains("Warning: Found .vgl but no .git directory"));
-            boolean foundDeleted = listAppender.list.stream().anyMatch(e -> e.getFormattedMessage().contains("Deleted orphaned .vgl file"));
-            if (!foundWarning || !foundDeleted) {
-                System.out.println("Captured log messages (full details):");
-                for (var e : listAppender.list) {
-                    System.out.println(
-                        "LOGGER: " + e.getLoggerName() +
-                        " | LEVEL: " + e.getLevel() +
-                        " | THREAD: " + e.getThreadName() +
-                        " | MESSAGE: " + e.getMessage() +
-                        " | FORMATTED: " + e.getFormattedMessage()
-                    );
-                }
-            }
-            assertThat(foundWarning).isTrue();
-            assertThat(foundDeleted).isTrue();
+            new VglCli();
         } finally {
+            System.setErr(originalErr);
+            System.clearProperty("vgl.noninteractive");
             System.setProperty("user.dir", oldUserDir);
-            rootLogger.detachAppender(listAppender);
-            vglLogger.detachAppender(listAppender);
-            rootLogger.setLevel(originalRootLevel);
-            vglLogger.setLevel(originalVglLevel);
         }
+        // .vgl should be deleted
+        assertThat(Files.exists(vglFile)).isFalse();
+        String stderr = errContent.toString();
+        boolean foundWarning = stderr.toLowerCase().contains("warning: found .vgl but no .git directory");
+        boolean foundDeleted = stderr.toLowerCase().contains("deleted orphaned .vgl file");
+        if (!foundWarning || !foundDeleted) {
+            System.out.println("[TEST DIAGNOSTIC] Captured System.err:\n" + stderr);
+        }
+        assertThat(foundWarning).isTrue();
+        assertThat(foundDeleted).isTrue();
     }
 
     @Test

@@ -5,8 +5,7 @@ import com.vgl.cli.utils.Utils;
 import java.util.List;
 
 import org.eclipse.jgit.api.Git;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+// Logging removed
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -21,7 +20,7 @@ import java.util.Set;
  * Combines Git instance with .vgl configuration.
  */
 public class VglRepo implements Closeable {
-    private static final Logger LOG = LoggerFactory.getLogger(VglRepo.class);
+    // Logger removed
             /**
              * Update the undecided file list in .vgl by scanning for untracked, non-ignored files.
              * This should be called before status, commit, or any command that needs to prompt about undecided files.
@@ -237,8 +236,8 @@ public class VglRepo implements Closeable {
         
         // Check if .git still exists (orphaned .vgl check)
         if (!Files.exists(repoRoot.resolve(".git"))) {
-            LOG.debug("Found .vgl at {} but no .git directory.", repoRoot);
-            LOG.debug("The .git repository may have been deleted or moved.");
+            // System.err.println("Found .vgl at " + repoRoot + " but no .git directory.");
+            // System.err.println("The .git repository may have been deleted or moved.");
             return config;
         }
         
@@ -246,7 +245,7 @@ public class VglRepo implements Closeable {
         try (InputStream in = Files.newInputStream(vglFile)) {
             config.load(in);
         } catch (IOException e) {
-            LOG.debug("Failed to load .vgl configuration file at {}.", vglFile, e);
+            // System.err.println("Failed to load .vgl configuration file at " + vglFile + ": " + e.getMessage());
         }
         
         return config;
