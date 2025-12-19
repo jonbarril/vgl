@@ -18,7 +18,7 @@ public class DebugNestedDetectionTest {
             System.out.println("tmp .git exists: " + java.nio.file.Files.exists(tmp.resolve(".git")) + " -> " + tmp.resolve(".git"));
             System.out.println("getGitRepoRoot(nested): " + Utils.getGitRepoRoot(nested));
             System.out.println("isNestedRepo(nested): " + Utils.isNestedRepo(nested));
-            System.out.println("findGitRepo(nested): " + Utils.findGitRepo(nested));
+            System.out.println("findGitRepo(nested): " + Utils.findGitRepo(nested, null));
         }
     }
 }

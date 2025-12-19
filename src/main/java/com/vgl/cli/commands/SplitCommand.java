@@ -102,10 +102,7 @@ public class SplitCommand implements Command {
             }
             
             // Save current state as jump state
-            vgl.setJumpLocalDir(workingDir);
-            vgl.setJumpLocalBranch(currentBranch);
-            vgl.setJumpRemoteUrl(vgl.getRemoteUrl());
-            vgl.setJumpRemoteBranch(vgl.getRemoteBranch());
+                // Removed jump state references
             vgl.save();
             
             String sourceBranchName;

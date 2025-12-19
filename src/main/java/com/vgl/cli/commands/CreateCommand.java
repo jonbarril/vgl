@@ -59,26 +59,23 @@ public class CreateCommand implements Command {
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir)) Files.createDirectories(dir);
 
-        // --- NEW LOGIC: Use target-relative repo resolution and ancestor detection ---
-        // 1. If an ancestor repo (git or vgl) exists, warn and prompt user to continue (but only if the ancestor is not the target itself)
-        Path ancestorRepo = NestedRepoDetector.findAncestorRepo(dir);
-        boolean nestedOk = true;
-
-        // 2. If a valid VGL repo exists in the target, allow branch creation if requested, else quit (no-op)
+        // 1. If a valid VGL repo exists in the target, allow branch creation if requested, else quit (no-op)
         RepoResolution res = com.vgl.cli.utils.RepoResolver.resolveForCommand(dir);
         boolean vglRepoExists = res.getKind() == com.vgl.cli.services.RepoResolution.ResolutionKind.FOUND_BOTH &&
             res.getRepoRoot() != null && res.getRepoRoot().equals(dir);
+        if (vglRepoExists && !branchSpecified) {
+            System.out.println("VGL repository already exists at: " + dir);
+            return 0;
+        }
+        // 2. If an ancestor repo (git or vgl) exists, warn and prompt user to continue (but only if the ancestor is not the target itself)
+        Path ancestorRepo = NestedRepoDetector.findAncestorRepo(dir);
+        boolean nestedOk = true;
         if (ancestorRepo != null) {
             nestedOk = Utils.warnNestedRepo(dir, ancestorRepo, force);
             if (!nestedOk) {
                 System.out.println("Create cancelled. No repository created.");
                 return 0;
             }
-        }
-        if (vglRepoExists && !branchSpecified) {
-            System.out.println("VGL repository already exists at: " + dir);
-            Utils.printSwitchState(vgl);
-            return 0;
         }
 
         // 3. If no .git exists, create new repo (use RepoManager)
@@ -134,16 +131,7 @@ public class CreateCommand implements Command {
             }
         }
 
-        // Save current state as jump state before creating/switching
-        String currentDir = vgl.getLocalDir();
-        String currentBranch = vgl.getLocalBranch();
-        String currentRemoteUrl = vgl.getRemoteUrl();
-        String currentRemoteBranch = vgl.getRemoteBranch();
 
-        vgl.setJumpLocalDir(currentDir);
-        vgl.setJumpLocalBranch(currentBranch);
-        vgl.setJumpRemoteUrl(currentRemoteUrl);
-        vgl.setJumpRemoteBranch(currentRemoteBranch);
 
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(finalBranch);

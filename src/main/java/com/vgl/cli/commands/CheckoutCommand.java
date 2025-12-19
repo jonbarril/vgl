@@ -108,15 +108,9 @@ public class CheckoutCommand implements Command {
         git.close();
 
         // Save current state as jump state before updating switch state
-        String currentDir = vgl.getLocalDir();
-        String currentBranch = vgl.getLocalBranch();
-        String currentRemoteUrl = vgl.getRemoteUrl();
-        String currentRemoteBranch = vgl.getRemoteBranch();
+        // Removed unused jump state variables
 
-        vgl.setJumpLocalDir(currentDir);
-        vgl.setJumpLocalBranch(currentBranch);
-        vgl.setJumpRemoteUrl(currentRemoteUrl);
-        vgl.setJumpRemoteBranch(currentRemoteBranch);
+        // ...existing code...
 
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(branch);

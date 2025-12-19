@@ -40,7 +40,7 @@ public class UtilsTest {
         try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
             
             // Open git with specific directory
-            Git reopened = Utils.findGitRepo(tempDir);
+            Git reopened = Utils.findGitRepo(tempDir, null);
             assertThat(reopened).isNotNull();
             reopened.close();
         }
@@ -62,7 +62,7 @@ public class UtilsTest {
     public void openGitReturnsNullForNonGitDirectory(@TempDir Path tempDir) throws Exception {
         // Utils searches upward, so it might find parent .git directories
         // This test verifies the method doesn't crash on non-git directories
-        Git found = Utils.findGitRepo(tempDir);
+        Git found = Utils.findGitRepo(tempDir, null);
         // May be null or may find a parent git repo
         // The key is it doesn't throw an exception
         if (found != null) {
@@ -118,7 +118,7 @@ public class UtilsTest {
     @Test
     public void findGitRepoWithPathFindsRepo(@TempDir Path tmp) throws Exception {
         try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-            try (Git found = Utils.findGitRepo(tmp)) {
+            try (Git found = Utils.findGitRepo(tmp, null)) {
                 assertThat(found).isNotNull();
                 assertThat(found.getRepository().getWorkTree().toPath()).isEqualTo(tmp);
             }
@@ -132,7 +132,7 @@ public class UtilsTest {
         Files.createDirectories(isolated);
         
         // Should return null or find a parent repo (depending on test environment)
-        Git found = Utils.findGitRepo(isolated);
+        Git found = Utils.findGitRepo(isolated, null);
         if (found != null) {
             found.close();
         }

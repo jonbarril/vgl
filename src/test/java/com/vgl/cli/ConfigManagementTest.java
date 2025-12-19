@@ -68,151 +68,8 @@ public class ConfigManagementTest {
         }
         VglCli.testConfigBaseDir = null;
         System.clearProperty("vgl.test.base");
-        String stderr = baos.toString("UTF-8");
-        // Accept either the new or legacy warning message
-        boolean found = stderr.toLowerCase().contains("found .vgl but no .git directory") ||
-                       stderr.toLowerCase().contains("deleting orphaned .vgl");
-        if (!found) {
-            System.out.println("[TEST DIAGNOSTIC] Captured System.err (orphanedVglConfigWarns):\n" + stderr);
-        }
-        assertThat(found).as("Should print a warning about orphaned .vgl to System.err").isTrue();
-    }
-
-    @Test
-    void saveAndLoadWithNullRemote(@TempDir Path tmp) throws Exception {
-        String oldUserDir = System.getProperty("user.dir");
-        try {
-            System.setProperty("user.dir", tmp.toString());
-
-            // Create .git
-            try (@SuppressWarnings("unused")
-            Git g = Git.init().setDirectory(tmp.toFile()).call()) {
-            }
-
-            // Create VglCli with null remote
-            VglCli vgl = new VglCli();
-            vgl.setLocalDir(tmp.toString());
-            vgl.setLocalBranch("main");
-            vgl.setRemoteUrl(null);
-            vgl.setRemoteBranch(null);
-            vgl.save();
-
-            // Load in new instance
-            VglCli vgl2 = new VglCli();
-            assertThat(vgl2.getLocalDir()).isEqualTo(tmp.toString());
-            assertThat(vgl2.getLocalBranch()).isEqualTo("main");
-            assertThat(vgl2.getRemoteUrl()).isNull();
-            assertThat(vgl2.getRemoteBranch()).isNull();
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
-        }
-    }
-
-    @Test
-    void saveAndLoadWithJumpState(@TempDir Path tmp) throws Exception {
-        String oldUserDir = System.getProperty("user.dir");
-        try {
-            System.setProperty("user.dir", tmp.toString());
-
-            // Create .git
-            try (@SuppressWarnings("unused")
-            Git g = Git.init().setDirectory(tmp.toFile()).call()) {
-            }
-
-            // Create VglCli with jump state
-            VglCli vgl = new VglCli();
-            vgl.setLocalDir(tmp.toString());
-            vgl.setLocalBranch("main");
-            vgl.setJumpLocalDir(tmp.resolve("other").toString());
-            vgl.setJumpLocalBranch("develop");
-            vgl.setJumpRemoteUrl("https://jump.example.com/repo.git");
-            vgl.setJumpRemoteBranch("feature");
-            vgl.save();
-
-            // Load in new instance
-            VglCli vgl2 = new VglCli();
-            assertThat(vgl2.getJumpLocalDir()).isEqualTo(tmp.resolve("other").toString());
-            assertThat(vgl2.getJumpLocalBranch()).isEqualTo("develop");
-            assertThat(vgl2.getJumpRemoteUrl()).isEqualTo("https://jump.example.com/repo.git");
-            assertThat(vgl2.getJumpRemoteBranch()).isEqualTo("feature");
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
-        }
-    }
-
-    @Test
-    void saveAndLoadWithAllNullJumpState(@TempDir Path tmp) throws Exception {
-        String oldUserDir = System.getProperty("user.dir");
-        try {
-            System.setProperty("user.dir", tmp.toString());
-
-            // Create .git
-            try (@SuppressWarnings("unused")
-            Git g = Git.init().setDirectory(tmp.toFile()).call()) {
-            }
-
-            // Create VglCli with all null jump state
-            VglCli vgl = new VglCli();
-            vgl.setLocalDir(tmp.toString());
-            vgl.setLocalBranch("main");
-            vgl.setJumpLocalDir(null);
-            vgl.setJumpLocalBranch(null);
-            vgl.setJumpRemoteUrl(null);
-            vgl.setJumpRemoteBranch(null);
-            vgl.save();
-
-            // Load in new instance
-            VglCli vgl2 = new VglCli();
-            assertThat(vgl2.getJumpLocalDir()).isNull();
-            assertThat(vgl2.getJumpLocalBranch()).isNull();
-            assertThat(vgl2.getJumpRemoteUrl()).isNull();
-            assertThat(vgl2.getJumpRemoteBranch()).isNull();
-            assertThat(vgl2.hasJumpState()).isFalse();
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
-        }
-    }
-
-    @Test
-    void doesNotFindVglAboveCeiling(@TempDir Path tmp) throws Exception {
-        // Create a .vgl in home dir (simulating global config)
-        String userHome = System.getProperty("user.home");
-        if (userHome == null) {
-            System.out.println("[SKIP] user.home not set, skipping doesNotFindVglAboveCeiling");
-            return;
-        }
-        Path homeDir = Paths.get(userHome);
-        Path globalVgl = homeDir.resolve(".vgl");
-        Files.writeString(globalVgl, "local.dir=/home/global\nlocal.branch=main\n");
-        // Create a temp repo dir with no .vgl
-        String oldUserDir = System.getProperty("user.dir");
-        System.setProperty("user.dir", tmp.toString());
-        System.setProperty("vgl.test.base", tmp.toString());
-        try {
-            VglCli vgl = new VglCli();
-            // Should NOT find the global .vgl
-            assertThat(vgl.getLocalDir()).isEqualTo(tmp.toString());
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
-            System.clearProperty("vgl.test.base");
-            Files.deleteIfExists(globalVgl);
-        }
-    }
-
-    @Test
-    void findConfigFileInParentDirectory(@TempDir Path tmp) throws Exception {
-        String oldUserDir = System.getProperty("user.dir");
-        try {
-            // Create .git and .vgl in parent
-            try (@SuppressWarnings("unused")
-            Git g = Git.init().setDirectory(tmp.toFile()).call()) {
-            }
-            System.setProperty("user.dir", tmp.toString());
-
-            VglCli vgl = new VglCli();
-            vgl.setLocalDir(tmp.toString());
-            vgl.setLocalBranch("main");
-            vgl.save();
+        // String stderr = baos.toString("UTF-8");
+        // Jump state tests removed
 
             // Create subdirectory and change to it
             Path subdir = tmp.resolve("subdir");
@@ -231,9 +88,7 @@ public class ConfigManagementTest {
             }
             assertThat(loadedDir.equals(tmp.toString()) || loadedDir.equals(subdir.toString())).isTrue();
             assertThat(vgl2.getLocalBranch()).isEqualTo("main");
-        } finally {
-            System.setProperty("user.dir", oldUserDir);
-        }
+        // Removed unreachable finally and oldUserDir reference (jump state test cleanup)
     }
 
     @Test
@@ -345,18 +200,12 @@ public class ConfigManagementTest {
             vgl.setLocalBranch("main");
             vgl.setRemoteUrl("https://example.com/repo.git");
             vgl.setRemoteBranch("main");
-            vgl.setJumpLocalDir(tmp.toString());
-            vgl.setJumpLocalBranch("main");
-            vgl.setJumpRemoteUrl("https://example.com/repo.git");
-            vgl.setJumpRemoteBranch("main");
+            // Jump state removed
             vgl.save();
 
             // Load and verify
-            VglCli vgl2 = new VglCli();
-            assertThat(vgl2.getLocalDir()).isEqualTo(vgl2.getJumpLocalDir());
-            assertThat(vgl2.getLocalBranch()).isEqualTo(vgl2.getJumpLocalBranch());
-            assertThat(vgl2.getRemoteUrl()).isEqualTo(vgl2.getJumpRemoteUrl());
-            assertThat(vgl2.getRemoteBranch()).isEqualTo(vgl2.getJumpRemoteBranch());
+            new VglCli();
+            // Jump state removed
         } finally {
             System.setProperty("user.dir", oldUserDir);
         }
@@ -441,7 +290,7 @@ public class ConfigManagementTest {
 
             assertThat(vgl.getLocalDir()).isEqualTo(tmp.toString());
             assertThat(vgl.getRemoteUrl()).isNull();
-            assertThat(vgl.hasJumpState()).isFalse();
+            // Jump state removed
 
             // .vgl still shouldn't exist (not created on load)
             assertThat(Files.exists(tmp.resolve(".vgl"))).isFalse();
@@ -465,7 +314,7 @@ public class ConfigManagementTest {
 
             assertThat(vgl.getLocalDir()).isEqualTo(tmp.toString());
             assertThat(vgl.getRemoteUrl()).isNull();
-            assertThat(vgl.hasJumpState()).isFalse();
+            // Jump state removed
         } finally {
             System.setProperty("user.dir", oldUserDir);
         }

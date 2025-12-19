@@ -60,10 +60,11 @@ public final class Utils {
 	 * Find git repository starting from a specific directory.
 	 * Searches upward from the start path to find .git directory.
 	 * Returns null silently if not found - caller decides how to handle.
-	 * 
-	 * @param startPath Directory to start searching from
-	 * @return Git instance, or null if no repository found
-	 */
+		// Jump state removed
+		String jumpDir = null;
+		String jumpBranch = null;
+		String jumpRemote = null;
+		String jumpRemoteBranch = null;
 	public static Git findGitRepo(Path startPath) throws IOException {
 		// Honor test ceiling when present so tests cannot search above the provided base.
 		try {
@@ -100,7 +101,7 @@ public final class Utils {
 	 * @param ceilingDir Directory to stop searching at (null = no limit)
 	 * @return Git instance, or null if no repository found
 	 */
-	static Git findGitRepo(Path startPath, Path ceilingDir) throws IOException {
+	public static Git findGitRepo(Path startPath, Path ceilingDir) throws IOException {
 		return com.vgl.cli.utils.GitUtils.findGitRepo(startPath, ceilingDir);
 	}
 
@@ -111,7 +112,7 @@ public final class Utils {
 	 * @return Git instance, or null if no repository found
 	 */
 	public static Git findGitRepo() throws IOException {
-		return findGitRepo(currentDir());
+		return findGitRepo(currentDir(), null);
 	}
 
 	/**
@@ -166,7 +167,7 @@ public final class Utils {
 	 * @return Git instance, or null if not found (after printing error)
 	 */
 	public static Git findGitRepoOrWarn(Path startPath) throws IOException {
-		Git git = findGitRepo(startPath);
+		Git git = findGitRepo(startPath, null);
 		if (git == null) {
 			warnNoRepo(startPath);
 		}
@@ -192,7 +193,7 @@ public final class Utils {
 	 */
 	public static VglRepo findVglRepoOrWarn(Path startPath) throws IOException {
 		// First, try to locate a git repository. If none found, print standard warning.
-		Git git = findGitRepo(startPath);
+		Git git = findGitRepo(startPath, null);
 		if (git == null) {
 			warnNoRepo(startPath);
 			return null;
@@ -312,7 +313,7 @@ public final class Utils {
 	 */
 	static Path getGitRepoRoot(Path startPath, Path ceilingDir) throws IOException {
 		if (ceilingDir == null) {
-			try (Git git = findGitRepo(startPath)) {
+			try (Git git = findGitRepo(startPath, null)) {
 				if (git == null) return null;
 				return git.getRepository().getWorkTree().toPath();
 			}
@@ -399,33 +400,23 @@ public final class Utils {
 	 * @return true if user confirms to continue, false otherwise
 	 */
 	public static boolean warnNestedRepo(Path targetDir, Path parentRepo, boolean force) {
-		// Always print the warning
-		System.out.println("[DEBUG] warnNestedRepo called: targetDir=" + targetDir + ", parentRepo=" + parentRepo + ", force=" + force);
-		System.out.println(MSG_NESTED_REPO_WARNING + parentRepo + " (nested under parent repo)");
+		// Print a single concise warning
+		System.out.println("Warning: Repository will be nested under parent repo at: " + parentRepo);
 		System.out.flush();
 		if (force) {
-			// With force, do not prompt, just proceed
 			return true;
 		}
 		if (!isInteractive()) {
-			System.out.println("Warning: Creating a repository inside another Git repository.");
 			System.out.println("Non-interactive environment detected; cancelling create by default.");
 			return false;
 		}
-		System.out.println("Warning: Creating a repository inside another Git repository.");
-		System.out.println("This will create a nested repository and may cause confusion.");
-		System.out.println("Parent repository: " + parentRepo);
-		System.out.println("New repository: " + targetDir);
-		System.out.println();
 		System.out.print("Continue? (y/N): ");
-
 		String response = "";
 		try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
 			if (scanner.hasNextLine()) {
 				response = scanner.nextLine().trim().toLowerCase();
 			}
 		} catch (Exception e) {
-			// If any error occurs reading stdin, treat as non-interactive and cancel
 			return false;
 		}
 		return response.equals("y") || response.equals("yes");
@@ -444,7 +435,7 @@ public final class Utils {
 			String testBase = System.getProperty("vgl.test.base");
 			if (testBase != null && !testBase.isEmpty()) {
 				// In hermetic test runs we avoid printing to stdout/stderr to keep
-				// output deterministic; prefer debug logging instead.
+				// ...existing code...
 				// System.err.println(MSG_NO_REPO_PREFIX + searchPath.toAbsolutePath().normalize() + "\n" + MSG_NO_REPO_HELP);
 				return;
 			}
@@ -495,7 +486,7 @@ public final class Utils {
 		// repo-aware implementation that filters nested repos and ignored files.
 		if (repoRoot != null) {
 			try {
-				Git git = findGitRepo(repoRoot);
+				Git git = findGitRepo(repoRoot, null);
 				if (git != null) {
 					return expandGlobsToFiles(globs, repoRoot.toAbsolutePath().normalize(), git.getRepository());
 				}
@@ -670,10 +661,7 @@ public final class Utils {
 		String localBranch = vgl.getLocalBranch();
 		String remoteUrl = vgl.getRemoteUrl();
 		String remoteBranch = vgl.getRemoteBranch();
-		String jumpLocalDir = vgl.getJumpLocalDir();
-		String jumpLocalBranch = vgl.getJumpLocalBranch();
-		String jumpRemoteUrl = vgl.getJumpRemoteUrl();
-		String jumpRemoteBranch = vgl.getJumpRemoteBranch();
+		// Jump state fully removed
 		try {
 			VglStateStore.VglState s = VglStateStore.read();
 			if (s != null) {
@@ -697,46 +685,15 @@ public final class Utils {
         
 		// Calculate display strings for LOCAL
 		String displayLocalDir = truncatePath.apply(localDir, maxPathLen);
-		String displayJumpDir = "(none)";
-		if (jumpLocalDir != null && !jumpLocalDir.isEmpty()) {
-			if (jumpLocalDir.equals(localDir)) {
-				displayJumpDir = "(same)";
-			} else {
-				displayJumpDir = truncatePath.apply(jumpLocalDir, maxPathLen);
-			}
-		}
-        
-		// Calculate display strings for REMOTE
 		boolean hasRemote = (remoteUrl != null && !remoteUrl.isEmpty());
-		boolean hasJumpRemote = (jumpRemoteUrl != null && !jumpRemoteUrl.isEmpty());
-        
 		String displayRemoteUrl = hasRemote ? truncatePath.apply(remoteUrl, maxPathLen) : "(none)";
-        
-		String displayJumpRemote = "(none)";
-		if (hasJumpRemote) {
-			// Only show "(same)" if current also has a remote and they match
-			if (hasRemote && jumpRemoteUrl.equals(remoteUrl)) {
-				displayJumpRemote = "(same)";
-			} else {
-				displayJumpRemote = truncatePath.apply(jumpRemoteUrl, maxPathLen);
-			}
-		}
-		// else: no jump remote, display stays "(none)"
-        
-		// Find longest path/URL for alignment
-		int maxLen = Math.max(
-			Math.max(displayLocalDir.length(), displayJumpDir.length()),
-			Math.max(displayRemoteUrl.length(), displayJumpRemote.length())
-		);
-        
-		// Print with padding to align separators
+		int maxLen = Math.max(displayLocalDir.length(), displayRemoteUrl.length());
+
+		// Print LOCAL
 		System.out.println("LOCAL  " + padRight(displayLocalDir, maxLen) + separator + localBranch);
-        
-		String jumpBranch = (jumpLocalBranch != null && !jumpLocalBranch.isEmpty()) ? jumpLocalBranch : "(none)";
-		System.out.println("       " + padRight(displayJumpDir, maxLen) + separator + jumpBranch);
 		// If veryVerbose, list local branches immediately under LOCAL for clarity
 		if (veryVerbose && localDir != null && !localDir.isEmpty()) {
-					System.out.println("  -- Branches:");
+			System.out.println("  -- Branches:");
 			boolean printedAny = false;
 			try (Git git = Git.open(Paths.get(localDir).toFile())) {
 				List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
@@ -760,14 +717,9 @@ public final class Utils {
 		// REMOTE: if no remote URL, branch must be (none)
 		String currentRemoteBranch = hasRemote ? remoteBranch : "(none)";
 		System.out.println("REMOTE " + padRight(displayRemoteUrl, maxLen) + separator + currentRemoteBranch);
-
-		// REMOTE jump: if no jump remote URL, branch must be (none)
-		String jumpRemoteBranchDisplay = hasJumpRemote ? jumpRemoteBranch : "(none)";
-		System.out.println("       " + padRight(displayJumpRemote, maxLen) + separator + jumpRemoteBranchDisplay);
-
 		// If veryVerbose, list remote branches under REMOTE
 		if (veryVerbose && localDir != null && !localDir.isEmpty()) {
-					System.out.println("  -- Branches:");
+			System.out.println("  -- Branches:");
 			boolean printedAnyRemote = false;
 			if (hasRemote) {
 				try (Git git = Git.open(Paths.get(localDir).toFile())) {

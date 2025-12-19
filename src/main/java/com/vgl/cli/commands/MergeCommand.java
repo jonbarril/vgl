@@ -102,12 +102,6 @@ public class MergeCommand implements Command {
                 System.err.println("\nUse 'vgl commit \"message\"' to save your changes first.");
                 return 1;
             }
-            // Save current state as jump state
-            vgl.setJumpLocalDir(workingDir);
-            vgl.setJumpLocalBranch(currentBranch);
-            vgl.setJumpRemoteUrl(vgl.getRemoteUrl());
-            vgl.setJumpRemoteBranch(vgl.getRemoteBranch());
-            vgl.save();
             String sourceBranchName;
             String targetBranchName;
             

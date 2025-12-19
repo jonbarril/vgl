@@ -139,10 +139,11 @@ public class SwitchCommand implements Command {
             }
             
             // Save current state as jump state
-            vgl.setJumpLocalDir(currentLocalDir);
-            vgl.setJumpLocalBranch(currentLocalBranch);
-            vgl.setJumpRemoteUrl(currentRemoteUrl);
-            vgl.setJumpRemoteBranch(currentRemoteBranch);
+                // Jump state has been removed
+                // vgl.setJumpLocalDir(currentLocalDir);
+                // vgl.setJumpLocalBranch(currentLocalBranch);
+                // vgl.setJumpRemoteUrl(currentRemoteUrl);
+                // vgl.setJumpRemoteBranch(currentRemoteBranch);
             
             vgl.setLocalDir(dir.toString());
             vgl.setLocalBranch(finalNewLocalBranch);
