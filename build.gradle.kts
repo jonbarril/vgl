@@ -17,6 +17,7 @@ repositories {
 
 dependencies {
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
+    runtimeOnly("org.slf4j:slf4j-simple:1.7.36")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

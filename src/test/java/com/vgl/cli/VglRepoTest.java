@@ -16,6 +16,64 @@ import com.vgl.cli.test.utils.TestProgress;
 import com.vgl.cli.utils.Utils;
 
 public class VglRepoTest {
+            @Test
+            void corruptedVglFileHandledGracefully(@TempDir Path tmp) throws Exception {
+                printProgress("corruptedVglFileHandledGracefully");
+                try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {}
+                Path vglFile = tmp.resolve(".vgl");
+                java.nio.file.Files.writeString(vglFile, "not=valid\n!!!corrupted!!!");
+                try (VglRepo vgl = com.vgl.cli.utils.Utils.findVglRepo(tmp)) {
+                    // Should not throw, should use defaults or empty undecided
+                    assertThat(vgl.getUndecidedFiles()).isEmpty();
+                }
+            }
+
+            @Test
+            void closeDoesNotThrowOnMultipleClose(@TempDir Path tmp) throws Exception {
+                printProgress("closeDoesNotThrowOnMultipleClose");
+                try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {}
+                VglRepo vgl = com.vgl.cli.utils.Utils.findVglRepo(tmp);
+                vgl.close();
+                // Should not throw if closed again
+                vgl.close();
+            }
+
+            @Test
+            void invalidRepoThrowsOrReturnsNull(@TempDir Path tmp) {
+                printProgress("invalidRepoThrowsOrReturnsNull");
+                // No .git directory
+                VglRepo vgl = null;
+                try {
+                    vgl = com.vgl.cli.utils.Utils.findVglRepo(tmp);
+                    // Should be null or throw
+                    assertThat(vgl).isNull();
+                } catch (Exception e) {
+                    // Acceptable: exception thrown for invalid repo
+                    assertThat(e).isInstanceOf(Exception.class);
+                } finally {
+                    if (vgl != null) try { vgl.close(); } catch (Exception ignore) {}
+                }
+            }
+
+            // Optional: Nested repo handling if supported by VglRepo
+            // @Test
+            // void nestedRepoIsIgnoredInUndecided(@TempDir Path tmp) throws Exception {
+            //     printProgress("nestedRepoIsIgnoredInUndecided");
+            //     try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {}
+            //     Path nested = tmp.resolve("nested");
+            //     java.nio.file.Files.createDirectories(nested);
+            //     try (@SuppressWarnings("unused") Git git2 = Git.init().setDirectory(nested.toFile()).call()) {}
+            //     try (VglRepo vgl = com.vgl.cli.utils.Utils.findVglRepo(tmp)) {
+            //         java.util.List<String> undecided = java.util.Arrays.asList("nested/file.txt", "top.txt");
+            //         vgl.setUndecidedFiles(undecided);
+            //         vgl.saveConfig();
+            //     }
+            //     try (VglRepo vgl = com.vgl.cli.utils.Utils.findVglRepo(tmp)) {
+            //         java.util.List<String> loaded = vgl.getUndecidedFiles();
+            //         // Should not include files from nested repo if logic applies
+            //         assertThat(loaded).contains("top.txt");
+            //     }
+            // }
         private static void printProgress(String testName) {
             TestProgress.print(VglRepoTest.class, testName);
         }

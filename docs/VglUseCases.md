@@ -19,14 +19,20 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - **Internal state:** The `.vgl` file may also store internal state such as undecided files, but this is not typically surfaced to the user.
 
 **Repository Resolution:**
-- **Overview:** When VGL requires the local repo, VGL searches upward from the current working directory and stops at the first directory that contains either a `.git` or a `.vgl`.
+- **Overview:** When VGL requires the local VGL repo, VGL searches upward from the target directory, which may be the current working directory, and stops at the first directory that contains either a `.git` or a `.vgl`.
 - **Behavior summary (examples):**
-  - Both `.git` and `.vgl`: If both are valid and consistent, then the directory is considered a valid VGL repo and the command proceeds. If invalid, warn the user, note the location and problem, suggest the user resolve the problem outside of VGL, and fail.
-  - `.git` only: If valid, warn the user and offer to convert the Git repo into a VGL repo (interactive). In non-interactive contexts, print a short hint and fail.
-  - `.vgl` only: If valid, warn the user and offer to initialize a Git repository from the `.vgl` state (interactive). In non-interactive contexts, print a short hint and fail.
-  - Neither found up to filesystem root: Warn and fail the command.
+  - Both `.git` and `.vgl`: If both are valid and consistent, then the directory is considered a valid VGL repo and the search suceeds. If invalid, warn the user, note the location and problem, suggest the user resolve the problem outside of VGL, and the search fails.
+  - `.git` only: If valid, warn the user and offer to convert the Git repo into a VGL repo (create `.vgl`). If not converted, `.git` is not deleted, and it still counts as a repo for nesting warnings. In non-interactive contexts, print a short hint and fail the search.
+  - `.vgl` only: If valid, warn the user and offer to initialize a Git repository from the `.vgl` state (interactive). In non-interactive contexts, print a short hint and fail the search.
+  - Neither found up to filesystem root: Warn and fail the search.
   **Validation:** An invalid .git/.vgl state is one where either references local or remote repos or branches that do not exist or are inaccessible. If both .git and .vgl are present, then their states must be consistent, with local and remote repo and branch matching.
-- **Test Ceiling:** In test or CI, discovery honors `-Dvgl.test.base` to avoid searching above a configured test base directory. This is for safety.
+- **Test Ceiling:** In test or CI, discovery honors `-Dvgl.test.base` to avoid searching above a configured test base directory. This is for safety. Otherwise commands will not be restricted during normal use.
+
+**Repository creation**
+- Creation occurs relative to a target directory, which can be the current working directory. It starts with Repo Resolution relative to the target directory.
+- If after resolution the target directory is nested under a git of vgl repo the user is warned and offered the option to continue creation.
+- If a VGL repo does not exist, one will be created in the target directory, consisting of a git repository (.git and .gitignore) and a .vgl file to maintain VGL specific state.
+- If a VGL repo already exists in the target directory the user is warned and creation exits.
 
 **Status command:**
   - **Overview:** The current valid VGL repo is indicated in LOCAL. Although REMOTE may be '(none)' the local repo can never be '(none)' as that would indicate an invalid VGL repo in which case status and any other command needing a VGL repo should fail with a warning. In all cases, info in summary counts shall be consistent with the number of branches, commits and files in subsection lists.

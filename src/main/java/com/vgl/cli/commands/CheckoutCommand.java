@@ -96,7 +96,8 @@ public class CheckoutCommand implements Command {
         // Check for nested repository and get confirmation
         if (Utils.isNestedRepo(dir)) {
             if (!force) {
-                if (!Utils.warnNestedRepo(dir, Utils.getGitRepoRoot(dir.getParent()))) {
+                Path parentRepo = Utils.getGitRepoRoot(dir.getParent());
+                if (!Utils.warnNestedRepo(dir, parentRepo, false)) {
                     System.err.println("Checkout cancelled.");
                     return 0;
                 }

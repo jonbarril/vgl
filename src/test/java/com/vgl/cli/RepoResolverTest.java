@@ -14,6 +14,29 @@ public class RepoResolverTest {
 
 
     @Test
+    public void neitherPresent_returnsNotFound(@TempDir Path tmp) throws Exception {
+        RepoResolution r = RepoResolver.resolveForCommand(tmp);
+        assertNull(r.getGit(), "No Git repo should be found");
+        assertNull(r.getVglRepo(), "No VglRepo should be found");
+        assertEquals(RepoResolution.ResolutionKind.NONE, r.getKind());
+        assertFalse(r.isCreatedVgl());
+    }
+
+    @Test
+    public void corruptedVglFileHandledGracefully(@TempDir Path tmp) throws Exception {
+        // Create corrupted .vgl file
+        java.nio.file.Path vgl = tmp.resolve(".vgl");
+        java.nio.file.Files.writeString(vgl, "not=valid\n!!!corrupted!!!");
+        RepoResolution r = RepoResolver.resolveForCommand(tmp);
+        // Should not throw, should treat as VGL only but not load VglRepo
+        assertNull(r.getGit());
+        assertNull(r.getVglRepo());
+        assertEquals(RepoResolution.ResolutionKind.FOUND_VGL_ONLY, r.getKind());
+        assertFalse(r.isCreatedVgl());
+    }
+
+
+    @Test
     public void gitOnly_detected(@TempDir Path tmp) throws Exception {
         System.setProperty("vgl.noninteractive", "true");
         try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {

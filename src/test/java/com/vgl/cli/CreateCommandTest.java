@@ -5,127 +5,59 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.vgl.cli.test.utils.VglTestHarness;
-/**
- * Tests for CreateCommand behavior.
- */
-import com.vgl.cli.utils.Utils;
+
 public class CreateCommandTest {
-
     @Test
-    public void createNewRepository(@TempDir Path tempDir) throws Exception {
-        Path newRepo = tempDir.resolve("myrepo");
-        
-        Git git = Git.init().setDirectory(newRepo.toFile()).call();
-        git.close();
-        
-        // Should create repo with default main branch
-        assertThat(Files.exists(newRepo.resolve(".git"))).isTrue();
-    }
-    
-    @Test
-    public void createBranchInExistingRepo(@TempDir Path tempDir) throws Exception {
-        // Create initial repo
-        try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
-            // Create initial commit
-            Path testFile = tempDir.resolve("test.txt");
-            Files.writeString(testFile, "content");
-            git.add().addFilepattern("test.txt").call();
-            git.commit().setMessage("Initial").call();
-        }
-        
-        // Now create a new branch
-        try (Git git = Git.open(tempDir.toFile())) {
-            git.branchCreate().setName("feature").call();
-            
-            // Verify branch exists
-            boolean branchExists = git.branchList().call().stream()
-                .anyMatch(ref -> ref.getName().equals("refs/heads/feature"));
-            assertThat(branchExists).isTrue();
-        }
-    }
-    
-    @Test
-    public void errorWhenRepoExistsWithoutBranchFlag(@TempDir Path tempDir) throws Exception {
-        // Create initial repo
-        try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
-            Path testFile = tempDir.resolve("test.txt");
-            Files.writeString(testFile, "content");
-            git.add().addFilepattern("test.txt").call();
-            git.commit().setMessage("Initial").call();
-        }
-        
-        // Attempting to create without -b should fail
-        // This would be tested via integration test with actual command
+    public void cliCreatesRepoInEmptyDir(@TempDir Path tempDir) throws Exception {
+        // Run the CLI as a subprocess in an empty directory
+        String output = VglTestHarness.runVglCommand(tempDir, "create");
+        // Should create .git and .vgl
         assertThat(Files.exists(tempDir.resolve(".git"))).isTrue();
+        assertThat(Files.exists(tempDir.resolve(".vgl"))).isTrue();
+        assertThat(output).contains("Created new local repository");
+        assertThat(output).contains("Operation complete");
     }
-    
-    @Test
-    public void createBranchWithCustomName(@TempDir Path tempDir) throws Exception {
-        // Create initial repo
-        try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
-            Path testFile = tempDir.resolve("test.txt");
-            Files.writeString(testFile, "content");
-            git.add().addFilepattern("test.txt").call();
-            git.commit().setMessage("Initial").call();
-            
-            // Create custom branch
-            git.branchCreate().setName("my-feature-branch").call();
-            
-            boolean branchExists = git.branchList().call().stream()
-                .anyMatch(ref -> ref.getName().equals("refs/heads/my-feature-branch"));
-            assertThat(branchExists).isTrue();
-        }
-    }
-    
-    @Test
-    public void branchAlreadyExistsMessage(@TempDir Path tempDir) throws Exception {
-        try (Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
-            Path testFile = tempDir.resolve("test.txt");
-            Files.writeString(testFile, "content");
-            git.add().addFilepattern("test.txt").call();
-            git.commit().setMessage("Initial").call();
-            
-            // Create branch twice
-            git.branchCreate().setName("feature").call();
-            
-            // Second attempt should recognize it exists
-            boolean branchExists = git.branchList().call().stream()
-                .anyMatch(ref -> ref.getName().equals("refs/heads/feature"));
-            assertThat(branchExists).isTrue();
-        }
-    }
-    
-    @Test
-    public void warnsAndPromptsWhenCreatingNestedRepository(@TempDir Path tempDir) throws Exception {
-        // Create parent repo
-        try (@SuppressWarnings("unused") Git parentGit = Git.init().setDirectory(tempDir.toFile()).call()) {
-            // unused
-        }
-        
-        // Verify isNestedRepo detects it
-        Path nestedDir = tempDir.resolve("nested");
-        Files.createDirectories(nestedDir);
-        assertThat(Utils.isNestedRepo(nestedDir)).isTrue();
-        
-        // Note: Full integration test with prompt is in IntegrationTest
-        // This test just verifies the detection logic works
-    }
-    
-    @Test
-    public void forceFlagSkipsNestedRepoWarning(@TempDir Path tempDir) throws Exception {
-        // Create parent repo
-        try (@SuppressWarnings("unused") VglTestHarness.VglTestRepo ignored = VglTestHarness.createRepo(tempDir)) {
-            // Create nested directory
-            Path nestedDir = tempDir.resolve("nested");
-            Files.createDirectories(nestedDir);
 
-            // With -f flag, should skip prompt entirely
-            VglTestHarness.runVglCommand(nestedDir, "create", "-lr", nestedDir.toString(), "-f");
-        }
+    @Test
+    public void cliNoOpIfRepoExists(@TempDir Path tempDir) throws Exception {
+        // Create repo first
+        VglTestHarness.createGitRepo(tempDir);
+        String output = VglTestHarness.runVglCommand(tempDir, "create");
+        assertThat(output).contains("VGL repository already exists");
+    }
+
+    @Test
+    public void cliCreatesBranchIfSpecified(@TempDir Path tempDir) throws Exception {
+        VglTestHarness.createGitRepo(tempDir);
+        String output = VglTestHarness.runVglCommand(tempDir, "create", "-lb", "feature");
+        assertThat(output).contains("Created new local branch: feature");
+        assertThat(output).contains("Switched to branch: feature");
+    }
+
+    @Test
+    public void cliWarnsOnNestedRepo(@TempDir Path tempDir) throws Exception {
+        // Create parent repo
+        VglTestHarness.createGitRepo(tempDir);
+        Path nested = tempDir.resolve("nested");
+        Files.createDirectories(nested);
+        String output = VglTestHarness.runVglCommand(nested, "create");
+        System.out.println("[DEBUG CLI OUTPUT]\n" + output + "[END DEBUG CLI OUTPUT]");
+        assertThat(output).contains("nested under parent repo");
+    }
+
+    @Test
+    public void cliForceSkipsNestedWarning(@TempDir Path tempDir) throws Exception {
+        VglTestHarness.createGitRepo(tempDir);
+        Path nested = tempDir.resolve("nested");
+        Files.createDirectories(nested);
+        String output = VglTestHarness.runVglCommand(nested, "create", "-f");
+        System.out.println("[DEBUG CLI OUTPUT]\n" + output + "[END DEBUG CLI OUTPUT]");
+        assertThat(output).doesNotContain("cancelled");
+        assertThat(Files.exists(nested.resolve(".git"))).isTrue();
+        assertThat(Files.exists(nested.resolve(".vgl"))).isTrue();
     }
 }

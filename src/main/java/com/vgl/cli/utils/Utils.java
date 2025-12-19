@@ -33,8 +33,8 @@ public final class Utils {
     
 	public static final String MSG_NO_REPO_PREFIX = "Error: No git repository found in: ";
 	public static final String MSG_NO_REPO_HELP = "Run 'vgl create <path>' to make one.";
-    
 	public static final String MSG_NO_REPO_WARNING_PREFIX = "Warning: No local repository found in: ";
+	public static final String MSG_NESTED_REPO_WARNING = "Note: Repository will be nested under parent repo at: ";
     
 	/**
 	 * Get the standard "no repository" error message for a given path.
@@ -339,16 +339,8 @@ public final class Utils {
 	 * @param startPath Directory to check
 	 * @return true if nested repo detected, false otherwise
 	 */
-	public static boolean isNestedRepo(Path startPath) throws IOException {
-		// Honor test ceiling when present so tests cannot detect nested repos
-		// outside their temporary test base.
-		try {
-			String testBase = System.getProperty("vgl.test.base");
-			if (testBase != null && !testBase.isEmpty()) {
-				return isNestedRepo(startPath, Paths.get(testBase));
-			}
-		} catch (Exception ignored) {}
-		return isNestedRepo(startPath, null);
+	public static boolean isNestedRepo(Path startPath) {
+		return NestedRepoDetector.isNestedRepo(startPath);
 	}
     
 	/**
@@ -406,14 +398,20 @@ public final class Utils {
 	 * @param parentRepo The parent repository path
 	 * @return true if user confirms to continue, false otherwise
 	 */
-	public static boolean warnNestedRepo(Path targetDir, Path parentRepo) {
-		// If we are running in a non-interactive environment, do not block
+	public static boolean warnNestedRepo(Path targetDir, Path parentRepo, boolean force) {
+		// Always print the warning
+		System.out.println("[DEBUG] warnNestedRepo called: targetDir=" + targetDir + ", parentRepo=" + parentRepo + ", force=" + force);
+		System.out.println(MSG_NESTED_REPO_WARNING + parentRepo + " (nested under parent repo)");
+		System.out.flush();
+		if (force) {
+			// With force, do not prompt, just proceed
+			return true;
+		}
 		if (!isInteractive()) {
 			System.out.println("Warning: Creating a repository inside another Git repository.");
 			System.out.println("Non-interactive environment detected; cancelling create by default.");
 			return false;
 		}
-
 		System.out.println("Warning: Creating a repository inside another Git repository.");
 		System.out.println("This will create a nested repository and may cause confusion.");
 		System.out.println("Parent repository: " + parentRepo);
@@ -430,7 +428,6 @@ public final class Utils {
 			// If any error occurs reading stdin, treat as non-interactive and cancel
 			return false;
 		}
-
 		return response.equals("y") || response.equals("yes");
 	}
 

@@ -95,7 +95,11 @@ public final class RepoResolver {
 		// Centralized orphaned .vgl detection
 		if (foundVgl && !foundGit) {
 			String msg = "Found .vgl but no .git directory; deleting orphaned .vgl.\nHint: Run 'vgl create' to initialize a new repo here.";
-			try { java.nio.file.Files.deleteIfExists(foundRoot.resolve(".vgl")); } catch (Exception ignore) {}
+			try {
+				System.err.println("Warning: Found .vgl but no .git directory");
+				java.nio.file.Files.deleteIfExists(foundRoot.resolve(".vgl"));
+				System.err.println("Deleted orphaned .vgl file at " + foundRoot.resolve(".vgl"));
+			} catch (Exception ignore) {}
 			return new RepoResolution(null, null, foundRoot, RepoResolution.ResolutionKind.FOUND_VGL_ONLY, false, false, Utils.isInteractive(), msg, new HashMap<>());
 		}
 		if (!foundVgl && !foundGit) {
