@@ -1,7 +1,6 @@
 package com.vgl.cli;
 
 import com.vgl.cli.test.utils.VglTestHarness;
-import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;

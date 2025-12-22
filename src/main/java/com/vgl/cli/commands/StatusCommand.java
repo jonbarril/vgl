@@ -2,6 +2,9 @@ package com.vgl.cli.commands;
 
 // VglRepo is referenced via RepoResolution; avoid direct import here.
 import com.vgl.cli.utils.Utils;
+import com.vgl.cli.commands.helpers.StatusFileSummary;
+import com.vgl.cli.commands.helpers.StatusCommandHelpers;
+import com.vgl.cli.commands.helpers.StatusVerboseOutput;
 import com.vgl.cli.services.RepoResolution;
 
 import org.eclipse.jgit.api.Git;
@@ -63,9 +66,13 @@ public class StatusCommand implements Command {
         // LOCAL section
         String localLabel = "LOCAL:";
         String remoteLabel = "REMOTE:";
-        int labelWidth = Math.max(localLabel.length(), remoteLabel.length());
+        String commitsLabel = "COMMITS:";
+        String filesLabel = "FILES:";
+        int labelWidth = Math.max(Math.max(localLabel.length(), remoteLabel.length()), Math.max(commitsLabel.length(), filesLabel.length()));
         String localLabelPad = com.vgl.cli.utils.FormatUtils.padRight(localLabel, labelWidth + 1); // +1 for space
         String remoteLabelPad = com.vgl.cli.utils.FormatUtils.padRight(remoteLabel, labelWidth + 1);
+        String commitsLabelPad = com.vgl.cli.utils.FormatUtils.padRight(commitsLabel, labelWidth + 1);
+        String filesLabelPad = com.vgl.cli.utils.FormatUtils.padRight(filesLabel, labelWidth + 1);
 
         if (veryVerbose || verbose) {
             // LOCAL section with expanded path and trailing branch
@@ -134,11 +141,11 @@ public class StatusCommand implements Command {
         java.util.Map<String, String> filesToPush = new java.util.LinkedHashMap<>();
         java.util.Map<String, String> filesToPull = new java.util.LinkedHashMap<>();
         if (git == null) {
-            System.out.println("COMMITS  (no commits yet)");
+            System.out.println(commitsLabelPad + "(no commits yet)");
         } else {
             boolean unbornRepo = !Utils.hasCommits(git.getRepository());
             if (unbornRepo) {
-                System.out.println("COMMITS  (no commits yet)");
+                System.out.println(commitsLabelPad + "(no commits yet)");
             } else {
                 // Compute files to commit (unstaged/staged), push (committed, not pushed), merge (incoming)
                 org.eclipse.jgit.api.Status status = git.status().call();
@@ -284,7 +291,7 @@ public class StatusCommand implements Command {
                 commitCount = filesToCommit.size();
                 pushCount = filesToPush.size();
                 pullCount = filesToPull.size();
-                System.out.println("COMMITS  " + commitCount + " to Commit, " + pushCount + " to Push, " + pullCount + " to Pull");
+                System.out.println(commitsLabelPad + commitCount + " to Commit, " + pushCount + " to Push, " + pullCount + " to Pull");
             }
         }
 
@@ -351,13 +358,16 @@ public class StatusCommand implements Command {
             }
         }
         // Print summary counts for Added, Modified, Renamed, Deleted using the correct sets
+        System.out.print(filesLabelPad);
+        int filesPadLen = filesLabelPad.length();
         StatusFileSummary.printFileSummary(
             modified.size(), // numModified
             added.size(),    // numAdded
             removed.size(),  // numRemoved
             renamed.size(),  // numReplaced
             0, // numToMerge (not used)
-            undecided, tracked, untracked, ignored
+            undecided, tracked, untracked, ignored,
+            filesPadLen
         );
 
         // Print verbose/very-verbose file and commit subsections if requested

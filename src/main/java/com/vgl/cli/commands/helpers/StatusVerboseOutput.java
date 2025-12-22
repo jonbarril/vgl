@@ -3,6 +3,7 @@ package com.vgl.cli.commands.helpers;
 import java.util.Set;
 
 public class StatusVerboseOutput {
+    public static final String HEADER_UNTRACKED = "    -- Untracked Files:";
     public static void printVerbose(Set<String> trackedSet, Set<String> untrackedSet, Set<String> undecidedSet, Set<String> nestedRepos, String localDir, java.util.List<String> filters) {
         java.util.function.Predicate<String> matchesFilter = (p) -> {
             if (filters == null || filters.isEmpty()) return true;
@@ -18,76 +19,79 @@ public class StatusVerboseOutput {
         };
 
         // Order: Undecided, Tracked, Untracked, Ignored
-        System.out.println("  -- Undecided Files:");
+        final String HEADER_UNDECIDED = "    -- Undecided Files:";
+        final String HEADER_TRACKED = "    -- Tracked Files:";
+        final String HEADER_IGNORED = "    -- Ignored Files:";
+        final String NONE = "      (none)";
+
+        System.out.println(HEADER_UNDECIDED);
         if (undecidedSet == null || undecidedSet.isEmpty()) {
-            System.out.println("  (none)");
+            System.out.println(NONE);
         } else {
             boolean anyPrinted = false;
-            for (String p : undecidedSet) {
+            java.util.List<String> sortedUndecided = new java.util.ArrayList<>(undecidedSet);
+            java.util.Collections.sort(sortedUndecided);
+            for (String p : sortedUndecided) {
                 if (!matchesFilter.test(p)) continue;
-                System.out.println("  " + ensureTrailingSlash(p, localDir));
+                System.out.println("      " + ensureTrailingSlash(p, localDir));
                 anyPrinted = true;
             }
-            if (!anyPrinted) System.out.println("  (none)");
+            if (!anyPrinted) System.out.println(NONE);
         }
 
-        System.out.println("  -- Tracked Files:");
+        System.out.println(HEADER_TRACKED);
         if (trackedSet == null || trackedSet.isEmpty()) {
-            System.out.println("  (none)");
+            System.out.println(NONE);
         } else {
             boolean anyPrinted = false;
-            for (String p : trackedSet) {
+            java.util.List<String> sortedTracked = new java.util.ArrayList<>(trackedSet);
+            java.util.Collections.sort(sortedTracked);
+            for (String p : sortedTracked) {
                 if (!matchesFilter.test(p)) continue;
-                System.out.println("  " + ensureTrailingSlash(p, localDir));
+                System.out.println("      " + ensureTrailingSlash(p, localDir));
                 anyPrinted = true;
             }
-            if (!anyPrinted) System.out.println("  (none)");
+            if (!anyPrinted) System.out.println(NONE);
         }
 
-        System.out.println("  -- Untracked Files:");
+        System.out.println(HEADER_UNTRACKED);
         if (untrackedSet == null || untrackedSet.isEmpty()) {
-            System.out.println("  (none)");
+            System.out.println(NONE);
         } else {
             boolean anyPrinted = false;
-            for (String p : untrackedSet) {
+            java.util.List<String> sortedUntracked = new java.util.ArrayList<>(untrackedSet);
+            java.util.Collections.sort(sortedUntracked);
+            for (String p : sortedUntracked) {
                 if (!matchesFilter.test(p)) continue;
-                System.out.println("  " + ensureTrailingSlash(p, localDir));
+                System.out.println("      " + ensureTrailingSlash(p, localDir));
                 anyPrinted = true;
             }
-            if (!anyPrinted) System.out.println("  (none)");
+            if (!anyPrinted) System.out.println(NONE);
         }
 
-        System.out.println("  -- Ignored Files:");
-        if (nestedRepos == null) nestedRepos = java.util.Collections.emptySet();
-        if (trackedSet == null) trackedSet = java.util.Collections.emptySet();
-        if (untrackedSet == null) untrackedSet = java.util.Collections.emptySet();
-        if (undecidedSet == null) undecidedSet = java.util.Collections.emptySet();
-        // Compose the full ignored set: all files in ignored, minus those in tracked/untracked/undecided
-        java.util.Set<String> ignoredSet = new java.util.LinkedHashSet<>(nestedRepos);
-        // If nestedRepos is actually the Ignored set, this is a no-op, but if not, add all ignored files
-        // (In current code, nestedRepos is actually the Ignored set)
-        // For robustness, print all entries in nestedRepos (which is the Ignored set)
-        java.util.List<String> sorted = new java.util.ArrayList<>(ignoredSet);
-        java.util.Collections.sort(sorted);
-        if (sorted.isEmpty()) {
-            System.out.println("  (none)");
+        System.out.println(HEADER_IGNORED);
+        if (nestedRepos == null || nestedRepos.isEmpty()) {
+            System.out.println(NONE);
         } else {
-            for (String p : sorted) {
+            java.util.List<String> sortedIgnored = new java.util.ArrayList<>(nestedRepos);
+            java.util.Collections.sort(sortedIgnored);
+            for (String p : sortedIgnored) {
                 java.io.File file = new java.io.File(localDir, p);
                 if (p.equals(".git")) {
-                    System.out.println("  .git (repo)");
+                    System.out.println("      .git (repo)");
                 } else if (p.endsWith(" (repo)")) {
                     // Already decorated by StatusCommandHelpers
-                    System.out.println("  " + p);
+                    System.out.println("      " + p);
                 } else if (file.isDirectory() && new java.io.File(file, ".git").exists()) {
-                    System.out.println("  " + (p.endsWith("/") ? p : p + "/") + " (repo)");
+                    System.out.println("      " + (p.endsWith("/") ? p : p + "/") + " (repo)");
                 } else {
-                    System.out.println("  " + p);
+                    System.out.println("      " + p);
                 }
             }
         }
     }
 
+    // Helper to ensure trailing slash for directories
     private static String ensureTrailingSlash(String path, String localDir) {
         java.io.File file = new java.io.File(localDir, path);
         if (file.isDirectory() && !path.endsWith("/")) {

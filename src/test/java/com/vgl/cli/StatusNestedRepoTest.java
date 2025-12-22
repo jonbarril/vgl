@@ -37,7 +37,7 @@ public class StatusNestedRepoTest {
 
             // Use shared section header constants for robustness
             // HEADER_IGNORED is not used, so remove it
-            String HEADER_UNTRACKED = com.vgl.cli.commands.StatusVerboseOutput.HEADER_UNTRACKED.trim();
+            String HEADER_UNTRACKED = com.vgl.cli.commands.helpers.StatusVerboseOutput.HEADER_UNTRACKED.trim();
 
             // nested repos must appear in Ignored with (repo) suffix
             assertThat(output).contains("Repo0/ (repo)");

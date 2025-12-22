@@ -4,7 +4,39 @@ import java.util.Set;
 
 public class StatusCommandHelpers {
     // Helper to resolve file management categories (tracked, untracked, undecided, ignored)
+
     public static void resolveFileCategories(org.eclipse.jgit.api.Status status, org.eclipse.jgit.lib.Repository repo, Set<String> tracked, Set<String> untracked, Set<String> undecided, Set<String> ignored) {
+        // 1. Forcefully scan all directories in the working tree for .git subdirectories
+        java.io.File workTree = repo != null ? repo.getWorkTree() : null;
+        java.util.Set<String> repoDirs = new java.util.HashSet<>();
+        if (workTree != null) findAllNestedRepos(workTree, "", repoDirs);
+        // Remove all forms of nested repo dirs from untracked, undecided, and ignored, then add only decorated form to ignored
+        for (String repoDir : repoDirs) {
+            String dirPath = repoDir.endsWith("/") ? repoDir : repoDir + "/";
+            String undecorated = dirPath;
+            String undecoratedNoSlash = dirPath.endsWith("/") ? dirPath.substring(0, dirPath.length() - 1) : dirPath;
+            untracked.remove(undecorated);
+            untracked.remove(undecoratedNoSlash);
+            undecided.remove(undecorated);
+            undecided.remove(undecoratedNoSlash);
+            ignored.remove(undecorated);
+            ignored.remove(undecoratedNoSlash);
+        }
+        // Now add only the decorated form for each nested repo
+        for (String repoDir : repoDirs) {
+            String dirPath = repoDir.endsWith("/") ? repoDir : repoDir + "/";
+            String decorated = dirPath + " (repo)";
+            ignored.add(decorated);
+        }
+        // Ensure .git is always decorated as (repo)
+        if (ignored.contains(".git")) {
+            ignored.remove(".git");
+            ignored.add(".git (repo)");
+        }
+        // 2. All remaining untracked files are considered undecided (not untracked)
+        undecided.addAll(untracked);
+        // Do not add to untracked set
+
         // Tracked: all files that are tracked by git (added, changed, modified, removed, missing, conflicting, etc.)
         try { tracked.addAll(status.getAdded()); } catch (Exception ignore) {}
         try { tracked.addAll(status.getChanged()); } catch (Exception ignore) {}
@@ -61,6 +93,28 @@ public class StatusCommandHelpers {
             if (!tracked.contains(f) && !ignored.contains(f) && !nestedRepos.contains(f) && !undecided.contains(f)) {
                 undecided.add(f);
                 untracked.remove(f);
+            }
+        }
+    }
+
+    // Recursively find all directories containing a .git subdirectory
+    private static void findAllNestedRepos(java.io.File dir, String relPath, java.util.Set<String> repoDirs) {
+        if (!dir.isDirectory()) return;
+        java.io.File gitDir = new java.io.File(dir, ".git");
+        if (gitDir.exists()) {
+            if (!relPath.isEmpty()) {
+                repoDirs.add(relPath);
+                return; // Do not recurse further into a nested repo
+            }
+            // If root, do not add, but still recurse into children
+        }
+        java.io.File[] children = dir.listFiles();
+        if (children != null) {
+            for (java.io.File child : children) {
+                if (child.isDirectory()) {
+                    String childRel = relPath.isEmpty() ? child.getName() : relPath + "/" + child.getName();
+                    findAllNestedRepos(child, childRel, repoDirs);
+                }
             }
         }
     }
