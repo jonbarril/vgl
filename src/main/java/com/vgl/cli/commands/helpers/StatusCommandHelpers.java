@@ -12,10 +12,19 @@ public class StatusCommandHelpers {
         try { tracked.addAll(status.getRemoved()); } catch (Exception ignore) {}
         try { tracked.addAll(status.getMissing()); } catch (Exception ignore) {}
         try { tracked.addAll(status.getConflicting()); } catch (Exception ignore) {}
-        // Untracked
-        try { untracked.addAll(status.getUntracked()); } catch (Exception ignore) {}
-        // Ignored
+
+        // Ignored: JGit's ignored plus .git and nested repos
         try { ignored.addAll(status.getIgnoredNotInIndex()); } catch (Exception ignore) {}
+        // Always add .git directory
+        ignored.add(".git");
+        // Add nested repos (directories with .git)
+        java.nio.file.Path repoRoot = repo != null ? repo.getWorkTree().toPath() : null;
+        java.util.Set<String> nestedRepos = new java.util.LinkedHashSet<>();
+        if (repoRoot != null) {
+            nestedRepos = com.vgl.cli.utils.GitUtils.listNestedRepos(repoRoot);
+            ignored.addAll(nestedRepos);
+        }
+
         // Also add all HEAD-tracked files (committed files) to tracked set
         try {
             if (repo != null && repo.resolve("HEAD") != null) {
@@ -31,7 +40,29 @@ public class StatusCommandHelpers {
                 treeWalk.close();
             }
         } catch (Exception ignore) {}
-        // Undecided: currently not used, but placeholder for future logic
+
+        // Untracked: JGit's untracked files
+        java.util.Set<String> allUntracked = new java.util.LinkedHashSet<>();
+        try { allUntracked.addAll(status.getUntracked()); } catch (Exception ignore) {}
+
+        // Undecided: all files that are not tracked, not ignored, not nested repo (i.e., all new files)
+        for (String f : allUntracked) {
+            if (!tracked.contains(f) && !ignored.contains(f) && !nestedRepos.contains(f)) {
+                undecided.add(f);
+            }
+        }
+
+        // Remove all undecided files from untracked so new files only appear in Undecided
+        untracked.addAll(allUntracked);
+        untracked.removeAll(undecided);
+
+        // Force: if a file is not tracked, not ignored, not nested repo, and not in undecided, add it to undecided
+        for (String f : allUntracked) {
+            if (!tracked.contains(f) && !ignored.contains(f) && !nestedRepos.contains(f) && !undecided.contains(f)) {
+                undecided.add(f);
+                untracked.remove(f);
+            }
+        }
     }
 
     // Helper to resolve file change categories (added, modified, removed, renamed)

@@ -34,9 +34,10 @@ public class StatusVerboseTest {
             repo.writeFile("test.txt", "modified content");
             
             String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
-            
             assertThat(output).contains("-- Files to Commit:");
             assertThat(output).contains("  M test.txt");
+            assertThat(output).contains("-- Files to Push:");
+            assertThat(output).contains("-- Files to Merge:");
         }
     }
     
@@ -77,9 +78,10 @@ public class StatusVerboseTest {
             repo.gitCommit("Second commit - not pushed");
             
             String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
-            
             assertThat(output).contains("-- Files to Commit:");
+            assertThat(output).contains("-- Files to Push:");
             assertThat(output).contains("A file2.txt");  // committed but not pushed
+            assertThat(output).contains("-- Files to Merge:");
         }
     }
     
@@ -152,7 +154,8 @@ public class StatusVerboseTest {
             repo2.setupRemoteTracking(remoteRepo.toUri().toString(), "main");
             
             String output = VglTestHarness.runVglCommand(repo2.getPath(), "status", "-vv");
-            
+            assertThat(output).contains("-- Files to Commit:");
+            assertThat(output).contains("-- Files to Push:");
             assertThat(output).contains("-- Files to Merge:");
             assertThat(output).contains("A file1.txt");  // remote change to pull (shows as A file1.txt in Files to Merge)
         }
@@ -167,11 +170,10 @@ public class StatusVerboseTest {
             repo.gitCommit("Initial commit");
             
             String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
-            
             assertThat(output).contains("-- Files to Commit:");
-            assertThat(output).contains("  (none)");  // Or (remote branch not found) depending on state
+            assertThat(output).contains("-- Files to Push:");
             assertThat(output).contains("-- Files to Merge:");
-            // Both sections should appear
+            assertThat(output).contains("  (none)");  // Or (remote branch not found) depending on state
         }
     }
     
@@ -213,8 +215,9 @@ public class StatusVerboseTest {
             repo.writeFile("file1.txt", "modified content");
             
             String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
-            
             assertThat(output).contains("-- Files to Commit:");
+            assertThat(output).contains("-- Files to Push:");
+            assertThat(output).contains("-- Files to Merge:");
             assertThat(output).contains("A file2.txt");  // Committed but not pushed
             assertThat(output).contains("  M file1.txt");  // Modified but not committed, no arrow
         }

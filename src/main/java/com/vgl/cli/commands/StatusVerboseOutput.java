@@ -3,7 +3,13 @@ package com.vgl.cli.commands;
 import java.util.Set;
 
 public class StatusVerboseOutput {
-    public static void printVerbose(Set<String> trackedSet, Set<String> untrackedSet, Set<String> undecidedSet, Set<String> nestedRepos, String localDir, java.util.List<String> filters) {
+        // Common section headers for status output
+        public static final String HEADER_UNDECIDED = "  -- Undecided Files:";
+        public static final String HEADER_TRACKED = "  -- Tracked Files:";
+        public static final String HEADER_UNTRACKED = "  -- Untracked Files:";
+        public static final String HEADER_IGNORED = "  -- Ignored Files:";
+        public static final String NONE = "  (none)";
+    public static void printVerbose(Set<String> trackedSet, Set<String> untrackedSet, Set<String> undecidedSet, Set<String> ignoredSet, String localDir, java.util.List<String> filters) {
         java.util.function.Predicate<String> matchesFilter = (p) -> {
             if (filters == null || filters.isEmpty()) return true;
             for (String f : filters) {
@@ -18,9 +24,9 @@ public class StatusVerboseOutput {
         };
 
         // Order: Undecided, Tracked, Untracked, Ignored
-        System.out.println("  -- Undecided Files:");
+        System.out.println(HEADER_UNDECIDED);
         if (undecidedSet == null || undecidedSet.isEmpty()) {
-            System.out.println("  (none)");
+            System.out.println(NONE);
         } else {
             // Do not print a duplicated preview line; just list entries under the subsection header
             boolean anyPrinted = false;
@@ -32,12 +38,14 @@ public class StatusVerboseOutput {
             if (!anyPrinted) System.out.println("  (none)");
         }
 
-        System.out.println("  -- Tracked Files:");
+        System.out.println(HEADER_TRACKED);
         if (trackedSet == null || trackedSet.isEmpty()) {
-            System.out.println("  (none)");
+            System.out.println(NONE);
         } else {
             boolean anyPrinted = false;
-            for (String p : trackedSet) {
+            java.util.List<String> sortedTracked = new java.util.ArrayList<>(trackedSet);
+            java.util.Collections.sort(sortedTracked);
+            for (String p : sortedTracked) {
                 if (!matchesFilter.test(p)) continue;
                 System.out.println("  " + ensureTrailingSlash(p, localDir));
                 anyPrinted = true;
@@ -45,9 +53,9 @@ public class StatusVerboseOutput {
             if (!anyPrinted) System.out.println("  (none)");
         }
 
-        System.out.println("  -- Untracked Files:");
+        System.out.println(HEADER_UNTRACKED);
         if (untrackedSet == null || untrackedSet.isEmpty()) {
-            System.out.println("  (none)");
+            System.out.println(NONE);
         } else {
             boolean anyPrinted = false;
             for (String p : untrackedSet) {
@@ -58,18 +66,19 @@ public class StatusVerboseOutput {
             if (!anyPrinted) System.out.println("  (none)");
         }
 
-        System.out.println("  -- Ignored Files:");
-        if (nestedRepos == null || nestedRepos.isEmpty()) {
-            System.out.println("  (none)");
+        System.out.println(HEADER_IGNORED);
+        if (ignoredSet == null || ignoredSet.isEmpty()) {
+            System.out.println(NONE);
         } else {
-            for (String p : nestedRepos) {
-                java.io.File file = new java.io.File(localDir, p);
-                if (file.isDirectory() && new java.io.File(file, ".git").exists()) {
-                    System.out.println("  " + (p.endsWith("/") ? p : p + "/") + " (repo)");
-                } else {
-                    System.out.println("  " + p);
-                }
+            boolean anyPrinted = false;
+            java.util.List<String> sorted = new java.util.ArrayList<>(ignoredSet);
+            java.util.Collections.sort(sorted);
+            for (String p : sorted) {
+                if (!matchesFilter.test(p)) continue;
+                System.out.println("  " + p);
+                anyPrinted = true;
             }
+            if (!anyPrinted) System.out.println(NONE);
         }
     }
 

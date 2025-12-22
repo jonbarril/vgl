@@ -58,12 +58,28 @@ public class StatusVerboseOutput {
         }
 
         System.out.println("  -- Ignored Files:");
-        if (nestedRepos == null || nestedRepos.isEmpty()) {
+        if (nestedRepos == null) nestedRepos = java.util.Collections.emptySet();
+        if (trackedSet == null) trackedSet = java.util.Collections.emptySet();
+        if (untrackedSet == null) untrackedSet = java.util.Collections.emptySet();
+        if (undecidedSet == null) undecidedSet = java.util.Collections.emptySet();
+        // Compose the full ignored set: all files in ignored, minus those in tracked/untracked/undecided
+        java.util.Set<String> ignoredSet = new java.util.LinkedHashSet<>(nestedRepos);
+        // If nestedRepos is actually the Ignored set, this is a no-op, but if not, add all ignored files
+        // (In current code, nestedRepos is actually the Ignored set)
+        // For robustness, print all entries in nestedRepos (which is the Ignored set)
+        java.util.List<String> sorted = new java.util.ArrayList<>(ignoredSet);
+        java.util.Collections.sort(sorted);
+        if (sorted.isEmpty()) {
             System.out.println("  (none)");
         } else {
-            for (String p : nestedRepos) {
+            for (String p : sorted) {
                 java.io.File file = new java.io.File(localDir, p);
-                if (file.isDirectory() && new java.io.File(file, ".git").exists()) {
+                if (p.equals(".git")) {
+                    System.out.println("  .git (repo)");
+                } else if (p.endsWith(" (repo)")) {
+                    // Already decorated by StatusCommandHelpers
+                    System.out.println("  " + p);
+                } else if (file.isDirectory() && new java.io.File(file, ".git").exists()) {
                     System.out.println("  " + (p.endsWith("/") ? p : p + "/") + " (repo)");
                 } else {
                     System.out.println("  " + p);

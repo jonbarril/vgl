@@ -21,6 +21,8 @@ public class StatusCommandTest {
             assertThat(output).contains("REMOTE");
             assertThat(output).contains("COMMITS");
             assertThat(output).contains("FILES");
+            // New summary format
+            assertThat(output).containsPattern("COMMITS\\s+\\d+ to Commit, \\d+ to Push, \\d+ to Merge");
         }
     }
 
@@ -32,8 +34,9 @@ public class StatusCommandTest {
             repo.runCommand("track", "file.txt");
             repo.runCommand("commit", "Initial commit");
             String output = repo.runCommand("status", "-vv");
-            assertThat(output).contains("-- Commits:");
-            assertThat(output).contains("-- Files:");
+            assertThat(output).contains("-- Files to Commit:");
+            assertThat(output).contains("-- Files to Push:");
+            assertThat(output).contains("-- Files to Merge:");
         }
     }
 }

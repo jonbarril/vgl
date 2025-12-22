@@ -45,15 +45,18 @@ public class VglCli {
     }
 
     public int run(String[] argv) {
+        // (debug output removed)
         List<String> args = new ArrayList<>(Arrays.asList(argv));
 
         // If no command or first arg is a flag (starts with '-') or is not a known
         // command, default to help
         if (args.isEmpty() || args.get(0).startsWith("-") || !cmds.containsKey(args.get(0))) {
+            // (debug output removed)
             args.add(0, "help");
         }
 
         String commandName = args.remove(0);
+        // (debug output removed)
         Command command = cmds.get(commandName);
 
         try {

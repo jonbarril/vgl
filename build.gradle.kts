@@ -32,6 +32,7 @@ application {
 version = vglVersion
 
 tasks.test {
+    dependsOn("installDist")
     useJUnitPlatform {
         excludeTags("integration")
     }

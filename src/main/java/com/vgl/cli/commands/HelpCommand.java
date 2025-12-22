@@ -58,6 +58,7 @@ public class HelpCommand implements Command {
             "  abort                              Cancel ongoing merge or pull",
             "",
             "  status [-v|-vv] [COMMIT|GLOB|*]    Show workspace/repo/file status",
+            "    [-local][-remote][-commits][-files] Show only some sections",
             "  diff [GLOB|*]                      Compare files between any two:",
             "    -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit",
             "    -bb BRANCH                         (same name for local+remote)",

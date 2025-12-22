@@ -43,6 +43,7 @@ public class StatusVerbosityTest {
         assertThat(output).contains("REMOTE");
         assertThat(output).contains("COMMITS");
         assertThat(output).contains("FILES");
+        assertThat(output).containsPattern("COMMITS\\s+\\d+ to Commit, \\d+ to Push, \\d+ to Merge");
     }
 
     @Test
@@ -62,8 +63,11 @@ public class StatusVerbosityTest {
 
         String output = VglTestHarness.runVglCommand(tmp, "status", "-v");
 
-        // -v should show commit hashes
+        // -v should show commit hashes and verbose file sections
         assertThat(output).containsPattern("[0-9a-f]{7}");
+        assertThat(output).contains("-- Files to Commit:");
+        assertThat(output).contains("-- Files to Push:");
+        assertThat(output).contains("-- Files to Merge:");
     }
 
     @Test

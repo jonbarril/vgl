@@ -67,7 +67,7 @@ public class StatusSyncLettersTest {
 
             String out = baos.toString("UTF-8");
 
-            // (debug prints removed)
+            // ...existing code...
 
             // Extract Files to Commit section lines
             boolean inSection = false;

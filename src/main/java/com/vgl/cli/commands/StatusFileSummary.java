@@ -10,22 +10,27 @@ public class StatusFileSummary {
                                        Set<String> untrackedSet, Set<String> ignoredSet) {
         // First line: compact counts of working-tree changes
         // Order and labels: Added, Modified, Renamed, Deleted
-        String first = "FILES   " + numAdded + " Added, " + numModified + " Modified, " + numReplaced + " Renamed, " + numRemoved + " Deleted";
+        String first = getSummaryCountsLine(numAdded, numModified, numReplaced, numRemoved);
         System.out.println(first);
 
-        // Second line: categorical summary aligned under the counts
-        // Order: Undecided, Tracked, Untracked, Ignored
-        List<String> fileSummary = new java.util.ArrayList<>();
-        fileSummary.add(undecidedSet.size() + " Undecided");
-        fileSummary.add(trackedSet.size() + " Tracked");
-        fileSummary.add(untrackedSet.size() + " Untracked");
-        fileSummary.add(ignoredSet.size() + " Ignored");
+        String second = getSummaryCategoriesLine(undecidedSet.size(), trackedSet.size(), untrackedSet.size(), ignoredSet.size());
+        System.out.println(second);
+    }
 
-        // Align the second line with the start of the counts on the first line
-        int labelLen = "FILES   ".length();
+    public static String getSummaryCountsLine(int numAdded, int numModified, int numReplaced, int numRemoved) {
+        return "FILES   " + numAdded + " Added, " + numModified + " Modified, " + numReplaced + " Renamed, " + numRemoved + " Deleted";
+    }
+
+    public static String getSummaryCategoriesLine(int undecided, int tracked, int untracked, int ignored) {
+        String label = "FILES   ";
+        List<String> fileSummary = new java.util.ArrayList<>();
+        fileSummary.add(undecided + " Undecided");
+        fileSummary.add(tracked + " Tracked");
+        fileSummary.add(untracked + " Untracked");
+        fileSummary.add(ignored + " Ignored");
         StringBuilder pad = new StringBuilder();
-        for (int i = 0; i < labelLen; i++) pad.append(' ');
-        System.out.println(pad.toString() + String.join(", ", fileSummary));
+        for (int i = 0; i < label.length(); i++) pad.append(' ');
+        return pad.toString() + String.join(", ", fileSummary);
     }
 
     // Backward-compatible overload: existing callers can continue to pass sets only.
