@@ -3,7 +3,7 @@ package com.vgl.cli.commands.helpers;
 import java.util.Set;
 
 public class StatusVerboseOutput {
-    public static final String HEADER_UNTRACKED = "    -- Untracked Files:";
+    public static final String HEADER_UNTRACKED = "-- Untracked Files:";
     public static void printVerbose(Set<String> trackedSet, Set<String> untrackedSet, Set<String> undecidedSet, Set<String> nestedRepos, String localDir, java.util.List<String> filters) {
         java.util.function.Predicate<String> matchesFilter = (p) -> {
             if (filters == null || filters.isEmpty()) return true;
@@ -19,10 +19,10 @@ public class StatusVerboseOutput {
         };
 
         // Order: Undecided, Tracked, Untracked, Ignored
-        final String HEADER_UNDECIDED = "    -- Undecided Files:";
-        final String HEADER_TRACKED = "    -- Tracked Files:";
-        final String HEADER_IGNORED = "    -- Ignored Files:";
-        final String NONE = "      (none)";
+        final String HEADER_UNDECIDED = "-- Undecided Files:";
+        final String HEADER_TRACKED = "-- Tracked Files:";
+        final String HEADER_IGNORED = "-- Ignored Files:";
+        final String NONE = "  (none)";
 
         System.out.println(HEADER_UNDECIDED);
         if (undecidedSet == null || undecidedSet.isEmpty()) {
@@ -33,7 +33,7 @@ public class StatusVerboseOutput {
             java.util.Collections.sort(sortedUndecided);
             for (String p : sortedUndecided) {
                 if (!matchesFilter.test(p)) continue;
-                System.out.println("      " + ensureTrailingSlash(p, localDir));
+                System.out.println("  " + ensureTrailingSlash(p, localDir));
                 anyPrinted = true;
             }
             if (!anyPrinted) System.out.println(NONE);
@@ -48,7 +48,7 @@ public class StatusVerboseOutput {
             java.util.Collections.sort(sortedTracked);
             for (String p : sortedTracked) {
                 if (!matchesFilter.test(p)) continue;
-                System.out.println("      " + ensureTrailingSlash(p, localDir));
+                System.out.println("  " + ensureTrailingSlash(p, localDir));
                 anyPrinted = true;
             }
             if (!anyPrinted) System.out.println(NONE);
@@ -63,7 +63,7 @@ public class StatusVerboseOutput {
             java.util.Collections.sort(sortedUntracked);
             for (String p : sortedUntracked) {
                 if (!matchesFilter.test(p)) continue;
-                System.out.println("      " + ensureTrailingSlash(p, localDir));
+                System.out.println("  " + ensureTrailingSlash(p, localDir));
                 anyPrinted = true;
             }
             if (!anyPrinted) System.out.println(NONE);
@@ -78,14 +78,14 @@ public class StatusVerboseOutput {
             for (String p : sortedIgnored) {
                 java.io.File file = new java.io.File(localDir, p);
                 if (p.equals(".git")) {
-                    System.out.println("      .git (repo)");
+                    System.out.println("  .git (repo)");
                 } else if (p.endsWith(" (repo)")) {
                     // Already decorated by StatusCommandHelpers
-                    System.out.println("      " + p);
+                    System.out.println("  " + p);
                 } else if (file.isDirectory() && new java.io.File(file, ".git").exists()) {
-                    System.out.println("      " + (p.endsWith("/") ? p : p + "/") + " (repo)");
+                    System.out.println("  " + (p.endsWith("/") ? p : p + "/") + " (repo)");
                 } else {
-                    System.out.println("      " + p);
+                    System.out.println("  " + p);
                 }
             }
         }

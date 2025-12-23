@@ -10,6 +10,7 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 
 
 **VGL State and Arguments:**
+- **Vgl Concepts:** VGL concepts are loosely based on Gitless. Unlike Git, in Vgl there is no concept of staging. File changes in the working space are immediately eligible for commit to the local repo. As such Vgl files exist in three conceptual locations: workspace, local repo, remote repo, with remote repo being optional.
 - **VGL state:** VGL application state is maintained in the current repo’s `.vgl` file. The current VGL repo is always the one resolved from the user’s current working directory (unless a command arg specifies one). 
 - **Repo context:** Specifies the working local and remote repo state. Consists of the local repo path and branch name, and the remote repo URL and branch name. By definition, the local repo is that resolved from the user’s current working directory.
 - **Default args:** The default branch (i.e. no branch name specified) for local and remote repo creation is "main". Otherwise, commands that reference a local and/or remote repo/branch default to the current repo context in the VGL state.

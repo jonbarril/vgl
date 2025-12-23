@@ -49,6 +49,7 @@ public class VglTestHarness {
         cmd[0] = vglPath.toString();
         System.arraycopy(args, 0, cmd, 1, args.length);
 
+        System.out.println("[VGLTESTHARNESS] Launching CLI: " + String.join(" ", cmd) + " in " + workingDir);
         ProcessBuilder pb = new ProcessBuilder(cmd)
             .directory(workingDir.toFile());
 
@@ -63,6 +64,7 @@ public class VglTestHarness {
         // Provide "n\n" to stdin to decline prompts
         pb.redirectErrorStream(true);
         Process proc = pb.start();
+        System.out.println("[VGLTESTHARNESS] CLI process started");
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(proc.getOutputStream()))) {
             writer.write("n\n");
             writer.flush();
@@ -75,6 +77,18 @@ public class VglTestHarness {
             }
         }
         int exitCode = proc.waitFor();
+        // Explicitly close error stream and forcibly destroy process to avoid leaks
+        try {
+            proc.getErrorStream().close();
+        } catch (Exception e) {
+            // Ignore
+        }
+        try {
+            proc.destroyForcibly();
+        } catch (Exception e) {
+            // Ignore
+        }
+        System.out.println("[VGLTESTHARNESS] CLI process exited with code " + exitCode);
         if (exitCode != 0) {
             output.append("[VGL CLI exited with code ").append(exitCode).append("]");
         }

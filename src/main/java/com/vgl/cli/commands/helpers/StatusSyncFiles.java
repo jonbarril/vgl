@@ -9,17 +9,30 @@ import java.util.List;
 public final class StatusSyncFiles {
     private StatusSyncFiles() {}
 
-    public static void printSyncFiles(Git git, Status status, String remoteUrl, String remoteBranch,
-                                      List<String> filters, boolean verbose, boolean veryVerbose, VglCli vgl) {
+        public static void printSyncFiles(Git git, Status status, String remoteUrl, String remoteBranch,
+                                                                            List<String> filters, boolean verbose, boolean veryVerbose, VglCli vgl) {
+                System.out.println("[DEBUG] printSyncFiles called. CWD=" + System.getProperty("user.dir") + ", repoDir=" + (git != null ? git.getRepository().getDirectory() : "null") + ", status=" + (status != null ? status.toString() : "null"));
+                System.out.flush();
         // Build filesToCommit from working tree status
         java.util.Map<String, String> filesToCommit = new java.util.LinkedHashMap<>();
         if (status != null) {
-            for (String p : status.getModified()) filesToCommit.put(p, "M");
-            for (String p : status.getChanged()) filesToCommit.put(p, "M");
+            // Always include all Added, Removed, and Missing files
             for (String p : status.getAdded()) filesToCommit.put(p, "A");
             for (String p : status.getRemoved()) filesToCommit.put(p, "D");
             for (String p : status.getMissing()) filesToCommit.put(p, "D");
+            // Also include all Modified and Changed files
+            for (String p : status.getModified()) filesToCommit.put(p, "M");
+            for (String p : status.getChanged()) filesToCommit.put(p, "M");
+            // DEBUG: Print filesToCommit and JGit status sets after initial population
+            System.out.println("[DEBUG] After initial filesToCommit population: " + filesToCommit);
+            System.out.println("[DEBUG] JGit status.getAdded():    " + status.getAdded());
+            System.out.println("[DEBUG] JGit status.getRemoved():  " + status.getRemoved());
+            System.out.println("[DEBUG] JGit status.getMissing():  " + status.getMissing());
+            System.out.println("[DEBUG] JGit status.getModified(): " + status.getModified());
+            System.out.println("[DEBUG] JGit status.getChanged():  " + status.getChanged());
+            System.out.flush();
         }
+        // ...existing code...
 
         boolean hasRemote = remoteUrl != null && !remoteUrl.isEmpty();
         String effectiveRemoteBranch = remoteBranch;
@@ -141,40 +154,109 @@ public final class StatusSyncFiles {
         if (filesToCommit.isEmpty()) {
             System.out.println("  (none)");
         } else {
+            // DEBUG: Print filesToCommit contents before output
+            System.out.println("[DEBUG] filesToCommit before output:");
+            for (java.util.Map.Entry<String, String> e : filesToCommit.entrySet()) {
+                System.out.println("  " + e.getValue() + " " + e.getKey());
+            }
+            System.out.flush();
+            System.err.println("[DEBUG] filesToCommit.size() = " + filesToCommit.size());
+            System.err.flush();
             // Overlay commit-derived renames so committed renames are visible as R
             try {
                 java.util.Set<String> commitTargets = computeCommitRenamedSet(git, status, remoteUrl, remoteBranch);
                 if (commitTargets != null && !commitTargets.isEmpty()) {
                     for (String t : commitTargets) {
-                        // ensure the commit rename target appears as an R entry
                         filesToCommit.remove(t);
                         filesToCommit.put(t, "R");
                     }
                 }
             } catch (Exception ignore) {}
 
-            // overlay any detected working-tree renames so that renamed files show as R
+            // Overlay all detected working-tree renames (HEAD vs working tree)
             java.util.Map<String, String> workingRenames = computeWorkingRenames(git);
-            if (!workingRenames.isEmpty()) {
-                for (java.util.Map.Entry<String, String> r : workingRenames.entrySet()) {
-                    String oldPath = r.getKey();
-                    String newPath = r.getValue();
-                    boolean hadOld = filesToCommit.containsKey(oldPath);
-                    boolean hadNew = filesToCommit.containsKey(newPath);
-                    // Remove any separate A/D entries and show a single R under the new path
-                    if (hadOld) filesToCommit.remove(oldPath);
-                    if (hadNew) filesToCommit.remove(newPath);
-                    filesToCommit.put(newPath, "R");
-                }
+            for (java.util.Map.Entry<String, String> r : workingRenames.entrySet()) {
+                String oldPath = r.getKey();
+                String newPath = r.getValue();
+                filesToCommit.remove(oldPath);
+                filesToCommit.remove(newPath);
+                filesToCommit.put(newPath, "R");
             }
 
+            // Heuristic: for every A+D pair, treat as rename (if not already handled)
+            java.util.List<String> added = new java.util.ArrayList<>();
+            java.util.List<String> removedOrMissing = new java.util.ArrayList<>();
+            for (var e : filesToCommit.entrySet()) {
+                if ("A".equals(e.getValue())) added.add(e.getKey());
+                if ("D".equals(e.getValue()) || "Missing".equals(e.getValue())) removedOrMissing.add(e.getKey());
+            }
+                System.out.println("[DEBUG] Before rename heuristic: filesToCommit=" + filesToCommit);
+                System.out.println("[DEBUG] Added list=" + added);
+                System.out.println("[DEBUG] RemovedOrMissing list=" + removedOrMissing);
+                System.out.flush();
+            int pairs = Math.min(added.size(), removedOrMissing.size());
+            for (int i = 0; i < pairs; i++) {
+                String addPath = added.get(i);
+                String delPath = removedOrMissing.get(i);
+                filesToCommit.remove(delPath);
+                filesToCommit.remove(addPath);
+                filesToCommit.put(addPath, "R");
+            }
+                System.out.println("[DEBUG] After rename heuristic: filesToCommit=" + filesToCommit);
+                System.out.flush();
+
             boolean any = false;
+            int rCount = 0;
             for (java.util.Map.Entry<String, String> e : filesToCommit.entrySet()) {
                 if (filters != null && !filters.isEmpty() && !matchesAnyFilter(e.getKey(), filters)) continue;
                 System.out.println("  " + e.getValue() + " " + e.getKey());
+                if ("R".equals(e.getValue())) rCount++;
                 any = true;
             }
             if (!any) System.out.println("  (none)");
+
+            // If no R entries, print all file status sources for analysis
+            if (rCount == 0) {
+                System.out.println("[DEBUG] No R entries detected. Dumping all file status sources:");
+                if (status != null) {
+                    System.out.println("  JGit status.getAdded():    " + status.getAdded());
+                    System.out.println("  JGit status.getChanged():  " + status.getChanged());
+                    System.out.println("  JGit status.getRemoved():  " + status.getRemoved());
+                    System.out.println("  JGit status.getMissing():  " + status.getMissing());
+                    System.out.println("  JGit status.getModified(): " + status.getModified());
+                    System.out.println("  JGit status.getUntracked():" + status.getUntracked());
+                }
+                // HEAD vs working tree renames
+                System.out.println("  computeWorkingRenames(HEAD vs working tree): " + workingRenames);
+                // HEAD vs index renames
+                try {
+                    org.eclipse.jgit.lib.ObjectId head = git.getRepository().resolve("HEAD");
+                    if (head != null) {
+                        org.eclipse.jgit.revwalk.RevWalk rw = new org.eclipse.jgit.revwalk.RevWalk(git.getRepository());
+                        org.eclipse.jgit.revwalk.RevCommit headCommit = rw.parseCommit(head);
+                        org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
+                        org.eclipse.jgit.treewalk.CanonicalTreeParser oldTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
+                        oldTree.reset(reader, headCommit.getTree());
+                        org.eclipse.jgit.dircache.DirCacheIterator indexIt = new org.eclipse.jgit.dircache.DirCacheIterator(git.getRepository().readDirCache());
+                        try (org.eclipse.jgit.diff.DiffFormatter df = new org.eclipse.jgit.diff.DiffFormatter(new java.io.ByteArrayOutputStream())) {
+                            df.setRepository(git.getRepository());
+                            df.setDetectRenames(true);
+                            java.util.List<org.eclipse.jgit.diff.DiffEntry> diffs = df.scan(oldTree, indexIt);
+                            java.util.Map<String, String> indexRenames = new java.util.LinkedHashMap<>();
+                            for (org.eclipse.jgit.diff.DiffEntry d : diffs) {
+                                if (d.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.RENAME || d.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.COPY) {
+                                    indexRenames.put(d.getOldPath(), d.getNewPath());
+                                }
+                            }
+                            System.out.println("  computeWorkingRenames(HEAD vs index): " + indexRenames);
+                        }
+                        reader.close();
+                        rw.close();
+                    }
+                } catch (Exception e) {
+                    System.out.println("  [DEBUG] Exception during HEAD vs index rename detection: " + e);
+                }
+            }
         }
         System.out.println("  -- Files to Merge:");
         System.out.println("  (none)");

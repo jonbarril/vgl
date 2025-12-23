@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class StatusFilesRenameCountsTest {
+    // ...existing code...
 
     @Test
     public void filesSummaryRenamedMatchesRCount(@TempDir Path td) throws Exception {
@@ -30,6 +31,17 @@ public class StatusFilesRenameCountsTest {
 
             // Perform a working-tree rename bb -> cc (uncommitted)
             Files.move(repoDir.resolve("bb.txt"), repoDir.resolve("cc.txt"));
+            // Stage all changes at once to help JGit detect the rename
+            git.add().addFilepattern(".").call();
+            // Print JGit status after staging (only once, after add)
+            org.eclipse.jgit.api.Status jgitStatus = git.status().call();
+            System.out.println("[TEST-DEBUG] JGit status after staging:");
+            System.out.println("  Added:    " + jgitStatus.getAdded());
+            System.out.println("  Changed:  " + jgitStatus.getChanged());
+            System.out.println("  Removed:  " + jgitStatus.getRemoved());
+            System.out.println("  Missing:  " + jgitStatus.getMissing());
+            System.out.println("  Modified: " + jgitStatus.getModified());
+            System.out.println("  Untracked:" + jgitStatus.getUntracked());
 
             // Run status -vv and capture output (similar to other status tests)
             java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
@@ -49,6 +61,18 @@ public class StatusFilesRenameCountsTest {
             }
 
             String out = baos.toString("UTF-8");
+
+            // Always print the full captured CLI output (including debug lines)
+            System.out.println("[TEST-DEBUG-FULL-OUTPUT]\n" + out);
+
+            // Debug: print filesToCommit-like info by parsing output
+            System.out.println("[TEST-DEBUG] Parsed Files to Commit section:");
+            boolean inFilesToCommit = false;
+            for (String l : out.split("\\r?\\n")) {
+                if (l.trim().equals("-- Files to Commit:")) inFilesToCommit = true;
+                else if (l.startsWith("-- ") && inFilesToCommit) { inFilesToCommit = false; }
+                else if (inFilesToCommit) System.out.println("  " + l);
+            }
 
             // Count R entries across the entire output (commit-derived renames may appear
             // in commit/remote sections while working renames appear in working-tree sections)
