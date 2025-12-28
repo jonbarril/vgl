@@ -1,12 +1,10 @@
 package com.vgl.cli.commands;
 
-import com.vgl.cli.utils.Utils;
+import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
-import org.eclipse.jgit.api.errors.NoFilepatternException;
 
 import java.nio.file.Path;
-import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
 
@@ -15,7 +13,7 @@ public class UntrackCommand implements Command {
 
     @Override public int run(List<String> args) throws Exception {
         if (args.isEmpty()) {
-            System.out.println("Usage: vgl untrack <glob...> | -all");
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_UNTRACK_USAGE);
             return 1;
         }
 
@@ -24,111 +22,77 @@ public class UntrackCommand implements Command {
         Path dir = Paths.get(localDir).toAbsolutePath().normalize();
 
         if (!vgl.isConfigurable()) {
-            System.out.println("Warning: No local repository found in: " + dir);
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_WARNING_PREFIX + dir);
             return 1;
         }
 
-        // Load undecided files from .vgl if -all is specified
         boolean useAll = args.size() == 1 && args.get(0).equals("-all");
         List<String> filesToUntrack;
         com.vgl.cli.services.VglRepo vglRepo = com.vgl.cli.utils.RepoResolver.resolveVglRepoForCommand(dir);
-        if (vglRepo != null) {
-            try (Git git = Git.open(dir.toFile())) {
-                // Only update undecided files before main logic
-                org.eclipse.jgit.lib.Repository repo = git.getRepository();
-                try {
-                    if (Utils.hasCommits(repo)) {
-                        org.eclipse.jgit.api.Status status = git.status().call();
-                        vglRepo.updateUndecidedFilesFromWorkingTree(git, status);
-                    } else {
-                        vglRepo.updateUndecidedFilesFromWorkingTree(git);
-                    }
-                } catch (Exception e) {
-                    // ignore status read failures during undecided update
-                }
-            }
+        if (vglRepo == null) {
+            System.out.println("No .vgl repo found for untrack operation.");
+            return 1;
         }
         if (useAll) {
-            if (vglRepo == null) {
-                System.out.println("No .vgl repo found for undecided files.");
-                return 1;
-            }
-            filesToUntrack = vglRepo.getUndecidedFiles();
+            filesToUntrack = new java.util.ArrayList<>(vglRepo.getTrackedFiles());
             if (filesToUntrack.isEmpty()) {
-                System.out.println("No undecided files to untrack.");
+                System.out.println("No tracked files to untrack.");
                 return 0;
             }
         } else {
             try (Git git = Git.open(dir.toFile())) {
-                filesToUntrack = Utils.expandGlobsToFiles(args, dir, git.getRepository());
+                filesToUntrack = RepoUtils.expandGlobsToFiles(args, dir, git.getRepository());
             }
         }
 
-        if (filesToUntrack.isEmpty()) {
-            System.out.println("No matching files to untrack.");
+        // Remove .vgl and nested repo paths from filesToUntrack
+        List<String> filteredFiles = new java.util.ArrayList<>();
+        List<String> nestedRequests = new java.util.ArrayList<>();
+        for (String p : filesToUntrack) {
+            if (".vgl".equals(p)) continue;
+            Path fp = dir.resolve(p).toAbsolutePath().normalize();
+            if (RepoUtils.isInsideNestedRepo(dir, fp)) {
+                nestedRequests.add(p);
+                continue;
+            }
+            filteredFiles.add(p);
+        }
+        if (!nestedRequests.isEmpty()) {
+            System.out.println("Error: Cannot untrack nested repository paths: " + String.join(" ", nestedRequests));
+            System.out.println("Remove or convert nested repositories to submodules before untracking their files from the parent.");
+            if (filteredFiles.isEmpty()) return 1;
+        }
+        if (filteredFiles.isEmpty()) {
+            for (String file : args) {
+                System.err.println(com.vgl.cli.utils.MessageConstants.MSG_ERR_FILE_NOT_TRACKED + file);
+            }
             return 1;
         }
 
-        try (Git git = Git.open(dir.toFile())) {
-            org.eclipse.jgit.lib.Repository repo = git.getRepository();
-            List<String> filteredFiles = new java.util.ArrayList<>();
-            // Reject attempts to untrack nested repos explicitly
-            java.util.List<String> nestedRequests = new java.util.ArrayList<>();
-            for (String p : filesToUntrack) {
-                Path fp = dir.resolve(p).toAbsolutePath().normalize();
-                if (Utils.isInsideNestedRepo(dir, fp)) {
-                    nestedRequests.add(p);
-                }
+        // Only .vgl config determines tracked state; remove from tracked.files
+        List<String> tracked = new java.util.ArrayList<>(vglRepo.getTrackedFiles());
+        List<String> undecided = new java.util.ArrayList<>(vglRepo.getUndecidedFiles());
+        List<String> actuallyUntracked = new java.util.ArrayList<>();
+        List<String> failed = new java.util.ArrayList<>();
+        for (String p : filteredFiles) {
+            if (tracked.contains(p)) {
+                tracked.remove(p);
+                actuallyUntracked.add(p);
+                // Optionally, add to undecided if not ignored (VGL model: once decided, cannot become undecided again)
+            } else {
+                failed.add(p);
             }
-            if (!nestedRequests.isEmpty()) {
-                System.out.println("Error: Cannot untrack nested repository paths: " + String.join(" ", nestedRequests));
-                System.out.println("Remove or convert nested repositories to submodules before untracking their files from the parent.");
-                return 1;
-            }
+        }
+        vglRepo.setTrackedFiles(tracked);
+        vglRepo.setUndecidedFiles(undecided);
+        vglRepo.saveConfig();
 
-            for (String p : filesToUntrack) {
-                Path filePath = dir.resolve(p);
-                try {
-                    if (Files.isRegularFile(filePath)) {
-                        if (!Utils.isGitIgnored(filePath, repo)) filteredFiles.add(p);
-                    } else if (Files.isDirectory(filePath)) {
-                        try (java.util.stream.Stream<Path> s = java.nio.file.Files.walk(filePath)) {
-                            s.filter(java.nio.file.Files::isRegularFile).forEach(f -> {
-                                try {
-                                    if (Utils.isInsideNestedRepo(dir, f)) return; // skip files inside nested repos
-                                    Path rel = dir.relativize(f);
-                                    String rels = rel.toString().replace('\\','/');
-                                    if (!Utils.isGitIgnored(f, repo)) filteredFiles.add(rels);
-                                } catch (Exception ignored) {}
-                            });
-                        }
-                    } else {
-                        if (!Utils.isGitIgnored(filePath, repo)) filteredFiles.add(p);
-                    }
-                } catch (Exception e) {
-                    if (!Utils.isGitIgnored(filePath, repo)) filteredFiles.add(p);
-                }
-            }
-            if (filteredFiles.isEmpty()) {
-                System.out.println("All matching files are ignored by git.");
-                return 1;
-            }
-            var rmc = git.rm().setCached(true);
-            for (String p : filteredFiles) {
-                rmc.addFilepattern(p);
-            }
-            try {
-                rmc.call();
-                System.out.println("Untracked: " + String.join(" ", filteredFiles));
-                // Remove untracked files from undecided in .vgl
-                if (vglRepo != null) {
-                    List<String> undecided = new java.util.ArrayList<>(vglRepo.getUndecidedFiles());
-                    undecided.removeAll(filteredFiles);
-                    vglRepo.setUndecidedFiles(undecided);
-                    vglRepo.saveConfig();
-                }
-            } catch (NoFilepatternException ex) {
-                System.out.println("No matching files to untrack.");
+        if (!actuallyUntracked.isEmpty()) {
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_UNTRACK_SUCCESS_PREFIX + String.join(" ", actuallyUntracked));
+        }
+        if (!failed.isEmpty()) {
+            for (String file : failed) {
+                System.err.println(com.vgl.cli.utils.MessageConstants.MSG_ERR_FILE_NOT_TRACKED + file);
             }
         }
         return 0;

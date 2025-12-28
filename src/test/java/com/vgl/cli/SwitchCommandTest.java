@@ -12,12 +12,12 @@ public class SwitchCommandTest {
     @Test
     void switchToBranch(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("file.txt", "content");
-            repo.runCommand("track", "file.txt");
-            repo.runCommand("commit", "Initial commit");
-            repo.runCommand("split", "-into", "-lb", "feature");
-            String output = repo.runCommand("switch", "-lb", "feature");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "Initial commit");
+            VglTestHarness.runVglCommand(repo.getPath(), "split", "-into", "-lb", "feature");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "switch", "-lb", "feature");
             assertThat(output).contains("Switched to branch 'feature'");
         }
     }
@@ -25,8 +25,8 @@ public class SwitchCommandTest {
     @Test
     void switchToNonexistentBranchShowsError(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
-            String output = repo.runCommand("switch", "-lb", "nope");
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "switch", "-lb", "nope");
             assertThat(output).contains("does not exist");
         }
     }

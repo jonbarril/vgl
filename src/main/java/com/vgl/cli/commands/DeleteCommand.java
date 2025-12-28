@@ -28,8 +28,7 @@ public class DeleteCommand implements Command {
 
         // Check for -rr flag (TBD feature)
         if (Args.hasFlag(args, "-rr")) {
-            System.out.println("Warning: Deleting remote repositories is not yet implemented.");
-            System.out.println("For now, use your repository hosting tools (GitHub, GitLab, etc.).");
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_DELETE_REMOTE_NOT_IMPLEMENTED);
             return 1;
         }
 
@@ -45,13 +44,7 @@ public class DeleteCommand implements Command {
         String bothBranch = Args.getFlag(args, "-bb");
 
         if (!hasLrFlag && !hasLbFlag && !hasRbFlag && !hasBbFlag) {
-            System.out.println("Usage: vgl delete [-lr [DIR]] [-lb [BRANCH]] [-rb [BRANCH]] | [-bb [BRANCH]]");
-            System.out.println("Examples:");
-            System.out.println("  vgl delete -lr              Delete local repository from switch state");
-            System.out.println("  vgl delete -lr ../old       Delete specified local repository");
-            System.out.println("  vgl delete -lb              Delete local branch from switch state");
-            System.out.println("  vgl delete -lb oldbranch    Delete specified local branch");
-            System.out.println("  vgl delete -bb              Delete both branches from switch state");
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_DELETE_USAGE);
             return 1;
         }
 
@@ -83,32 +76,50 @@ public class DeleteCommand implements Command {
             return deleteLocalRepository(localRepo);
         }
 
-        // Delete local branch
+        boolean localDeleted = false;
+        boolean remoteDeleted = false;
+        boolean localBranchMissing = false;
+
         if (localBranch != null) {
             int result = deleteLocalBranch(vgl, localBranch, force);
-            if (result != 0 && remoteBranch != null) {
-                return result; // Don't try remote if local failed
+            if (result == 0) {
+                localDeleted = true;
+            } else {
+                localBranchMissing = true;
             }
         }
 
-        // Delete remote branch
         if (remoteBranch != null) {
-            return deleteRemoteBranch(vgl, remoteBranch, force);
+            int result = deleteRemoteBranch(vgl, remoteBranch, force);
+            if (result == 0) {
+                remoteDeleted = true;
+            }
         }
 
-        return 0;
+        // Print only one message: success if either branch deleted, error only if both failed
+        if (remoteDeleted) {
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_DELETE_BRANCH_SUCCESS_PREFIX + remoteBranch + "'");
+            return 0;
+        }
+        if (localDeleted) {
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_DELETE_BRANCH_SUCCESS_PREFIX + localBranch + "'");
+            return 0;
+        }
+        if (localBranchMissing) {
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_BRANCH_DOES_NOT_EXIST + localBranch);
+        }
+        return 1;
     }
 
     private int deleteLocalRepository(String repoPath) throws IOException {
         Path dir = Paths.get(repoPath).toAbsolutePath().normalize();
 
         if (!Files.exists(dir)) {
-            System.out.println("Error: Directory does not exist: " + dir);
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_ERR_DIR_NOT_FOUND + dir);
             return 1;
         }
-
         if (!Files.exists(dir.resolve(".git"))) {
-            System.out.println("Error: Not a Git repository: " + dir);
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_ERR_NOT_A_GIT_REPO + dir);
             return 1;
         }
 
@@ -146,7 +157,7 @@ public class DeleteCommand implements Command {
         Path dir = Paths.get(localDir).toAbsolutePath().normalize();
 
         if (!Files.exists(dir.resolve(".git"))) {
-            System.out.println("Error: No Git repository found at: " + dir);
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_PREFIX + dir);
             return 1;
         }
 
@@ -154,8 +165,7 @@ public class DeleteCommand implements Command {
             String currentBranch = git.getRepository().getBranch();
 
             if (branch.equals(currentBranch)) {
-                System.out.println("Error: Cannot delete the currently checked out branch '" + branch + "'.");
-                System.out.println("Switch to another branch first using 'vgl switch -lb BRANCH'.");
+                System.err.println(com.vgl.cli.utils.MessageConstants.MSG_ERR_DELETE_CURRENT_BRANCH + branch);
                 return 1;
             }
 
@@ -165,8 +175,7 @@ public class DeleteCommand implements Command {
                 .anyMatch(ref -> ref.getName().equals("refs/heads/" + branch));
 
             if (!branchExists) {
-                System.out.println("Warning: Branch '" + branch + "' does not exist locally.");
-                return 0;
+                return 1;
             }
 
             // Check for unmerged commits
@@ -193,7 +202,7 @@ public class DeleteCommand implements Command {
                 .setForce(true)
                 .call();
 
-            System.out.println("Deleted local branch '" + branch + "'.");
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_DELETE_BRANCH_SUCCESS_PREFIX + branch + "'");
         }
 
         return 0;
@@ -203,8 +212,8 @@ public class DeleteCommand implements Command {
         String remoteUrl = vgl.getRemoteUrl();
 
         if (remoteUrl == null || remoteUrl.isBlank()) {
-            System.out.println("Error: No remote configured.");
-            System.out.println("Use 'vgl switch -rr URL' to configure a remote first.");
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_ERR_NO_REMOTE_URL);
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_ERR_REMOTE_URL_HELP);
             return 1;
         }
 
@@ -212,7 +221,7 @@ public class DeleteCommand implements Command {
         Path dir = Paths.get(localDir).toAbsolutePath().normalize();
 
         if (!Files.exists(dir.resolve(".git"))) {
-            System.out.println("Error: No Git repository found at: " + dir);
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_PREFIX + dir);
             return 1;
         }
 
@@ -235,14 +244,26 @@ public class DeleteCommand implements Command {
 
         try (Git git = Git.open(dir.toFile())) {
             // Delete remote branch using push with delete refspec
-            git.push()
+            String refspec = ":refs/heads/" + branch;
+            Iterable<org.eclipse.jgit.transport.PushResult> pushResults = git.push()
                 .setRemote("origin")
-                .add(":" + branch)  // Delete refspec
+                .setRefSpecs(new org.eclipse.jgit.transport.RefSpec(refspec))
                 .call();
 
-            System.out.println("Deleted remote branch '" + branch + "'.");
+            boolean deleted = false;
+            for (org.eclipse.jgit.transport.PushResult result : pushResults) {
+                for (org.eclipse.jgit.transport.RemoteRefUpdate update : result.getRemoteUpdates()) {
+                    if (update.getStatus() == org.eclipse.jgit.transport.RemoteRefUpdate.Status.OK ||
+                        update.getStatus() == org.eclipse.jgit.transport.RemoteRefUpdate.Status.UP_TO_DATE) {
+                        deleted = true;
+                    }
+                }
+            }
+            if (deleted) {
+                return 0;
+            } else {
+                return 1;
+            }
         }
-
-        return 0;
     }
 }

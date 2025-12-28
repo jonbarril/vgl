@@ -1,22 +1,20 @@
 package com.vgl.cli;
 
+import com.vgl.cli.utils.Utils;
+import com.vgl.cli.utils.RepoUtils;
 import static org.assertj.core.api.Assertions.assertThat;
-
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Repository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-
 import com.vgl.cli.services.VglRepo;
 import com.vgl.cli.test.utils.VglTestHarness;
 /**
  * Tests for Utils helper methods.
  */
-import com.vgl.cli.utils.Utils;
 public class UtilsTest {
 
     @Test
@@ -40,7 +38,7 @@ public class UtilsTest {
         try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tempDir.toFile()).call()) {
             
             // Open git with specific directory
-            Git reopened = Utils.findGitRepo(tempDir, null);
+            Git reopened = RepoUtils.findGitRepo(tempDir, null);
             assertThat(reopened).isNotNull();
             reopened.close();
         }
@@ -62,7 +60,7 @@ public class UtilsTest {
     public void openGitReturnsNullForNonGitDirectory(@TempDir Path tempDir) throws Exception {
         // Utils searches upward, so it might find parent .git directories
         // This test verifies the method doesn't crash on non-git directories
-        Git found = Utils.findGitRepo(tempDir, null);
+        Git found = RepoUtils.findGitRepo(tempDir, null);
         // May be null or may find a parent git repo
         // The key is it doesn't throw an exception
         if (found != null) {
@@ -118,7 +116,7 @@ public class UtilsTest {
     @Test
     public void findGitRepoWithPathFindsRepo(@TempDir Path tmp) throws Exception {
         try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
-            try (Git found = Utils.findGitRepo(tmp, null)) {
+            try (Git found = RepoUtils.findGitRepo(tmp, null)) {
                 assertThat(found).isNotNull();
                 assertThat(found.getRepository().getWorkTree().toPath()).isEqualTo(tmp);
             }
@@ -132,7 +130,7 @@ public class UtilsTest {
         Files.createDirectories(isolated);
         
         // Should return null or find a parent repo (depending on test environment)
-        Git found = Utils.findGitRepo(isolated, null);
+        Git found = RepoUtils.findGitRepo(isolated, null);
         if (found != null) {
             found.close();
         }
@@ -141,7 +139,7 @@ public class UtilsTest {
     @Test
     public void findVglRepoReturnsNullWithoutGit(@TempDir Path tmp) throws Exception {
         // Test with ceiling to prevent finding workspace .git
-        VglRepo repo = Utils.findVglRepo(tmp, tmp.getParent());
+        VglRepo repo = RepoUtils.findVglRepo(tmp, tmp.getParent());
         assertThat(repo).isNull();
     }
 
@@ -156,7 +154,7 @@ public class UtilsTest {
         }
 
         // Find VGL repo
-        try (VglRepo vglRepo = Utils.findVglRepo(tmp)) {
+        try (VglRepo vglRepo = RepoUtils.findVglRepo(tmp)) {
             assertThat(vglRepo).isNotNull();
             assertThat(vglRepo.getGit()).isNotNull();
             assertThat(vglRepo.getRepoRoot()).isEqualTo(tmp);
@@ -172,7 +170,7 @@ public class UtilsTest {
         }
         
         // Should still return VglRepo with empty config
-        try (VglRepo vglRepo = Utils.findVglRepo(tmp)) {
+        try (VglRepo vglRepo = RepoUtils.findVglRepo(tmp)) {
             assertThat(vglRepo).isNotNull();
             assertThat(vglRepo.getConfig()).isEmpty();
         }
@@ -183,7 +181,7 @@ public class UtilsTest {
         try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
         }
         
-        Path repoRoot = Utils.getGitRepoRoot(tmp);
+        Path repoRoot = RepoUtils.getGitRepoRoot(tmp);
         assertThat(repoRoot).isEqualTo(tmp);
     }
 
@@ -193,7 +191,7 @@ public class UtilsTest {
         Files.createDirectories(isolated);
         
         // May return null or find parent repo - just verify it doesn't crash
-        Utils.getGitRepoRoot(isolated);
+        RepoUtils.getGitRepoRoot(isolated);
     }
 
     @Test
@@ -209,7 +207,7 @@ public class UtilsTest {
         }
         
         // Should detect nesting
-        boolean isNested = Utils.isNestedRepo(nested);
+        boolean isNested = RepoUtils.isNestedRepo(nested);
         assertThat(isNested).isTrue();
     }
 
@@ -220,8 +218,7 @@ public class UtilsTest {
         
         // Use ceiling above the parent to prevent finding workspace .git
         // If tmp is /temp/junit123, set ceiling to /temp so search stops there
-        Path ceiling = (tmp.getParent() != null) ? tmp.getParent().getParent() : null;
-        boolean isNested = Utils.isNestedRepo(tmp, ceiling);
+        boolean isNested = RepoUtils.isNestedRepo(tmp);
         assertThat(isNested).isFalse();
     }
 }

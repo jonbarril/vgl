@@ -4,7 +4,7 @@ import java.util.Set;
 import java.util.List;
 
 public class StatusFileSummary {
-    public static void printFileSummary(int numModified, int numAdded, int numRemoved, int numReplaced,
+    public static void printFileSummary(int numAdded, int numModified, int numReplaced, int numRemoved,
                                        int numToMerge,
                                        Set<String> undecidedSet, Set<String> trackedSet,
                                        Set<String> untrackedSet, Set<String> ignoredSet,

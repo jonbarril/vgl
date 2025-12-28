@@ -12,12 +12,12 @@ public class RestoreCommandTest {
     @Test
     void restoreFileToHead(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("file.txt", "original");
-            repo.runCommand("track", "file.txt");
-            repo.runCommand("commit", "Initial commit");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "Initial commit");
             repo.writeFile("file.txt", "modified");
-            String output = repo.runCommand("restore", "file.txt");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "restore", "file.txt");
             assertThat(output).contains("Restored: file.txt");
             assertThat(repo.readFile("file.txt")).isEqualTo("original");
         }
@@ -26,8 +26,8 @@ public class RestoreCommandTest {
     @Test
     void restoreNonexistentFileShowsError(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
-            String output = repo.runCommand("restore", "nofile.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "restore", "nofile.txt");
             assertThat(output).contains("not found");
         }
     }

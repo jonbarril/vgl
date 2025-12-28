@@ -2,6 +2,7 @@
 
 
 package com.vgl.cli.utils;
+
 import com.vgl.cli.services.RepoResolution;
 import com.vgl.cli.services.VglRepo;
 import com.vgl.cli.services.VglStateStore;
@@ -57,7 +58,7 @@ public final class RepoResolver {
 							repoRoot = saved;
 							Map<String,String> meta = new HashMap<>();
 							try { String lb = cfg.getProperty("local.branch", null); if (lb != null) meta.put("local.branch", lb); } catch (Exception ignore) {}
-							return new RepoResolution(g, vglRepo, repoRoot, RepoResolution.ResolutionKind.FOUND_BOTH, false, false, Utils.isInteractive(), null, meta);
+							return new RepoResolution(g, vglRepo, repoRoot, RepoResolution.ResolutionKind.FOUND_BOTH, false, false, RepoUtils.isInteractive(), null, meta);
 						} catch (Exception ignore) {
 							// Fall through to normal resolution if opening fails
 						}
@@ -68,7 +69,7 @@ public final class RepoResolver {
 						Map<String,String> meta = new HashMap<>();
 						meta.put("vgl.state.path", statePath);
 						meta.put("vgl.state.referenced", saved.toString());
-						return new RepoResolution(null, null, null, RepoResolution.ResolutionKind.NONE, false, false, Utils.isInteractive(), msg + " Delete or fix the state file and run 'vgl create <path>' to recreate.", meta);
+							return new RepoResolution(null, null, null, RepoResolution.ResolutionKind.NONE, false, false, RepoUtils.isInteractive(), msg + " Delete or fix the state file and run 'vgl create <path>' to recreate.", meta);
 					}
 				} catch (Exception ignore) {}
 			}
@@ -100,19 +101,19 @@ public final class RepoResolver {
 				java.nio.file.Files.deleteIfExists(foundRoot.resolve(".vgl"));
 				System.err.println("Deleted orphaned .vgl file at " + foundRoot.resolve(".vgl"));
 			} catch (Exception ignore) {}
-			return new RepoResolution(null, null, foundRoot, RepoResolution.ResolutionKind.FOUND_VGL_ONLY, false, false, Utils.isInteractive(), msg, new HashMap<>());
+			return new RepoResolution(null, null, foundRoot, RepoResolution.ResolutionKind.FOUND_VGL_ONLY, false, false, RepoUtils.isInteractive(), msg, new HashMap<>());
 		}
 		if (!foundVgl && !foundGit) {
-			String msg = "WARNING: No VGL repository found in this directory or any parent.\nHint: Run 'vgl create' to initialize a new repo here.";
-			return new RepoResolution(null, null, null, RepoResolution.ResolutionKind.NONE, false, false, Utils.isInteractive(), msg, new HashMap<>());
+			String msg = MessageConstants.MSG_NO_REPO_RESOLVED;
+			return new RepoResolution(null, null, null, RepoResolution.ResolutionKind.NONE, false, false, RepoUtils.isInteractive(), msg, new HashMap<>());
 		}
 		if (foundGit && !foundVgl) {
 			String msg = "Found Git repository but no .vgl";
 			try {
 				org.eclipse.jgit.api.Git g = org.eclipse.jgit.api.Git.open(foundRoot.toFile());
-				return new RepoResolution(g, null, foundRoot, RepoResolution.ResolutionKind.FOUND_GIT_ONLY, false, false, Utils.isInteractive(), msg, new HashMap<>());
+				return new RepoResolution(g, null, foundRoot, RepoResolution.ResolutionKind.FOUND_GIT_ONLY, false, false, RepoUtils.isInteractive(), msg, new HashMap<>());
 			} catch (Exception e) {
-				return new RepoResolution(null, null, foundRoot, RepoResolution.ResolutionKind.FOUND_GIT_ONLY, false, false, Utils.isInteractive(), msg + " (Failed to open Git repo: " + e.getMessage() + ")", new HashMap<>());
+				return new RepoResolution(null, null, foundRoot, RepoResolution.ResolutionKind.FOUND_GIT_ONLY, false, false, RepoUtils.isInteractive(), msg + " (Failed to open Git repo: " + e.getMessage() + ")", new HashMap<>());
 			}
 		}
 		// If both found, try to open and validate
@@ -123,16 +124,16 @@ public final class RepoResolver {
 				VglRepo vglRepo = new VglRepo(g, cfg);
 				Map<String,String> meta = new HashMap<>();
 				try { String lb = cfg.getProperty("local.branch", null); if (lb != null) meta.put("local.branch", lb); } catch (Exception ignore) {}
-				return new RepoResolution(g, vglRepo, foundRoot, RepoResolution.ResolutionKind.FOUND_BOTH, false, false, Utils.isInteractive(), null, meta);
+				return new RepoResolution(g, vglRepo, foundRoot, RepoResolution.ResolutionKind.FOUND_BOTH, false, false, RepoUtils.isInteractive(), null, meta);
 			} catch (Exception e) {
 				String msg = "Failed to open Git/VGL repo at '" + foundRoot + "': " + e.getMessage();
-				return new RepoResolution(null, null, foundRoot, RepoResolution.ResolutionKind.NONE, false, false, Utils.isInteractive(), msg, new HashMap<>());
+				return new RepoResolution(null, null, foundRoot, RepoResolution.ResolutionKind.NONE, false, false, RepoUtils.isInteractive(), msg, new HashMap<>());
 			}
 		}
 
 		// End of new centralized repo state logic. No legacy code should follow.
 		// Defensive: fallback return to satisfy compiler (should never be reached)
-		return new RepoResolution(null, null, null, RepoResolution.ResolutionKind.NONE, false, false, Utils.isInteractive(), "Unknown repository state.", new HashMap<>());
+		return new RepoResolution(null, null, null, RepoResolution.ResolutionKind.NONE, false, false, RepoUtils.isInteractive(), "Unknown repository state.", new HashMap<>());
 	}
 
 	// Backwards-compatible helpers

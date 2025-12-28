@@ -11,7 +11,7 @@ public final class StatusSyncFiles {
 
         public static void printSyncFiles(Git git, Status status, String remoteUrl, String remoteBranch,
                                                                             List<String> filters, boolean verbose, boolean veryVerbose, VglCli vgl) {
-                System.out.println("[DEBUG] printSyncFiles called. CWD=" + System.getProperty("user.dir") + ", repoDir=" + (git != null ? git.getRepository().getDirectory() : "null") + ", status=" + (status != null ? status.toString() : "null"));
+                // Debug output removed for clean test output
                 System.out.flush();
         // Build filesToCommit from working tree status
         java.util.Map<String, String> filesToCommit = new java.util.LinkedHashMap<>();
@@ -23,17 +23,10 @@ public final class StatusSyncFiles {
             // Also include all Modified and Changed files
             for (String p : status.getModified()) filesToCommit.put(p, "M");
             for (String p : status.getChanged()) filesToCommit.put(p, "M");
-            // DEBUG: Print filesToCommit and JGit status sets after initial population
-            System.out.println("[DEBUG] After initial filesToCommit population: " + filesToCommit);
-            System.out.println("[DEBUG] JGit status.getAdded():    " + status.getAdded());
-            System.out.println("[DEBUG] JGit status.getRemoved():  " + status.getRemoved());
-            System.out.println("[DEBUG] JGit status.getMissing():  " + status.getMissing());
-            System.out.println("[DEBUG] JGit status.getModified(): " + status.getModified());
-            System.out.println("[DEBUG] JGit status.getChanged():  " + status.getChanged());
+            // Debug output removed for clean test output
             System.out.flush();
         }
-        // ...existing code...
-
+        // Determine if we have a remote repository configured
         boolean hasRemote = remoteUrl != null && !remoteUrl.isEmpty();
         String effectiveRemoteBranch = remoteBranch;
         if (!hasRemote) {
@@ -154,13 +147,12 @@ public final class StatusSyncFiles {
         if (filesToCommit.isEmpty()) {
             System.out.println("  (none)");
         } else {
-            // DEBUG: Print filesToCommit contents before output
-            System.out.println("[DEBUG] filesToCommit before output:");
+            // Debug output removed for clean test output
             for (java.util.Map.Entry<String, String> e : filesToCommit.entrySet()) {
                 System.out.println("  " + e.getValue() + " " + e.getKey());
             }
             System.out.flush();
-            System.err.println("[DEBUG] filesToCommit.size() = " + filesToCommit.size());
+            // Debug output removed for clean test output
             System.err.flush();
             // Overlay commit-derived renames so committed renames are visible as R
             try {
@@ -190,9 +182,7 @@ public final class StatusSyncFiles {
                 if ("A".equals(e.getValue())) added.add(e.getKey());
                 if ("D".equals(e.getValue()) || "Missing".equals(e.getValue())) removedOrMissing.add(e.getKey());
             }
-                System.out.println("[DEBUG] Before rename heuristic: filesToCommit=" + filesToCommit);
-                System.out.println("[DEBUG] Added list=" + added);
-                System.out.println("[DEBUG] RemovedOrMissing list=" + removedOrMissing);
+                // Debug output removed for clean test output
                 System.out.flush();
             int pairs = Math.min(added.size(), removedOrMissing.size());
             for (int i = 0; i < pairs; i++) {
@@ -202,7 +192,7 @@ public final class StatusSyncFiles {
                 filesToCommit.remove(addPath);
                 filesToCommit.put(addPath, "R");
             }
-                System.out.println("[DEBUG] After rename heuristic: filesToCommit=" + filesToCommit);
+                // Debug output removed for clean test output
                 System.out.flush();
 
             boolean any = false;
@@ -217,7 +207,7 @@ public final class StatusSyncFiles {
 
             // If no R entries, print all file status sources for analysis
             if (rCount == 0) {
-                System.out.println("[DEBUG] No R entries detected. Dumping all file status sources:");
+                // Debug output removed for clean test output
                 if (status != null) {
                     System.out.println("  JGit status.getAdded():    " + status.getAdded());
                     System.out.println("  JGit status.getChanged():  " + status.getChanged());
@@ -228,34 +218,6 @@ public final class StatusSyncFiles {
                 }
                 // HEAD vs working tree renames
                 System.out.println("  computeWorkingRenames(HEAD vs working tree): " + workingRenames);
-                // HEAD vs index renames
-                try {
-                    org.eclipse.jgit.lib.ObjectId head = git.getRepository().resolve("HEAD");
-                    if (head != null) {
-                        org.eclipse.jgit.revwalk.RevWalk rw = new org.eclipse.jgit.revwalk.RevWalk(git.getRepository());
-                        org.eclipse.jgit.revwalk.RevCommit headCommit = rw.parseCommit(head);
-                        org.eclipse.jgit.lib.ObjectReader reader = git.getRepository().newObjectReader();
-                        org.eclipse.jgit.treewalk.CanonicalTreeParser oldTree = new org.eclipse.jgit.treewalk.CanonicalTreeParser();
-                        oldTree.reset(reader, headCommit.getTree());
-                        org.eclipse.jgit.dircache.DirCacheIterator indexIt = new org.eclipse.jgit.dircache.DirCacheIterator(git.getRepository().readDirCache());
-                        try (org.eclipse.jgit.diff.DiffFormatter df = new org.eclipse.jgit.diff.DiffFormatter(new java.io.ByteArrayOutputStream())) {
-                            df.setRepository(git.getRepository());
-                            df.setDetectRenames(true);
-                            java.util.List<org.eclipse.jgit.diff.DiffEntry> diffs = df.scan(oldTree, indexIt);
-                            java.util.Map<String, String> indexRenames = new java.util.LinkedHashMap<>();
-                            for (org.eclipse.jgit.diff.DiffEntry d : diffs) {
-                                if (d.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.RENAME || d.getChangeType() == org.eclipse.jgit.diff.DiffEntry.ChangeType.COPY) {
-                                    indexRenames.put(d.getOldPath(), d.getNewPath());
-                                }
-                            }
-                            System.out.println("  computeWorkingRenames(HEAD vs index): " + indexRenames);
-                        }
-                        reader.close();
-                        rw.close();
-                    }
-                } catch (Exception e) {
-                    System.out.println("  [DEBUG] Exception during HEAD vs index rename detection: " + e);
-                }
             }
         }
         System.out.println("  -- Files to Merge:");

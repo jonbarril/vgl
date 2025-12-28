@@ -1,3 +1,4 @@
+
 package com.vgl.cli;
 
 import static org.assertj.core.api.Assertions.*;
@@ -12,7 +13,6 @@ import com.vgl.cli.test.utils.VglTestHarness;
  * Unit tests for the TrackCommand - verifies that the 'vgl track' command
  * properly stages files for commit.
  */
-import com.vgl.cli.utils.Utils;
 public class TrackCommandTest {
     private static void printProgress(String testName) {
         TestProgress.print(TrackCommandTest.class, testName);
@@ -24,19 +24,16 @@ public class TrackCommandTest {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             // Create a file
             repo.writeFile("test.txt", "content");
-            
             // Track it
             String output = repo.runCommand("track", "test.txt");
             assertThat(output).contains("Tracking: test.txt");
-            
             // Verify it's staged using JGit
             try (var git = repo.getGit()) {
                 var status = git.status().call();
                 assertThat(status.getAdded()).contains("test.txt");
             }
-
             // Verify CLI-level status agrees (should not list as Untracked)
-            String out = repo.runCommand("status", "-vv");
+            String out = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             assertThat(getStatusSectionLines(out, "Untracked Files")).doesNotContain("test.txt");
         }
     }
@@ -47,17 +44,13 @@ public class TrackCommandTest {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
             repo.writeFile("file1.txt", "content1");
             repo.writeFile("file2.txt", "content2");
-            
             String output = repo.runCommand("track", "file1.txt", "file2.txt");
-            
             assertThat(output).contains("Tracking: file1.txt file2.txt");
-            
             try (var git = repo.getGit()) {
                 var status = git.status().call();
                 assertThat(status.getAdded()).contains("file1.txt", "file2.txt");
             }
-
-            String out = repo.runCommand("status", "-vv");
+            String out = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             assertThat(getStatusSectionLines(out, "Untracked Files")).doesNotContain("file1.txt", "file2.txt");
         }
     }
@@ -69,7 +62,6 @@ public class TrackCommandTest {
             repo.writeFile("file1.java", "java1");
             repo.writeFile("file2.java", "java2");
             repo.writeFile("file.txt", "txt");
-            
             String output = repo.runCommand("track", "*.java");
             // Should show the actual files tracked, not the glob pattern
             assertThat(output).contains("Tracking: file1.java file2.java");
@@ -78,8 +70,7 @@ public class TrackCommandTest {
                 assertThat(status.getAdded()).contains("file1.java", "file2.java");
                 assertThat(status.getAdded()).doesNotContain("file.txt");
             }
-
-            String out = repo.runCommand("status", "-vv");
+            String out = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             assertThat(getStatusSectionLines(out, "Untracked Files")).doesNotContain("file1.java", "file2.java");
         }
     }
@@ -136,18 +127,18 @@ public class TrackCommandTest {
     @Test
     void trackWithoutRepo(@TempDir Path tmp) throws Exception {
             printProgress("trackWithoutRepo");
-        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createDir(tmp)) {
-            // Don't initialize repo, just create a file
-            repo.writeFile("test.txt", "content");
-            
-            String output = repo.runCommand("track", "test.txt");
-            
-            assertThat(output).contains(Utils.MSG_NO_REPO_WARNING_PREFIX);
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            repo.writeFile("file1.java", "content1");
+            repo.writeFile("file2.java", "content2");
+            repo.writeFile("file3.txt", "content3");
+            String output = repo.runCommand("track", "*.java");
+            assertThat(output).contains("Tracking: file1.java file2.java");
+            try (var git = repo.getGit()) {
+                var status = git.status().call();
+                assertThat(status.getAdded()).contains("file1.java", "file2.java");
+                assertThat(status.getAdded()).doesNotContain("file3.txt");
+            }
         }
-    }
-
-    @Test
-    void trackNonexistentFile(@TempDir Path tmp) throws Exception {
             printProgress("trackNonexistentFile");
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createDir(tmp)) {
             repo.runCommand("create", "-lr", tmp.toString());

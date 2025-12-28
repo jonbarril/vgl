@@ -1,4 +1,6 @@
+
 package com.vgl.cli;
+import com.vgl.cli.utils.RepoUtils;
 
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
@@ -13,7 +15,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vgl.cli.services.VglRepo;
 import com.vgl.cli.test.utils.TestProgress;
-import com.vgl.cli.utils.Utils;
 
 public class VglRepoTest {
             @Test
@@ -22,7 +23,7 @@ public class VglRepoTest {
                 try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {}
                 Path vglFile = tmp.resolve(".vgl");
                 java.nio.file.Files.writeString(vglFile, "not=valid\n!!!corrupted!!!");
-                try (VglRepo vgl = com.vgl.cli.utils.Utils.findVglRepo(tmp)) {
+                try (VglRepo vgl = com.vgl.cli.utils.RepoUtils.findVglRepo(tmp)) {
                     // Should not throw, should use defaults or empty undecided
                     assertThat(vgl.getUndecidedFiles()).isEmpty();
                 }
@@ -32,7 +33,7 @@ public class VglRepoTest {
             void closeDoesNotThrowOnMultipleClose(@TempDir Path tmp) throws Exception {
                 printProgress("closeDoesNotThrowOnMultipleClose");
                 try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {}
-                VglRepo vgl = com.vgl.cli.utils.Utils.findVglRepo(tmp);
+                VglRepo vgl = com.vgl.cli.utils.RepoUtils.findVglRepo(tmp);
                 vgl.close();
                 // Should not throw if closed again
                 vgl.close();
@@ -44,7 +45,7 @@ public class VglRepoTest {
                 // No .git directory
                 VglRepo vgl = null;
                 try {
-                    vgl = com.vgl.cli.utils.Utils.findVglRepo(tmp);
+                    vgl = com.vgl.cli.utils.RepoUtils.findVglRepo(tmp);
                     // Should be null or throw
                     assertThat(vgl).isNull();
                 } catch (Exception e) {
@@ -84,7 +85,7 @@ public class VglRepoTest {
         try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
         }
         // Create VglRepo
-        try (VglRepo vgl = Utils.findVglRepo(tmp)) {
+        try (VglRepo vgl = RepoUtils.findVglRepo(tmp)) {
             assertThat(vgl).isNotNull();
             // Initially empty
             assertThat(vgl.getUndecidedFiles()).isEmpty();
@@ -94,7 +95,7 @@ public class VglRepoTest {
             vgl.saveConfig();
         }
         // Reload and verify
-        try (VglRepo vgl2 = Utils.findVglRepo(tmp)) {
+        try (VglRepo vgl2 = RepoUtils.findVglRepo(tmp)) {
             List<String> loaded = vgl2.getUndecidedFiles();
             assertThat(loaded).containsExactly("foo.txt", "bar.txt", "sub/dir/file.java");
         }
@@ -105,17 +106,17 @@ public class VglRepoTest {
             printProgress("undecidedFilesCanBeCleared");
         try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
         }
-        try (VglRepo vgl = Utils.findVglRepo(tmp)) {
+        try (VglRepo vgl = RepoUtils.findVglRepo(tmp)) {
             vgl.setUndecidedFiles(Arrays.asList("a.txt", "b.txt"));
             vgl.saveConfig();
         }
         // Clear undecided files
-        try (VglRepo vgl = Utils.findVglRepo(tmp)) {
+        try (VglRepo vgl = RepoUtils.findVglRepo(tmp)) {
             vgl.setUndecidedFiles(Collections.emptyList());
             vgl.saveConfig();
         }
         // Reload and verify
-        try (VglRepo vgl = Utils.findVglRepo(tmp)) {
+        try (VglRepo vgl = RepoUtils.findVglRepo(tmp)) {
             assertThat(vgl.getUndecidedFiles()).isEmpty();
         }
     }
@@ -126,7 +127,7 @@ public class VglRepoTest {
         try (@SuppressWarnings("unused") Git git = Git.init().setDirectory(tmp.toFile()).call()) {
         }
         // No .vgl file present
-        try (VglRepo vgl = Utils.findVglRepo(tmp)) {
+        try (VglRepo vgl = RepoUtils.findVglRepo(tmp)) {
             assertThat(vgl.getUndecidedFiles()).isEmpty();
         }
     }

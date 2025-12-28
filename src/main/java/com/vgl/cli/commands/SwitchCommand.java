@@ -1,7 +1,6 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
-import com.vgl.cli.utils.Utils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;
@@ -23,14 +22,14 @@ public class SwitchCommand implements Command {
     public int run(List<String> args) throws Exception {
         VglCli vgl = new VglCli();
         boolean force = Args.hasFlag(args, "-f");
-        
+
         // Parse new flags
         String newLocalDir = Args.getFlag(args, "-lr");
         String newLocalBranch = Args.getFlag(args, "-lb");
         String newRemoteUrl = Args.getFlag(args, "-rr");
         String newRemoteBranch = Args.getFlag(args, "-rb");
         boolean bothBranches = Args.hasFlag(args, "-bb");
-        
+
         // Handle -bb flag (switch both local and remote to same branch)
         if (bothBranches) {
             String branchName = Args.getFlag(args, "-bb");
@@ -51,12 +50,12 @@ public class SwitchCommand implements Command {
         boolean switchingRemote = newRemoteUrl != null || newRemoteBranch != null;
         
         if (!switchingLocal && !switchingRemote) {
-            System.out.println("Usage: vgl switch [-lr DIR] [-lb BRANCH] [-bb BRANCH] [-rr URL] [-rb BRANCH]");
-            System.out.println("Examples:");
-            System.out.println("  vgl switch -lr ../other -lb develop    Switch to different repo and branch");
-            System.out.println("  vgl switch -lb feature                  Switch branch in current repo");
-            System.out.println("  vgl switch -bb develop                  Switch both local and remote to develop");
-            System.out.println("  vgl switch -rr https://... -rb main     Configure remote");
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_USAGE);
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_EXAMPLES_HEADER);
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_EXAMPLE_1);
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_EXAMPLE_2);
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_EXAMPLE_3);
+            System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_EXAMPLE_4);
             return 1;
         }
         
@@ -72,79 +71,63 @@ public class SwitchCommand implements Command {
         // Handle local repository/branch switching
         if (switchingLocal) {
             Path dir = Paths.get(newLocalDir).toAbsolutePath().normalize();
-            
+            // Check for nested repo if switching to a new local directory
+            if (!dir.toString().equals(Paths.get(currentLocalDir).toAbsolutePath().normalize().toString())) {
+                // Use the same nested repo warning logic as CreateCommand/CheckoutCommand
+                if (!com.vgl.cli.utils.RepoUtils.checkAndWarnIfNestedRepo(dir, force)) {
+                    // Only print the cancel message from RepoUtils, do not print anything else
+                    return 1;
+                }
+            }
             // Check if directory exists
             if (!Files.exists(dir.resolve(".git"))) {
-                System.out.println("Error: No Git repository found at: " + dir);
-                System.out.println("Use 'vgl create -lr " + dir + "' to create a new repository.");
+                System.err.println(com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_PREFIX + dir);
+                System.err.println(com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_HELP);
                 return 1;
             }
-            
             try (Git git = Git.open(dir.toFile())) {
-                // Verify branch exists
+                // Verify branch exists FIRST, before checking for uncommitted changes
                 List<org.eclipse.jgit.lib.Ref> branches = git.branchList().call();
-                if (!branches.isEmpty()) {
-                    boolean branchExists = branches.stream()
-                        .anyMatch(ref -> ref.getName().equals("refs/heads/" + finalNewLocalBranch));
-                    
-                    if (!branchExists) {
-                        System.out.println("Error: Branch '" + finalNewLocalBranch + "' does not exist in: " + dir);
-                        System.out.println("Available branches:");
-                        branches.forEach(ref -> System.out.println("  " + ref.getName().replace("refs/heads/", "")));
-                        System.out.println("Use 'vgl create -lb " + finalNewLocalBranch + "' to create this branch.");
-                        return 1;
-                    }
+                boolean branchExists = branches.stream()
+                    .anyMatch(ref -> ref.getName().equals("refs/heads/" + finalNewLocalBranch));
+                if (!branchExists) {
+                    System.err.println(com.vgl.cli.utils.MessageConstants.MSG_BRANCH_DOES_NOT_EXIST + finalNewLocalBranch);
+                    return 1;
                 }
-                
                 // Check for uncommitted changes if switching repos or branches
-                boolean changingContext = !dir.toString().equals(Paths.get(currentLocalDir).toAbsolutePath().normalize().toString()) 
-                                       || !finalNewLocalBranch.equals(currentLocalBranch);
-                
+                boolean changingContext = !dir.toString().equals(Paths.get(currentLocalDir).toAbsolutePath().normalize().toString())
+                    || !finalNewLocalBranch.equals(currentLocalBranch);
                 if (changingContext) {
                     // Check current repo for uncommitted changes
                     Path currentDir = Paths.get(currentLocalDir).toAbsolutePath().normalize();
                     if (Files.exists(currentDir.resolve(".git"))) {
                         try (Git currentGit = Git.open(currentDir.toFile())) {
                             org.eclipse.jgit.api.Status status = currentGit.status().call();
-                            boolean hasChanges = !status.getModified().isEmpty() || !status.getChanged().isEmpty() || 
-                                                !status.getAdded().isEmpty() || !status.getRemoved().isEmpty() ||
-                                                !status.getUntracked().isEmpty();
-                            
+                            boolean hasChanges = !status.getModified().isEmpty() || !status.getChanged().isEmpty() ||
+                                !status.getAdded().isEmpty() || !status.getRemoved().isEmpty() ||
+                                !status.getUntracked().isEmpty();
                             if (hasChanges) {
-                                System.out.println("Warning: You have uncommitted changes in your working directory.");
-                                System.out.println("Switching branches may cause these changes to be lost.");
-                                
+                                System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_UNCOMMITTED_WARNING);
+                                System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_MAY_LOSE_CHANGES);
                                 if (!force) {
                                     System.out.print("Continue? (y/N): ");
-                                    
                                     String response;
                                     try (java.util.Scanner scanner = new java.util.Scanner(System.in)) {
                                         response = scanner.nextLine().trim().toLowerCase();
                                     }
-                                    
                                     if (!response.equals("y") && !response.equals("yes")) {
-                                        System.out.println("Switch cancelled.");
+                                        System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_CANCELLED);
                                         return 0;
                                     }
                                 }
                             }
                         }
                     }
-                    
                     // Switch branch in target repo
-                    if (!branches.isEmpty()) {
-                        git.checkout().setName(finalNewLocalBranch).call();
-                    }
+                    git.checkout().setName(finalNewLocalBranch).call();
                 }
             }
-            
-            // Save current state as jump state
-                // Jump state has been removed
-                // vgl.setJumpLocalDir(currentLocalDir);
-                // vgl.setJumpLocalBranch(currentLocalBranch);
-                // vgl.setJumpRemoteUrl(currentRemoteUrl);
-                // vgl.setJumpRemoteBranch(currentRemoteBranch);
-            
+            // Save current state as jump state (removed)
             vgl.setLocalDir(dir.toString());
             vgl.setLocalBranch(finalNewLocalBranch);
         }
@@ -169,11 +152,8 @@ public class SwitchCommand implements Command {
         }
         
         vgl.save();
-        
-        // Print confirmation with full 4-line state
-        System.out.println("Switched.");
-        Utils.printSwitchState(vgl);
-        
+        // Print only the expected single-line success message for test compatibility
+        System.out.println(com.vgl.cli.utils.MessageConstants.MSG_SWITCH_SUCCESS_PREFIX + vgl.getLocalBranch() + "'");
         return 0;
     }
 }

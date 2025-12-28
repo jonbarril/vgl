@@ -12,12 +12,12 @@ public class PushCommandTest {
     @Test
     void pushBranchToRemote(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("file.txt", "content");
-            repo.runCommand("track", "file.txt");
-            repo.runCommand("commit", "Initial commit");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "Initial commit");
             VglTestHarness.setupRemoteRepo(repo, tmp.resolve("remote.git"), "main");
-            String output = repo.runCommand("push");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "push");
             assertThat(output).contains("Push complete");
         }
     }
@@ -25,8 +25,8 @@ public class PushCommandTest {
     @Test
     void pushShowsErrorWithoutRemote(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
-            String output = repo.runCommand("push");
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "push");
             assertThat(output).contains("No remote configured");
         }
     }

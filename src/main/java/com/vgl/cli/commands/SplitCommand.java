@@ -1,7 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
-import com.vgl.cli.utils.Utils;
+import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.VglCli;
 import org.eclipse.jgit.api.Git;
 import java.nio.file.Files;
@@ -43,9 +43,8 @@ public class SplitCommand implements Command {
             System.out.println("  vgl split -into -bb feature    Create feature locally and push to remote");
             return 1;
         }
-        
         if (splitInto && splitFrom) {
-            System.out.println("Error: Cannot specify both -into and -from.");
+            System.err.println("Error: Cannot specify both -into and -from.");
             return 1;
         }
         
@@ -58,7 +57,7 @@ public class SplitCommand implements Command {
         // Handle -bb flag (both branches with same name)
         if (hasBbFlag) {
             if (localBranch == null) {
-                System.out.println("Error: Must specify branch name with -lb when using -bb.");
+                System.err.println("Error: Must specify branch name with -lb when using -bb.");
                 return 1;
             }
             remoteBranch = localBranch;
@@ -83,8 +82,8 @@ public class SplitCommand implements Command {
         Path dir = Paths.get(workingDir).toAbsolutePath().normalize();
         
         if (!Files.exists(dir.resolve(".git"))) {
-            System.out.println("Error: No Git repository found at: " + dir);
-            System.out.println("Use 'vgl create -lr " + dir + "' to create a repository first.");
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_PREFIX + dir);
+            System.err.println(com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_HELP);
             return 1;
         }
         
@@ -97,8 +96,8 @@ public class SplitCommand implements Command {
                                 !status.getAdded().isEmpty() || !status.getRemoved().isEmpty();
             
             if (hasChanges) {
-                System.out.println("Warning: You have uncommitted changes.");
-                System.out.println("These changes will be carried to the new branch.");
+                System.err.println(com.vgl.cli.utils.MessageConstants.MSG_ERR_UNCOMMITTED_CHANGES + dir);
+                System.err.println(com.vgl.cli.utils.MessageConstants.MSG_ERR_OVERWRITE_CHANGES);
             }
             
             // Save current state as jump state
@@ -114,7 +113,7 @@ public class SplitCommand implements Command {
                 sourceBranchName = currentBranch;
                 
                 if (localBranch == null) {
-                    System.out.println("Error: Must specify -lb with -into.");
+                    System.err.println("Error: Must specify -lb with -into.");
                     return 1;
                 }
                 
@@ -126,14 +125,14 @@ public class SplitCommand implements Command {
                     .anyMatch(ref -> ref.getName().equals("refs/heads/" + newBranchName));
                 
                 if (branchExists) {
-                    System.out.println("Warning: Branch '" + newBranchName + "' already exists.");
-                    System.out.println("Use 'vgl switch -lb " + newBranchName + "' to switch to it.");
+                    System.err.println("Warning: Branch '" + newBranchName + "' already exists.");
+                    System.err.println("Use 'vgl switch -lb " + newBranchName + "' to switch to it.");
                     return 0;
                 }
             } else {
                 // Split FROM specified source INTO new branch at switch state
                 if (localBranch == null) {
-                    System.out.println("Error: Must specify -lb with -from (source branch).");
+                    System.err.println("Error: Must specify -lb with -from (source branch).");
                     return 1;
                 }
                 
@@ -146,14 +145,12 @@ public class SplitCommand implements Command {
                     // Clone from remote branch
                     String effectiveRemoteUrl = (remoteUrl != null) ? remoteUrl : switchRemoteUrl;
                     if (effectiveRemoteUrl == null || effectiveRemoteUrl.isBlank()) {
-                        System.out.println("Error: No remote configured.");
-                        System.out.println("Use 'vgl switch -rr URL' to configure a remote first.");
+                        System.err.println("Error: No remote configured.");
+                        System.err.println("Use 'vgl switch -rr URL' to configure a remote first.");
                         return 1;
                     }
-                    
-                    System.out.println("Fetching from remote...");
+                    // No debug output for fetch
                     git.fetch().setRemote("origin").call();
-                    
                     sourceBranchName = "origin/" + remoteBranch;
                     useRemote = true;
                 } else {
@@ -164,9 +161,9 @@ public class SplitCommand implements Command {
                         .anyMatch(ref -> ref.getName().equals("refs/heads/" + sourceToCheck));
                     
                     if (!branchExists) {
-                        System.out.println("Error: Source branch '" + sourceToCheck + "' does not exist.");
-                        System.out.println("Available branches:");
-                        branches.forEach(ref -> System.out.println("  " + ref.getName().replace("refs/heads/", "")));
+                        System.err.println("Error: Source branch '" + sourceToCheck + "' does not exist.");
+                        System.err.println("Available branches:");
+                        branches.forEach(ref -> System.err.println("  " + ref.getName().replace("refs/heads/", "")));
                         return 1;
                     }
                 }
@@ -191,21 +188,20 @@ public class SplitCommand implements Command {
             vgl.save();
             
             System.out.println("Split branch created.");
-            Utils.printSwitchState(vgl);
+            RepoUtils.printSwitchState(vgl);
             
             // If -bb flag or remote specified, push to remote
             if (hasBbFlag || remoteBranch != null) {
                 String effectiveRemoteUrl = (remoteUrl != null) ? remoteUrl : switchRemoteUrl;
                 if (effectiveRemoteUrl == null || effectiveRemoteUrl.isBlank()) {
-                    System.out.println("Warning: No remote configured. Cannot create remote branch.");
-                    System.out.println("Use 'vgl switch -rr URL' to configure a remote first.");
+                    System.err.println("Warning: No remote configured. Cannot create remote branch.");
+                    System.err.println("Use 'vgl switch -rr URL' to configure a remote first.");
                 } else {
                     // Push to remote
                     git.push()
                         .setRemote("origin")
                         .add(newBranchName)
                         .call();
-                    
                     // Set up tracking
                     git.branchCreate()
                         .setName(newBranchName)
@@ -213,10 +209,8 @@ public class SplitCommand implements Command {
                         .setStartPoint("origin/" + newBranchName)
                         .setForce(true)
                         .call();
-                    
                     vgl.setRemoteBranch(newBranchName);
                     vgl.save();
-                    
                     System.out.println("Pushed branch '" + newBranchName + "' to remote.");
                 }
             }

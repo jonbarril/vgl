@@ -1,14 +1,13 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.Args;
-import com.vgl.cli.utils.Utils;
+import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.VglCli;
 import com.vgl.cli.services.RepoResolution;
 
 import org.eclipse.jgit.api.Git;
 
 import java.nio.file.*;
-import com.vgl.cli.utils.NestedRepoDetector;
 import java.util.List;
 
 public class CreateCommand implements Command {
@@ -47,7 +46,6 @@ public class CreateCommand implements Command {
                     path = configPath;
                 }
             } catch (Exception e) {
-                path = configPath;
             }
         }
         String branch = newLocalBranch != null ? newLocalBranch : vgl.getLocalBranch();
@@ -59,23 +57,19 @@ public class CreateCommand implements Command {
         Path dir = Paths.get(path).toAbsolutePath().normalize();
         if (!Files.exists(dir)) Files.createDirectories(dir);
 
-        // 1. If a valid VGL repo exists in the target, allow branch creation if requested, else quit (no-op)
+        // 1. Check for nested repo and prompt user if needed (common logic)
+        if (!RepoUtils.checkAndWarnIfNestedRepo(dir, force)) {
+            return 0;
+        }
+
+                // Removed completion message per CLI output discipline
+        // 2. If a valid VGL repo exists in the target, allow branch creation if requested, else quit (no-op)
         RepoResolution res = com.vgl.cli.utils.RepoResolver.resolveForCommand(dir);
         boolean vglRepoExists = res.getKind() == com.vgl.cli.services.RepoResolution.ResolutionKind.FOUND_BOTH &&
             res.getRepoRoot() != null && res.getRepoRoot().equals(dir);
         if (vglRepoExists && !branchSpecified) {
             System.out.println("VGL repository already exists at: " + dir);
             return 0;
-        }
-        // 2. If an ancestor repo (git or vgl) exists, warn and prompt user to continue (but only if the ancestor is not the target itself)
-        Path ancestorRepo = NestedRepoDetector.findAncestorRepo(dir);
-        boolean nestedOk = true;
-        if (ancestorRepo != null) {
-            nestedOk = Utils.warnNestedRepo(dir, ancestorRepo, force);
-            if (!nestedOk) {
-                System.out.println("Create cancelled. No repository created.");
-                return 0;
-            }
         }
 
         // 3. If no .git exists, create new repo (use RepoManager)
@@ -133,11 +127,11 @@ public class CreateCommand implements Command {
 
 
 
+        // Save config file in repo root using shared helper
+        RepoUtils.writeVglConfig(dir, finalBranch, vgl.getRemoteUrl(), vgl.getRemoteBranch());
         vgl.setLocalDir(dir.toString());
         vgl.setLocalBranch(finalBranch);
-        vgl.save();
-
-        Utils.printSwitchState(vgl);
+        RepoUtils.printSwitchState(vgl);
         return 0;
     }
 }

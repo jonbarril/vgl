@@ -18,10 +18,13 @@ public class VglTestHarnessTest {
 
     // Helper to create a new test repo under the given temp root
     private Path newTestRepoPath(Path tempDir) throws Exception {
+        // Always create repos under a 'safe-root' subdirectory to avoid user home
+        Path safeRoot = tempDir.resolve("safe-root");
+        Files.createDirectories(safeRoot);
         String prev = System.getProperty("junit.temp.root");
-        System.setProperty("junit.temp.root", tempDir.toAbsolutePath().toString());
+        System.setProperty("junit.temp.root", safeRoot.toAbsolutePath().toString());
         try {
-            Path repo = tempDir.resolve("repo-" + java.util.UUID.randomUUID());
+            Path repo = safeRoot.resolve("repo-" + java.util.UUID.randomUUID());
             Files.createDirectories(repo);
             return repo;
         } finally {
@@ -119,21 +122,13 @@ public class VglTestHarnessTest {
 
     @Test
     void createVglInstance(@TempDir Path tempDir) throws Exception {
-        String prev = System.getProperty("junit.temp.root");
-        System.setProperty("junit.temp.root", tempDir.toAbsolutePath().toString());
-        try {
-            Path repo = newTestRepoPath(tempDir);
-            try (VglTestHarness.VglTestRepo r = VglTestHarness.createRepo(repo)) {
-                VglCli vgl = r.createVglInstance();
-                assertThat(vgl).isNotNull();
-                assertThat(vgl.getLocalDir()).isEqualTo(repo.toString());
-            }
-        } finally {
-            if (prev != null) {
-                System.setProperty("junit.temp.root", prev);
-            } else {
-                System.clearProperty("junit.temp.root");
-            }
+        // Use VglTestHarness.createTestRoot() to guarantee isolation from user home
+        Path testRoot = VglTestHarness.createTestRoot();
+        Path repo = newTestRepoPath(testRoot);
+        try (VglTestHarness.VglTestRepo r = VglTestHarness.createRepo(repo)) {
+            VglCli vgl = r.createVglInstance();
+            assertThat(vgl).isNotNull();
+            assertThat(vgl.getLocalDir()).isEqualTo(repo.toString());
         }
     }
 

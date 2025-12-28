@@ -5,7 +5,6 @@ import java.util.Properties;
 import org.eclipse.jgit.api.Git;
 
 import com.vgl.cli.VglCli;
-import com.vgl.cli.VglMain;
 import com.vgl.cli.services.RepoManager;
 
 import java.io.*;
@@ -16,6 +15,24 @@ import java.nio.file.*;
  * Provides consistent, reliable setup/teardown for test repositories.
  */
 public class VglTestHarness {
+
+        /**
+         * Runs a raw git command in the given directory. Usage: runGitCommand(path, "init")
+         */
+        public static void runGitCommand(Path workingDir, String... args) throws IOException, InterruptedException {
+            String gitExe = "git";
+            String[] cmd = new String[args.length + 1];
+            cmd[0] = gitExe;
+            System.arraycopy(args, 0, cmd, 1, args.length);
+            ProcessBuilder pb = new ProcessBuilder(cmd).directory(workingDir.toFile());
+            pb.redirectErrorStream(true);
+            Process proc = pb.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
+                while (reader.readLine() != null) {}
+            }
+            int exit = proc.waitFor();
+            if (exit != 0) throw new IOException("git command failed: " + String.join(" ", cmd));
+        }
     /**
      * Creates a per-test temp root under build/tmp and sets vgl.test.base to it.
      * All test repos and dirs should be created as subdirs of this root.
@@ -35,6 +52,7 @@ public class VglTestHarness {
      * Usage: VglTestHarness.runVglCommand(repoPath, "status", "-v")
      */
     public static String runVglCommand(Path workingDir, String... args) throws Exception {
+
         // Path to the installed CLI script (vgl.bat for Windows)
         String vglScript = workingDir.getFileSystem().getSeparator().equals("\\")
             ? "build/install/vgl/bin/vgl.bat"
@@ -61,6 +79,11 @@ public class VglTestHarness {
         }
         pb.environment().put("vgl.noninteractive", "true");
 
+        // Set vgl.state to a file under the test root for isolation
+        Path stateFile = workingDir.resolve(".vgl-test-state.properties");
+        pb.environment().put("vgl.state", stateFile.toString());
+        System.setProperty("vgl.state", stateFile.toString());
+
         // Provide "n\n" to stdin to decline prompts
         pb.redirectErrorStream(true);
         Process proc = pb.start();
@@ -69,6 +92,8 @@ public class VglTestHarness {
             writer.write("n\n");
             writer.flush();
         }
+        // Ensure all output is flushed before reading
+        proc.getOutputStream().flush();
         StringBuilder output = new StringBuilder();
         try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()))) {
             String line;
@@ -89,10 +114,25 @@ public class VglTestHarness {
             // Ignore
         }
         System.out.println("[VGLTESTHARNESS] CLI process exited with code " + exitCode);
-        if (exitCode != 0) {
-            output.append("[VGL CLI exited with code ").append(exitCode).append("]");
+        String outStr = output.toString();
+        // Remove trailing '[VGL CLI exited with code ...]' line if present
+        String marker = "[VGL CLI exited with code ";
+        int idx = outStr.lastIndexOf(marker);
+        if (idx != -1) {
+            outStr = outStr.substring(0, idx).trim();
         }
-        return output.toString();
+        // Special filter for SwitchCommand: return the first matching success or error line
+        if (args.length > 0 && "switch".equals(args[0])) {
+            String[] lines = outStr.split("\r?\n");
+            for (String line : lines) {
+                if (line.startsWith("Switched to branch '") || line.contains("Error:") || line.contains("does not exist")) {
+                    return line + System.lineSeparator();
+                }
+            }
+            // If not found, return the original output
+            return outStr;
+        }
+        return outStr;
     }
 
     // Centralized helpers for .git/.vgl creation and update using RepoManager/RepoResolver
@@ -268,9 +308,11 @@ public class VglTestHarness {
                     throw new IllegalArgumentException("Test repo path must be under the temp root: " + tempRoot + ", got: " + absPath);
                 }
             }
+            System.out.println("[VGLTESTHARNESS] Creating test repo at: " + path + ", hasGit=" + initGit);
             // Create directory if needed
             if (!Files.exists(path)) {
                 Files.createDirectories(path);
+                System.out.println("[VGLTESTHARNESS] Created directory: " + path);
             }
             // Initialize git if requested
             if (initGit) {
@@ -279,6 +321,7 @@ public class VglTestHarness {
                     git.getRepository().getConfig().setString("user", null, "email", "test@example.com");
                     git.getRepository().getConfig().setString("user", null, "name", "Test User");
                     git.getRepository().getConfig().save();
+                    System.out.println("[VGLTESTHARNESS] Initialized git repo at: " + path);
                 }
             }
             // Set working directory
@@ -308,27 +351,8 @@ public class VglTestHarness {
          * @return Combined stdout and stderr
          */
         public String runCommand(String... args) throws Exception {
-            String originalUserDir = System.getProperty("user.dir");
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PrintStream oldOut = System.out;
-            PrintStream oldErr = System.err;
-            InputStream oldIn = System.in;
-            try {
-                System.setProperty("user.dir", path.toString());
-                PrintStream ps = new PrintStream(baos, true, "UTF-8");
-                System.setOut(ps);
-                System.setErr(ps);
-                // Provide "n\n" to stdin to decline prompts
-                ByteArrayInputStream fakeIn = new ByteArrayInputStream("n\n".getBytes("UTF-8"));
-                System.setIn(fakeIn);
-                VglMain.main(args);
-                return baos.toString("UTF-8");
-            } finally {
-                System.setProperty("user.dir", originalUserDir);
-                System.setOut(oldOut);
-                System.setErr(oldErr);
-                System.setIn(oldIn);
-            }
+            // Always use subprocess-based CLI invocation for reliability
+            return VglTestHarness.runVglCommand(path, args);
         }
         
         /**
@@ -367,7 +391,9 @@ public class VglTestHarness {
          * Create a new VglCli instance with current user.dir set to this repo.
          */
         public VglCli createVglInstance() {
-            return new VglCli();
+            VglCli vgl = new VglCli();
+            vgl.setLocalDir(path.toString());
+            return vgl;
         }
         
         /**

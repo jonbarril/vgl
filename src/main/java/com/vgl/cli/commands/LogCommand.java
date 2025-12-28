@@ -16,8 +16,7 @@ public class LogCommand implements Command {
         boolean interactive = true;
         com.vgl.cli.services.RepoResolution repoRes = com.vgl.cli.commands.helpers.VglRepoInitHelper.ensureVglConfig(cwd, interactive);
         if (repoRes.getGit() == null) {
-            String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
-                          "Hint: Run 'vgl create' to initialize a new repo here.";
+            String warn = com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_RESOLVED;
             System.err.println(warn);
             System.out.println(warn);
             return 1;

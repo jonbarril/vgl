@@ -1,4 +1,6 @@
+
 package com.vgl.cli;
+import com.vgl.cli.utils.RepoUtils;
 
 import org.junit.jupiter.api.Test;
 
@@ -8,7 +10,6 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.vgl.cli.test.utils.VglTestHarness;
-import com.vgl.cli.utils.Utils;
 public class SwitchStatePersistenceTest {
 
     @Test
@@ -35,7 +36,7 @@ public class SwitchStatePersistenceTest {
                 System.setProperty("user.dir", repo2.getPath().toString());
 
                 // resolveEffectiveRepoRoot should prefer persisted state (repo1) and not repo2
-                java.nio.file.Path resolved = Utils.resolveEffectiveRepoRoot(vgl, java.nio.file.Paths.get(System.getProperty("user.dir")));
+                java.nio.file.Path resolved = RepoUtils.resolveEffectiveRepoRoot(vgl, java.nio.file.Paths.get(System.getProperty("user.dir")));
                 assertEquals(repo1.getPath().toAbsolutePath().normalize(), resolved.toAbsolutePath().normalize());
             }
         }

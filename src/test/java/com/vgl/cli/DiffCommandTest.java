@@ -15,36 +15,39 @@ public class DiffCommandTest {
     @Test
     void diffShowsAddedFile(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("added.txt", "new content\n");
-            String out = repo.runCommand("diff");
-            assertThat(out).contains("ADD added.txt");
+            String out = VglTestHarness.runVglCommand(repo.getPath(), "diff");
+            String normalizedOut = out.replace("\r\n", "\n").trim();
+            assertThat(normalizedOut).contains("ADD added.txt");
         }
     }
 
     @Test
     void diffShowsModifiedFile(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("file.txt", "a\n");
-            repo.runCommand("track", "file.txt");
-            repo.runCommand("commit", "init");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "init");
             repo.writeFile("file.txt", "a\nb\n");
-            String out = repo.runCommand("diff");
-            assertThat(out).contains("MODIFIED: file.txt");
-            assertThat(out).contains("+ b");
+            String out = VglTestHarness.runVglCommand(repo.getPath(), "diff");
+            String normalizedOut = out.replace("\r\n", "\n").trim();
+            assertThat(normalizedOut).contains("MODIFIED: file.txt");
+            assertThat(normalizedOut).contains("+ b");
         }
     }
 
     @Test
     void diffNoChangesShowsNoChanges(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("file.txt", "abc\n");
-            repo.runCommand("track", "file.txt");
-            repo.runCommand("commit", "init");
-            String out = repo.runCommand("diff");
-            assertThat(out).contains("(no changes)");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "init");
+            String out = VglTestHarness.runVglCommand(repo.getPath(), "diff");
+            String normalizedOut = out.replace("\r\n", "\n").trim();
+            assertThat(normalizedOut).contains("(no changes)");
         }
     }
 
@@ -52,8 +55,9 @@ public class DiffCommandTest {
     void diffWithNoRepoShowsError(@TempDir Path tmp) throws Exception {
         // No repo created
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createDir(tmp)) {
-            String out = repo.runCommandExpectingFailure("diff");
-            assertThat(out).containsIgnoringCase("no git repository");
+            String out = VglTestHarness.runVglCommand(repo.getPath(), "diff");
+            String normalizedOut = out.replace("\r\n", "\n").trim();
+            assertThat(normalizedOut).containsIgnoringCase("no git repository");
         }
     }
 }

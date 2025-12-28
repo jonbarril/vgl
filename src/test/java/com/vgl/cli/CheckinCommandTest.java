@@ -1,3 +1,4 @@
+
 package com.vgl.cli;
 
 import org.junit.jupiter.api.Test;
@@ -12,19 +13,25 @@ public class CheckinCommandTest {
     @Test
     void checkinStagesAndCommits(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("file.txt", "content");
-            String output = repo.runCommand("checkin", "file.txt", "-m", "msg");
-            assertThat(output).contains("Committed");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "checkin", "file.txt", "-m", "msg");
+            String normalizedOutput = output.replace("\r\n", "\n").trim();
+            assertThat(normalizedOutput)
+                .withFailMessage("Expected commit confirmation but got: %s", output)
+                .contains(com.vgl.cli.utils.MessageConstants.MSG_COMMIT_SUCCESS);
         }
     }
 
     @Test
     void checkinShowsErrorOnNoFiles(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
-            String output = repo.runCommand("checkin");
-            assertThat(output).contains("No files specified");
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "checkin");
+            String normalizedOutput = output.replace("\r\n", "\n").trim();
+            assertThat(normalizedOutput)
+                .withFailMessage("Expected 'No files specified' error but got: %s", output)
+                .contains(com.vgl.cli.utils.MessageConstants.MSG_NO_FILES_SPECIFIED);
         }
     }
 }

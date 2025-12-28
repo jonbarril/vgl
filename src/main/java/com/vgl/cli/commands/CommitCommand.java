@@ -10,14 +10,33 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.revwalk.RevCommit;
 
+import com.vgl.cli.services.RepoResolution;
 import com.vgl.cli.services.VglRepo;
 import com.vgl.cli.utils.RepoResolver;
-import com.vgl.cli.utils.Utils;
+import com.vgl.cli.utils.MessageConstants;
 
 public class CommitCommand implements Command {
     @Override public String name(){ return "commit"; }
 
-    @Override public int run(List<String> args) throws Exception {
+    @Override
+    public int run(List<String> args) throws Exception {
+        // Auto-stage all changes before commit (Gitless-style)
+        Git git = null;
+        java.nio.file.Path cwd = java.nio.file.Paths.get("").toAbsolutePath();
+        boolean interactive = !args.contains("-y");
+        RepoResolution resolution = com.vgl.cli.commands.helpers.VglRepoInitHelper.ensureVglConfig(cwd, interactive);
+        if (resolution == null || resolution.getKind() != RepoResolution.ResolutionKind.FOUND_BOTH) {
+            String missingRepoMsg = (resolution != null && resolution.getMessage() != null)
+                ? resolution.getMessage()
+                : MessageConstants.MSG_NO_REPO_RESOLVED;
+            System.err.println(missingRepoMsg);
+            return 1;
+        }
+        git = resolution.getGit();
+        if (git != null) {
+            git.add().addFilepattern(".").call();
+        }
+
         String msg;
         boolean amend = false;
         List<String> rest = new ArrayList<>(args);
@@ -27,20 +46,18 @@ public class CommitCommand implements Command {
         } else if (!rest.isEmpty()) {
             msg = rest.get(0);
         } else {
-            System.out.println("Usage: vgl commit \"msg\" | [-new|-add] \"msg\"");
+            System.err.println(MessageConstants.MSG_COMMIT_USAGE);
             return 1;
         }
 
         com.vgl.cli.services.RepoResolution repoRes = RepoResolver.resolveForCommand();
         if (repoRes.getVglRepo() == null || repoRes.getGit() == null) {
-            String warn = "WARNING: No VGL repository found in this directory or any parent.\n" +
-                          "Hint: Run 'vgl create' to initialize a new repo here.";
-            System.err.println(warn);
-            System.out.println(warn);
+            String missingRepoMsg = MessageConstants.MSG_NO_REPO_RESOLVED;
+            System.err.println(missingRepoMsg);
             return 1;
         }
         try (VglRepo vglRepo = repoRes.getVglRepo()) {
-            Git git = vglRepo.getGit();
+            git = vglRepo.getGit();
 
             // First get status to see what needs to be added. Some JGit environments
             // can throw MissingObjectException when the index or HEAD is in a transient
@@ -92,47 +109,53 @@ public class CommitCommand implements Command {
                 // Conservative: assume there is something to commit when status unavailable
                 nothingToCommit = false;
             } else {
+                // Extract status fields to local variables for clarity and to avoid repeated calls
+                java.util.Set<String> added = s.getAdded();
+                java.util.Set<String> changed = s.getChanged();
+                java.util.Set<String> removed = s.getRemoved();
+                java.util.Set<String> modified = s.getModified();
+                java.util.Set<String> missing = s.getMissing();
+                java.util.Set<String> untracked = s.getUntracked();
                 nothingToCommit = (
-                    s.getAdded().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    s.getChanged().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    s.getRemoved().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    s.getModified().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    s.getMissing().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    s.getUntracked().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0
+                    added.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    changed.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    removed.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    modified.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    missing.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    untracked.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0
                 );
             }
             if (nothingToCommit) {
-                System.out.println("Nothing to commit.");
-                System.out.flush();
+                System.out.println(MessageConstants.MSG_COMMIT_NOTHING_TO_COMMIT);
                 return 1;
             }
 
             // Check for unresolved conflict markers
             List<String> filesWithConflicts = new ArrayList<>();
-            // Check all files that will be committed, excluding git-ignored files
-            for (String file : s.getAdded()) {
-                if (!Utils.isGitIgnored(repoRoot.resolve(file), repo) && hasConflictMarkers(repoRoot.resolve(file))) {
+            // Use the same local variables as above if available
+            java.util.Set<String> added = (s != null) ? s.getAdded() : java.util.Collections.emptySet();
+            java.util.Set<String> changed = (s != null) ? s.getChanged() : java.util.Collections.emptySet();
+            java.util.Set<String> modified = (s != null) ? s.getModified() : java.util.Collections.emptySet();
+            for (String file : added) {
+                if (!com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(file), repo) && hasConflictMarkers(repoRoot.resolve(file))) {
                     filesWithConflicts.add(file);
                 }
             }
-            for (String file : s.getChanged()) {
-                if (!Utils.isGitIgnored(repoRoot.resolve(file), repo) && hasConflictMarkers(repoRoot.resolve(file))) {
+            for (String file : changed) {
+                if (!com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(file), repo) && hasConflictMarkers(repoRoot.resolve(file))) {
                     filesWithConflicts.add(file);
                 }
             }
-            for (String file : s.getModified()) {
-                if (!Utils.isGitIgnored(repoRoot.resolve(file), repo) && hasConflictMarkers(repoRoot.resolve(file))) {
+            for (String file : modified) {
+                if (!com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(file), repo) && hasConflictMarkers(repoRoot.resolve(file))) {
                     filesWithConflicts.add(file);
                 }
             }
             if (!filesWithConflicts.isEmpty()) {
-                System.out.println("Error: The following files contain unresolved conflict markers:");
-                filesWithConflicts.forEach(f -> System.out.println("  " + f));
-                System.out.println("\nConflict markers look like:");
-                System.out.println("  " + "<".repeat(7) + " HEAD");
-                System.out.println("  " + "=".repeat(7));
-                System.out.println("  " + ">".repeat(7) + " branch-name");
-                System.out.println("\nEdit these files to resolve conflicts before committing.");
+                System.err.println(MessageConstants.MSG_COMMIT_ERR_CONFLICT_MARKERS_HEADER);
+                filesWithConflicts.forEach(f -> System.err.println("  " + f));
+                System.err.println(MessageConstants.MSG_COMMIT_ERR_CONFLICT_MARKERS_EXAMPLE);
+                System.err.println(MessageConstants.MSG_COMMIT_ERR_CONFLICT_MARKERS_RESOLVE);
                 return 1;
             }
 
@@ -143,29 +166,34 @@ public class CommitCommand implements Command {
             if (finalStatus == null) {
                 finalNothingToCommit = false;
             } else {
+                java.util.Set<String> fAdded = finalStatus.getAdded();
+                java.util.Set<String> fChanged = finalStatus.getChanged();
+                java.util.Set<String> fRemoved = finalStatus.getRemoved();
+                java.util.Set<String> fModified = finalStatus.getModified();
+                java.util.Set<String> fMissing = finalStatus.getMissing();
+                java.util.Set<String> fUntracked = finalStatus.getUntracked();
                 finalNothingToCommit = (
-                    finalStatus.getAdded().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    finalStatus.getChanged().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    finalStatus.getRemoved().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    finalStatus.getModified().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    finalStatus.getMissing().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
-                    finalStatus.getUntracked().stream().filter(f -> !Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0
+                    fAdded.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    fChanged.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    fRemoved.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    fModified.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    fMissing.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0 &&
+                    fUntracked.stream().filter(f -> !com.vgl.cli.utils.Utils.isGitIgnored(repoRoot.resolve(f), repo)).count() == 0
                 );
             }
             if (finalNothingToCommit) {
-                System.out.println("Nothing to commit.");
-                System.out.flush();
+                System.out.println(MessageConstants.MSG_COMMIT_NOTHING_TO_COMMIT);
                 return 1;
             }
 
-            RevCommit rc = git.commit()
+                RevCommit rc = git.commit()
                     .setMessage(msg)
                     .setAmend(amend)
                     .call();
-            // First line: exactly 7-char short SHA
-            String short7 = rc.getId().abbreviate(7).name();
-            System.out.println(short7);
-            return 0;
+                // First line: exactly 7-char short SHA
+                String short7 = rc.getId().abbreviate(7).name();
+                System.out.println(short7);
+                return 0;
         }
     }
 

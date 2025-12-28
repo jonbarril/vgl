@@ -1,3 +1,18 @@
+// --- VGL: decouple build from test, add explicit check task ---
+// Remove 'test' from 'build' dependencies so 'build' does not run tests automatically
+gradle.taskGraph.whenReady {
+    val buildTask = tasks.findByName("build")
+    if (buildTask != null) {
+        buildTask.setDependsOn(buildTask.dependsOn.filter { it != "test" })
+    }
+}
+
+// Ensure the existing 'check' task depends on 'test' (do not register a new one)
+tasks.named("check") {
+    dependsOn("test")
+    group = "verification"
+    description = "Runs all tests."
+}
 val vglVersion = "0.3.12"
 
 plugins {
@@ -37,7 +52,7 @@ tasks.test {
         excludeTags("integration")
     }
     // Do not force includeTestsMatching("*") here; this allows --tests CLI filtering to work
-    include("**/*.class")
+    // Removed include("**/*.class") to allow default test discovery and filtering
 
     // Show test output in real-time
     testLogging {

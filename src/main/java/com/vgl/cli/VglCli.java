@@ -84,99 +84,42 @@ public class VglCli {
      *                 If provided, search stops at this boundary.
      *                 If null, only checks the current working directory.
      */
-    private Path findConfigFile(Path repoRoot) {
-        // Use test override if set, else user.dir property
-        Path current;
-        if (testConfigBaseDir != null) {
-            current = testConfigBaseDir.toAbsolutePath().normalize();
-        } else {
-            current = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
-        }
-
-        // If no repo root provided, only check current directory
-        if (repoRoot == null) {
-            Path configPath = current.resolve(CONFIG_FILE);
-            boolean exists = Files.exists(configPath);
-            return exists ? configPath : null;
-        }
-
-        // Normalize repo root for comparison
-        Path normalizedRoot = repoRoot.toAbsolutePath().normalize();
-
-        // Search from current dir up to repo root for .vgl, but do not cross ceiling if
-        // set
-        String testBaseProp = System.getProperty("vgl.test.base");
-        Path ceiling = testBaseProp != null ? Paths.get(testBaseProp).toAbsolutePath().normalize() : null;
-        while (current != null) {
-            if (ceiling != null && !current.startsWith(ceiling)) {
-                break; // Do not search above ceiling
-            }
-            Path configPath = current.resolve(CONFIG_FILE);
-            boolean exists = Files.exists(configPath);
-            if (exists) {
-                return configPath;
-            }
-            // Stop at repo root
-            if (current.equals(normalizedRoot)) {
-                break;
-            }
-            current = current.getParent();
-        }
-        return null; // Not found
-    }
 
     private void loadConfig() {
-        //
-        // Find git repo root first, then search for .vgl within that boundary
-        Path repoRoot = null;
-        try {
-            Git git = RepoResolver.resolveGitRepoForCommand();
-            if (git != null) {
-                repoRoot = git.getRepository().getWorkTree().toPath();
-                git.close();
+        // Always prefer .vgl in current working directory or repo root
+        Path cwd = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        Path configPath = cwd.resolve(CONFIG_FILE);
+        boolean found = Files.exists(configPath);
+        if (!found) {
+            // Try to find git repo root and look for .vgl there
+            Path repoRoot = null;
+            try {
+                Git git = RepoResolver.resolveGitRepoForCommand();
+                if (git != null) {
+                    repoRoot = git.getRepository().getWorkTree().toPath();
+                    git.close();
+                }
+            } catch (IOException e) {
+                // No repo found - will only check current directory
             }
-        } catch (IOException e) {
-            // No repo found - will only check current directory
+            if (repoRoot != null && !repoRoot.equals(cwd)) {
+                Path repoConfig = repoRoot.resolve(CONFIG_FILE);
+                if (Files.exists(repoConfig)) {
+                    configPath = repoConfig;
+                    found = true;
+                }
+            }
         }
-
-        // Removed unused variable userDir
-        Path configPath = findConfigFile(repoRoot);
-        if (configPath != null && Files.exists(configPath)) {
-            // If tests set `vgl.test.base`, restrict loading to that base (used by hermetic
-            // tests).
-            // For normal end-user runs (no property set) do not restrict loading.
-            String testBaseProp = System.getProperty("vgl.test.base");
-            if (testBaseProp != null && !testBaseProp.isEmpty()) {
-                Path current = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
-                Path parent = configPath.getParent().toAbsolutePath().normalize();
-                boolean allowed = false;
-                try {
-                    Path testBase = Paths.get(testBaseProp).toAbsolutePath().normalize();
-                    if (parent.startsWith(testBase))
-                        allowed = true;
-                } catch (Exception ignore) {
-                }
-                if (!allowed && parent.equals(current))
-                    allowed = true;
-                // Allow loading configs from the system temp dir (JUnit @TempDir uses
-                // java.io.tmpdir)
-                try {
-                    String tmp = System.getProperty("java.io.tmpdir");
-                    if (tmp != null && !tmp.isEmpty()) {
-                        Path tmpDir = Paths.get(tmp).toAbsolutePath().normalize();
-                        if (parent.startsWith(tmpDir))
-                            allowed = true;
-                    }
-                } catch (Exception ignore) {
-                }
-                if (!allowed) {
-                    // Skip loading configs outside the test base or current directory (test-only
-                    // behavior)
-                    // System.err.println("Skipping loading .vgl outside test base or working
-                    // directory: " + configPath);
-                    return;
-                }
-            }
+        // Only print debug if VGL_DEBUG or vgl.debug system property is explicitly set to true (case-insensitive)
+        // String debugFlag = System.getenv("VGL_DEBUG");
+        // String debugSysProp = System.getProperty("vgl.debug");
+        // boolean debug = (debugFlag != null && debugFlag.trim().equalsIgnoreCase("true")) ||
+        //                 (debugSysProp != null && debugSysProp.trim().equalsIgnoreCase("true"));
+        // Variable 'debug' is now only used for commented-out debug print; remove warning by using or removing if not needed.
+        // if (debug) {
+        //     System.err.println("[DEBUG] VglCli.loadConfig: looking for .vgl at " + configPath + ", found=" + found);
+        // }
+        if (found) {
             // Check if .git exists alongside .vgl
             Path vglDir = configPath.getParent();
             if (!Files.exists(vglDir.resolve(".git"))) {
@@ -201,17 +144,16 @@ public class VglCli {
                 System.err.flush();
                 return;
             }
-
             // Valid .vgl with .git - load it
             try (InputStream in = Files.newInputStream(configPath)) {
                 config.load(in);
             } catch (IOException e) {
-                // System.err.println("Failed to load configuration file at " + configPath + ":
-                // " + e.getMessage());
+                // System.err.println("Failed to load configuration file at " + configPath + ": " + e.getMessage());
             }
         } else {
-            //// System.out.println("Info: No configuration file found. Defaults will
-            /// be used.");
+            // Fallback: try to load from global state if present
+            // (for legacy or non-repo commands)
+            // No config loaded if not found
         }
     }
 
@@ -237,6 +179,9 @@ public class VglCli {
         if (gitRoot != null) {
             // Save .vgl alongside .git
             Path savePath = gitRoot.resolve(CONFIG_FILE);
+            if ("true".equalsIgnoreCase(System.getenv("VGL_DEBUG"))) {
+                System.err.println("[DEBUG] VglCli.saveConfig: writing .vgl to " + savePath);
+            }
 
             // Only restrict writing .vgl into user home itself during tests
             String testBase = System.getProperty("vgl.test.base");
@@ -311,16 +256,26 @@ public class VglCli {
             throw new IllegalStateException("local.dir resolved to empty string");
         }
         Path dirPath = Paths.get(dir).toAbsolutePath().normalize();
-        // Only restrict user home usage during tests (vgl.test.base or junit.temp.root set)
+        // Only restrict user home usage during tests (vgl.test.base or junit.temp.root set),
+        // but allow if dirPath is under the test root (even if test root is under user home)
         String testBase = System.getProperty("vgl.test.base");
         String junitTemp = System.getProperty("junit.temp.root");
-        if ((testBase != null && !testBase.isEmpty()) || (junitTemp != null && !junitTemp.isEmpty())) {
-            String userHomeStr = System.getProperty("user.home");
-            if (userHomeStr != null && !userHomeStr.trim().isEmpty()) {
-                Path userHome = Paths.get(userHomeStr).toAbsolutePath().normalize();
-                if (dirPath.equals(userHome) || dirPath.startsWith(userHome)) {
-                    throw new IllegalStateException("local.dir should never resolve to user home during tests");
-                }
+        Path testRoot = null;
+        if (testBase != null && !testBase.isEmpty()) {
+            testRoot = Paths.get(testBase).toAbsolutePath().normalize();
+        } else if (junitTemp != null && !junitTemp.isEmpty()) {
+            testRoot = Paths.get(junitTemp).toAbsolutePath().normalize();
+        }
+        String userHomeStr = System.getProperty("user.home");
+        if (testRoot != null && userHomeStr != null && !userHomeStr.trim().isEmpty()) {
+            Path userHome = Paths.get(userHomeStr).toAbsolutePath().normalize();
+            // If dirPath is under testRoot, allow it (even if testRoot is under user home)
+            if (dirPath.startsWith(testRoot)) {
+                return dir;
+            }
+            // Otherwise, block if dirPath is user home or a subdir
+            if (dirPath.equals(userHome) || dirPath.startsWith(userHome)) {
+                throw new IllegalStateException("local.dir should never resolve to user home during tests");
             }
         }
         return dir;

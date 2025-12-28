@@ -17,6 +17,7 @@ public class StatusRemoteSection {
      * @param maxLen The max path length for truncation
      */
     public static void printRemoteSection(Git git, String remoteUrl, String remoteBranch, boolean hasRemote, boolean verbose, boolean veryVerbose, String labelPad, String separator, int maxLen) {
+            // Debug output removed
         java.util.function.BiFunction<String, Integer, String> truncatePath = (path, maxL) -> {
             if (verbose || veryVerbose || path == null || path.length() <= maxL) return path;
             int leftLen = (maxL - 3) / 2;
@@ -25,21 +26,21 @@ public class StatusRemoteSection {
         };
         String displayRemoteUrl = (remoteUrl != null && !remoteUrl.isBlank()) ? truncatePath.apply(remoteUrl, maxLen) : "(none)";
         if (remoteUrl != null && !remoteUrl.isBlank()) {
-            if (veryVerbose || verbose) {
+            if (veryVerbose) {
                 System.out.println(labelPad + remoteUrl + separator + (remoteBranch != null ? remoteBranch : "(none)"));
-                // Branches subsection for REMOTE
+                // Branches subsection for REMOTE (only for -vv)
                 try {
                     if (git != null && hasRemote) {
                         List<org.eclipse.jgit.lib.Ref> remoteBranches = git.branchList().setListMode(org.eclipse.jgit.api.ListBranchCommand.ListMode.REMOTE).call();
-                        System.out.println("-- Remote Branches:"); // No indentation for subsection header
+                        System.out.println("-- Remote Branches:");
                         String currentRemoteBranch = remoteBranch != null ? remoteBranch : "main";
                         for (org.eclipse.jgit.lib.Ref branch : remoteBranches) {
                             String name = branch.getName();
                             String shortName = name.replaceFirst("refs/remotes/origin/", "");
                             if (shortName.equals(currentRemoteBranch)) {
-                                System.out.println("  * " + shortName + " (current)"); // Indented content
+                                System.out.println("  * " + shortName + " (current)");
                             } else {
-                                System.out.println("    " + shortName); // Indented content
+                                System.out.println("    " + shortName);
                             }
                         }
                     }

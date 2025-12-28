@@ -13,12 +13,14 @@ public class DeleteCommandTest {
     @Test
     void deleteBranchRemovesBranch(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("file.txt", "content");
-            repo.runCommand("track", "file.txt");
-            repo.runCommand("commit", "Initial commit");
-            repo.runCommand("split", "-into", "-lb", "feature");
-            String output = repo.runCommand("delete", "-lb", "feature");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "Initial commit");
+            VglTestHarness.runVglCommand(repo.getPath(), "split", "-into", "-lb", "feature");
+            // Switch to 'main' before deleting 'feature'
+            VglTestHarness.runVglCommand(repo.getPath(), "switch", "-lb", "main");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "delete", "-lb", "feature", "-f");
             assertThat(output).contains("Deleted branch 'feature'");
             assertThat(repo.getBranches()).doesNotContain("feature");
         }
@@ -27,8 +29,8 @@ public class DeleteCommandTest {
     @Test
     void deleteErrorsOnMissingBranch(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
-            String output = repo.runCommand("delete", "-lb", "nonexistent");
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "delete", "-lb", "nonexistent");
             assertThat(output).contains("does not exist");
         }
     }
@@ -36,13 +38,75 @@ public class DeleteCommandTest {
     @Test
     void deleteWithRemoteFlag(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("file.txt", "content");
-            repo.runCommand("track", "file.txt");
-            repo.runCommand("commit", "Initial commit");
-            repo.runCommand("split", "-into", "-bb", "feature");
-            String output = repo.runCommand("delete", "-lb", "feature", "-remote");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "Initial commit");
+            VglTestHarness.runVglCommand(repo.getPath(), "split", "-into", "-bb", "feature");
+            // Setup remote for remote branch deletion
+            Path remotePath = tmp.resolve("remote-repo");
+            VglTestHarness.setupRemoteRepo(repo, remotePath, "feature");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "delete", "-rb", "feature", "-f");
             assertThat(output).contains("Deleted branch 'feature'");
+        }
+    }
+
+    @Test
+    void deleteOnlyLocalBranchExists(@TempDir Path tmp) throws Exception {
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            repo.writeFile("file.txt", "content");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "Initial commit");
+            VglTestHarness.runVglCommand(repo.getPath(), "split", "-into", "-lb", "feature");
+            VglTestHarness.runVglCommand(repo.getPath(), "switch", "-lb", "main");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "delete", "-lb", "feature", "-f");
+            assertThat(output).contains("Deleted branch 'feature'");
+            assertThat(repo.getBranches()).doesNotContain("feature");
+        }
+    }
+
+    @Test
+    void deleteOnlyRemoteBranchExists(@TempDir Path tmp) throws Exception {
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            repo.writeFile("file.txt", "content");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "Initial commit");
+            VglTestHarness.runVglCommand(repo.getPath(), "split", "-into", "-bb", "feature");
+            VglTestHarness.runVglCommand(repo.getPath(), "delete", "-lb", "feature", "-f"); // delete local
+            // Setup remote for remote branch deletion
+            Path remotePath = tmp.resolve("remote-repo");
+            VglTestHarness.setupRemoteRepo(repo, remotePath, "feature");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "delete", "-rb", "feature", "-f");
+            assertThat(output).contains("Deleted branch 'feature'");
+        }
+    }
+
+    @Test
+    void deleteNeitherBranchExists(@TempDir Path tmp) throws Exception {
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "delete", "-lb", "ghost", "-rb", "ghost", "-f");
+            assertThat(output).contains("does not exist");
+        }
+    }
+
+    @Test
+    void deleteBothBranchesExist(@TempDir Path tmp) throws Exception {
+        try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            repo.writeFile("file.txt", "content");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "Initial commit");
+            VglTestHarness.runVglCommand(repo.getPath(), "split", "-into", "-bb", "feature");
+            VglTestHarness.runVglCommand(repo.getPath(), "switch", "-lb", "main");
+            // Setup remote for remote branch deletion
+            Path remotePath = tmp.resolve("remote-repo");
+            VglTestHarness.setupRemoteRepo(repo, remotePath, "feature");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "delete", "-bb", "feature", "-f");
+            assertThat(output).contains("Deleted branch 'feature'");
+            assertThat(repo.getBranches()).doesNotContain("feature");
         }
     }
 }

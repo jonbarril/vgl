@@ -9,14 +9,15 @@ import static org.assertj.core.api.Assertions.*;
 import java.nio.file.Path;
 
 public class UntrackCommandTest {
+
     @Test
     void untrackRemovesFileFromIndex(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
             repo.writeFile("file.txt", "content");
-            repo.runCommand("track", "file.txt");
-            repo.runCommand("commit", "Initial commit");
-            String output = repo.runCommand("untrack", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "track", "file.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "commit", "Initial commit");
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "untrack", "file.txt");
             assertThat(output).contains("Untracked: file.txt");
             // File should not be staged
             try (var git = repo.getGit()) {
@@ -29,8 +30,8 @@ public class UntrackCommandTest {
     @Test
     void untrackNonexistentFileShowsError(@TempDir Path tmp) throws Exception {
         try (VglTestHarness.VglTestRepo repo = VglTestHarness.createRepo(tmp)) {
-            repo.runCommand("create", "-lr", tmp.toString());
-            String output = repo.runCommand("untrack", "nofile.txt");
+            VglTestHarness.runVglCommand(repo.getPath(), "create", "-lr", tmp.toString());
+            String output = VglTestHarness.runVglCommand(repo.getPath(), "untrack", "nofile.txt");
             assertThat(output).contains("not tracked");
         }
     }

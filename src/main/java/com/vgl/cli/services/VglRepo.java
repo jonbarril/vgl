@@ -1,5 +1,4 @@
-
-package com.vgl.cli.services;
+    package com.vgl.cli.services;
 import com.vgl.cli.utils.Utils;
 
 import java.util.List;
@@ -21,6 +20,33 @@ import java.util.Set;
  */
 public class VglRepo implements Closeable {
     // Logger removed
+    private static final String TRACKED_KEY = "tracked.files";
+
+    /**
+     * Get the list of tracked files from the .vgl config.
+     */
+    public List<String> getTrackedFiles() {
+        String val = config.getProperty(TRACKED_KEY, "");
+        if (val.isEmpty()) return new java.util.ArrayList<>();
+        String[] parts = val.split(",");
+        List<String> files = new java.util.ArrayList<>();
+        for (String p : parts) {
+            String trimmed = p.trim();
+            if (!trimmed.isEmpty()) files.add(trimmed);
+        }
+        return files;
+    }
+
+    /**
+     * Set the list of tracked files in the .vgl config.
+     */
+    public void setTrackedFiles(List<String> files) {
+        if (files == null || files.isEmpty()) {
+            config.remove(TRACKED_KEY);
+        } else {
+            config.setProperty(TRACKED_KEY, String.join(",", files));
+        }
+    }
             /**
              * Update the undecided file list in .vgl by scanning for untracked, non-ignored files.
              * This should be called before status, commit, or any command that needs to prompt about undecided files.

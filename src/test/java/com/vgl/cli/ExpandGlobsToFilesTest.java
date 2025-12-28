@@ -1,4 +1,6 @@
+
 package com.vgl.cli;
+import com.vgl.cli.utils.RepoUtils;
 
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
@@ -10,7 +12,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.vgl.cli.utils.Utils;
 public class ExpandGlobsToFilesTest {
     @Test
     void expandsDirectoriesButSkipsNestedRepos(@TempDir Path tmp) throws Exception {
@@ -26,7 +27,7 @@ public class ExpandGlobsToFilesTest {
         Git.init().setDirectory(nested.toFile()).call();
 
         var repo = Git.open(tmp.toFile()).getRepository();
-        List<String> result = Utils.expandGlobsToFiles(List.of("dirA"), tmp, repo);
+        List<String> result = RepoUtils.expandGlobsToFiles(List.of("dirA"), tmp, repo);
         // Should include a.txt and sub/b.txt but not files inside dirA/nested
         assertThat(result).contains("dirA/a.txt", "dirA/sub/b.txt");
         assertThat(result).doesNotContain("dirA/nested");

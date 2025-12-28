@@ -1,4 +1,6 @@
+
 package com.vgl.cli;
+import com.vgl.cli.utils.RepoUtils;
 
 import org.eclipse.jgit.api.Git;
 import org.junit.jupiter.api.Test;
@@ -12,7 +14,6 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vgl.cli.services.VglRepo;
-import com.vgl.cli.utils.Utils;
 public class StatusSectionsMutualExclusionTest {
 
     @Test
@@ -49,7 +50,7 @@ public class StatusSectionsMutualExclusionTest {
 
             // Capture status and write undecided (.vgl) via VglRepo
             org.eclipse.jgit.api.Status status = git.status().call();
-            VglRepo vglRepo = Utils.findVglRepo(repoDir);
+            VglRepo vglRepo = RepoUtils.findVglRepo(repoDir);
             if (vglRepo != null) {
                 vglRepo.updateUndecidedFilesFromWorkingTree(git, status);
             }

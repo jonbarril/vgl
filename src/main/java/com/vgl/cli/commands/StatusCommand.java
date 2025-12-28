@@ -5,10 +5,9 @@ import com.vgl.cli.commands.helpers.StatusRemoteSection;
 import com.vgl.cli.commands.helpers.StatusCommitsSection;
 import com.vgl.cli.commands.helpers.StatusFilesSection;
 import com.vgl.cli.services.RepoResolution;
-
 import org.eclipse.jgit.api.Git;
-
 import java.util.List;
+
 public class StatusCommand implements Command {
     @Override
     public String name() {
@@ -17,35 +16,139 @@ public class StatusCommand implements Command {
 
     @Override
     public int run(List<String> args) throws Exception {
-        System.out.println("[DEBUG] StatusCommand.run called. CWD=" + java.nio.file.Paths.get("").toAbsolutePath() + ", args=" + args);
-        System.out.flush();
+        boolean showLocal = args.contains("-local");
+        boolean showRemote = args.contains("-remote");
+        boolean showCommits = args.contains("-commits");
+        boolean showFiles = args.contains("-files");
+        boolean anySectionFlag = showLocal || showRemote || showCommits || showFiles;
+        if (anySectionFlag) {
+            return runSectionFlagBlock(args, showLocal, showRemote, showCommits, showFiles);
+        } else {
+            return runDefaultBlock(args);
+        }
+    }
 
-        // Use helper to ensure .vgl config exists if only Git is present
+    private int runSectionFlagBlock(List<String> args, boolean showLocal, boolean showRemote, boolean showCommits, boolean showFiles) throws Exception {
+        Git git = null;
         java.nio.file.Path cwd = java.nio.file.Paths.get("").toAbsolutePath();
-        boolean interactive = !args.contains("-y"); // Example: -y disables prompts
+        boolean interactive = !args.contains("-y");
         RepoResolution resolution = com.vgl.cli.commands.helpers.VglRepoInitHelper.ensureVglConfig(cwd, interactive);
         if (resolution == null || resolution.getKind() != RepoResolution.ResolutionKind.FOUND_BOTH) {
-            String warn = (resolution != null && resolution.getMessage() != null) ? resolution.getMessage() : "WARNING: No VGL repository found in this directory or any parent.\nHint: Run 'vgl create' to initialize a new repo here.";
+            String warn = (resolution != null && resolution.getMessage() != null) ? resolution.getMessage() : com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_RESOLVED;
             System.err.println(warn);
             return 1;
         }
-
-
-        // Print LOCAL and REMOTE sections in aligned, truncated, or verbose format
-        Git git = resolution.getGit();
+        git = resolution.getGit();
+        if (git != null) {
+            git.add().addFilepattern(".").call();
+        }
         String localDir = resolution.getVglRepo().getRepoRoot().toString();
-        String localBranch = null;
-        String remoteUrl = null;
-        String remoteBranch = null;
         java.util.Properties cfg = resolution.getVglRepo().getConfig();
-        localBranch = cfg.getProperty("local.branch", "main");
-        remoteUrl = cfg.getProperty("remote.url", "");
-        remoteBranch = cfg.getProperty("remote.branch", "main");
-
+        String localBranch = cfg.getProperty("local.branch", "main");
+        String remoteUrl = cfg.getProperty("remote.url", "");
+        String remoteBranch = cfg.getProperty("remote.branch", "main");
         boolean verbose = args.contains("-v");
         boolean veryVerbose = args.contains("-vv");
+        // int maxPathLen = 35; // Removed unused variable
+        String separator = " :: ";
+        int maxLen = Math.max(localDir.length(), (remoteUrl != null && !remoteUrl.isBlank()) ? remoteUrl.length() : 0);
+        boolean hasRemote = remoteUrl != null && !remoteUrl.isEmpty();
+        String localLabel = "LOCAL:";
+        String remoteLabel = "REMOTE:";
+        String commitsLabel = "COMMITS:";
+        String filesLabel = "FILES:";
+        int labelWidth = Math.max(Math.max(localLabel.length(), remoteLabel.length()), Math.max(commitsLabel.length(), filesLabel.length()));
+        String localLabelPad = com.vgl.cli.utils.FormatUtils.padRight(localLabel, labelWidth + 1);
+        String remoteLabelPad = com.vgl.cli.utils.FormatUtils.padRight(remoteLabel, labelWidth + 1);
+        String commitsLabelPad = com.vgl.cli.utils.FormatUtils.padRight(commitsLabel, labelWidth + 1);
+        String filesLabelPad = com.vgl.cli.utils.FormatUtils.padRight(filesLabel, labelWidth + 1);
 
-        // Helper for truncation
+        // Only print the sections requested by flags
+        if (showLocal) {
+            StatusLocalSection.printLocalSection(
+                git,
+                localDir,
+                localBranch,
+                verbose,
+                veryVerbose,
+                localLabelPad,
+                separator,
+                maxLen
+            );
+        }
+        if (showRemote) {
+            StatusRemoteSection.printRemoteSection(
+                git,
+                remoteUrl,
+                remoteBranch,
+                hasRemote,
+                verbose,
+                veryVerbose,
+                remoteLabelPad,
+                separator,
+                maxLen
+            );
+        }
+        if (showCommits) {
+            java.util.Map<String, String> filesToCommit = new java.util.LinkedHashMap<>();
+            java.util.Map<String, String> filesToPush = new java.util.LinkedHashMap<>();
+            java.util.Map<String, String> filesToPull = new java.util.LinkedHashMap<>();
+            StatusCommitsSection.printCommitsSection(
+                git,
+                commitsLabelPad,
+                remoteUrl,
+                remoteBranch,
+                localBranch,
+                verbose,
+                veryVerbose,
+                filesToCommit,
+                filesToPush,
+                filesToPull
+            );
+        }
+        if (showFiles) {
+            java.util.Map<String, String> filesToCommit = new java.util.LinkedHashMap<>();
+            java.util.Set<String> tracked = new java.util.LinkedHashSet<>();
+            java.util.Set<String> untracked = new java.util.LinkedHashSet<>();
+            java.util.Set<String> undecided = new java.util.LinkedHashSet<>();
+            java.util.Set<String> ignored = new java.util.LinkedHashSet<>();
+            StatusFilesSection.printFilesSection(
+                git,
+                filesLabelPad,
+                filesToCommit,
+                undecided,
+                tracked,
+                untracked,
+                ignored,
+                verbose,
+                veryVerbose,
+                maxLen
+            );
+        }
+        return 0;
+    }
+
+    private int runDefaultBlock(List<String> args) throws Exception {
+        Git git = null;
+        java.nio.file.Path cwd = java.nio.file.Paths.get("").toAbsolutePath();
+        boolean interactive = !args.contains("-y");
+        RepoResolution resolution = com.vgl.cli.commands.helpers.VglRepoInitHelper.ensureVglConfig(cwd, interactive);
+        if (resolution == null || resolution.getKind() != RepoResolution.ResolutionKind.FOUND_BOTH) {
+            String warn = (resolution != null && resolution.getMessage() != null) ? resolution.getMessage() : com.vgl.cli.utils.MessageConstants.MSG_NO_REPO_RESOLVED;
+            System.err.println(warn);
+            return 1;
+        }
+        git = resolution.getGit();
+        if (git != null) {
+            git.add().addFilepattern(".").call();
+        }
+        String localDir = resolution.getVglRepo().getRepoRoot().toString();
+        java.util.Properties cfg = resolution.getVglRepo().getConfig();
+        String localBranch = cfg.getProperty("local.branch", "main");
+        String remoteUrl = cfg.getProperty("remote.url", "");
+        String remoteBranch = cfg.getProperty("remote.branch", "main");
+        boolean verbose = args.contains("-v");
+        boolean veryVerbose = args.contains("-vv");
         java.util.function.BiFunction<String, Integer, String> truncatePath = (path, maxLen) -> {
             if (verbose || veryVerbose || path.length() <= maxLen) return path;
             int leftLen = (maxLen - 3) / 2;
@@ -57,22 +160,16 @@ public class StatusCommand implements Command {
         String displayLocalDir = truncatePath.apply(localDir, maxPathLen);
         String displayRemoteUrl = (remoteUrl != null && !remoteUrl.isBlank()) ? truncatePath.apply(remoteUrl, maxPathLen) : "(none)";
         int maxLen = Math.max(displayLocalDir.length(), displayRemoteUrl.length());
-
-        // Declare hasRemote before REMOTE section, initialize to false
         boolean hasRemote = remoteUrl != null && !remoteUrl.isEmpty();
-
-        // Section labels and padding
         String localLabel = "LOCAL:";
         String remoteLabel = "REMOTE:";
         String commitsLabel = "COMMITS:";
         String filesLabel = "FILES:";
         int labelWidth = Math.max(Math.max(localLabel.length(), remoteLabel.length()), Math.max(commitsLabel.length(), filesLabel.length()));
-        String localLabelPad = com.vgl.cli.utils.FormatUtils.padRight(localLabel, labelWidth + 1); // +1 for space
+        String localLabelPad = com.vgl.cli.utils.FormatUtils.padRight(localLabel, labelWidth + 1);
         String remoteLabelPad = com.vgl.cli.utils.FormatUtils.padRight(remoteLabel, labelWidth + 1);
         String commitsLabelPad = com.vgl.cli.utils.FormatUtils.padRight(commitsLabel, labelWidth + 1);
         String filesLabelPad = com.vgl.cli.utils.FormatUtils.padRight(filesLabel, labelWidth + 1);
-
-        // LOCAL section (refactored)
         StatusLocalSection.printLocalSection(
             git,
             localDir,
@@ -83,8 +180,6 @@ public class StatusCommand implements Command {
             separator,
             maxLen
         );
-
-        // REMOTE section (refactored)
         StatusRemoteSection.printRemoteSection(
             git,
             remoteUrl,
@@ -96,27 +191,9 @@ public class StatusCommand implements Command {
             separator,
             maxLen
         );
-
-        // (verbosity flags already declared above)
-
-        // COMMITS section (refactored)
         java.util.Map<String, String> filesToCommit = new java.util.LinkedHashMap<>();
         java.util.Map<String, String> filesToPush = new java.util.LinkedHashMap<>();
         java.util.Map<String, String> filesToPull = new java.util.LinkedHashMap<>();
-        StatusCommitsSection.printCommitsSection(
-            git,
-            commitsLabelPad,
-            remoteUrl,
-            remoteBranch,
-            localBranch,
-            verbose,
-            veryVerbose,
-            filesToCommit,
-            filesToPush,
-            filesToPull
-        );
-
-        // --- Detect working renames via JGit diff between HEAD and working tree ---
         try {
             org.eclipse.jgit.lib.ObjectId head = git.getRepository().resolve("HEAD");
             if (head != null) {
@@ -135,7 +212,6 @@ public class StatusCommand implements Command {
                             filesToCommit.remove(d.getOldPath());
                             filesToCommit.remove(d.getNewPath());
                             filesToCommit.put(d.getNewPath(), "R");
-                            System.out.println("[DEBUG] Detected working rename: " + d.getOldPath() + " -> " + d.getNewPath());
                         }
                     }
                 }
@@ -143,14 +219,8 @@ public class StatusCommand implements Command {
                 rw.close();
             }
         } catch (Exception e) {
-            System.out.println("[DEBUG] Exception during working rename diff: " + e);
+            // Ignore debug output in production
         }
-
-        // Debug: print filesToCommit before working rename heuristic
-        System.out.println("[DEBUG] filesToCommit before working rename heuristic: " + filesToCommit);
-        System.out.flush();
-        // --- Integrate robust working rename detection (from StatusSyncFiles) ---
-        // Remove any old/new paths for detected working renames and add as 'R'
         java.util.Map<String, String> workingRenames = com.vgl.cli.commands.helpers.StatusSyncFiles.computeWorkingRenames(git);
         for (java.util.Map.Entry<String, String> r : workingRenames.entrySet()) {
             String oldPath = r.getKey();
@@ -159,20 +229,12 @@ public class StatusCommand implements Command {
             filesToCommit.remove(newPath);
             filesToCommit.put(newPath, "R");
         }
-        // Heuristic: for every A+D pair, treat as rename (if not already handled)
-        java.util.List<String> debugAdded = new java.util.ArrayList<>();
-        java.util.List<String> debugRemovedOrMissing = new java.util.ArrayList<>();
         java.util.List<String> added = new java.util.ArrayList<>();
         java.util.List<String> removedOrMissing = new java.util.ArrayList<>();
         for (var e : filesToCommit.entrySet()) {
             if ("A".equals(e.getValue())) added.add(e.getKey());
             if ("D".equals(e.getValue()) || "Missing".equals(e.getValue())) removedOrMissing.add(e.getKey());
-            if ("A".equals(e.getValue())) debugAdded.add(e.getKey());
-            if ("D".equals(e.getValue()) || "Missing".equals(e.getValue())) debugRemovedOrMissing.add(e.getKey());
         }
-        System.out.println("[DEBUG] Added list for rename heuristic: " + debugAdded);
-        System.out.println("[DEBUG] RemovedOrMissing list for rename heuristic: " + debugRemovedOrMissing);
-        System.out.flush();
         int pairs = Math.min(added.size(), removedOrMissing.size());
         for (int i = 0; i < pairs; i++) {
             String addPath = added.get(i);
@@ -181,15 +243,24 @@ public class StatusCommand implements Command {
             filesToCommit.remove(addPath);
             filesToCommit.put(addPath, "R");
         }
-        System.out.println("[DEBUG] filesToCommit after working rename heuristic: " + filesToCommit);
-        System.out.flush();
-        // --- End working rename integration ---
-
-        // FILES section (refactored)
-        java.util.Set<String> tracked = new java.util.LinkedHashSet<>();
+        StatusCommitsSection.printCommitsSection(
+            git,
+            commitsLabelPad,
+            remoteUrl,
+            remoteBranch,
+            localBranch,
+            verbose,
+            veryVerbose,
+            filesToCommit,
+            filesToPush,
+            filesToPull
+        );
+        // Pre-populate tracked set from .vgl config
+        java.util.Set<String> tracked = new java.util.LinkedHashSet<>(resolution.getVglRepo().getTrackedFiles());
         java.util.Set<String> untracked = new java.util.LinkedHashSet<>();
         java.util.Set<String> undecided = new java.util.LinkedHashSet<>();
         java.util.Set<String> ignored = new java.util.LinkedHashSet<>();
+        // StatusFilesSection will fill undecided, untracked, ignored using JGit status and helpers
         StatusFilesSection.printFilesSection(
             git,
             filesLabelPad,
@@ -204,6 +275,4 @@ public class StatusCommand implements Command {
         );
         return 0;
     }
-
 }
-

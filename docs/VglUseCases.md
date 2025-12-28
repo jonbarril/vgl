@@ -10,11 +10,11 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 
 
 **VGL State and Arguments:**
-- **Vgl Concepts:** VGL concepts are loosely based on Gitless. Unlike Git, in Vgl there is no concept of staging. File changes in the working space are immediately eligible for commit to the local repo. As such Vgl files exist in three conceptual locations: workspace, local repo, remote repo, with remote repo being optional.
+- **Vgl Concepts:** VGL concepts are loosely based on Gitless. Unlike Git, in Vgl there is no concept of staging. File changes in the working space are immediately eligible for commit to the local repo. As such Vgl files exist in three conceptual locations: workspace, local repo, and remote repo, with remote repo being optional. Users are allowed to operate using Git directly if desired, moving between Vgl and Git as needed. Thus Vgl must tolerate underlying changes to Git state. However, as with Gitless, the intent of Vgl is to divorce the user from the complexities and pitfalls of Git concepts and operation.
 - **VGL state:** VGL application state is maintained in the current repo’s `.vgl` file. The current VGL repo is always the one resolved from the user’s current working directory (unless a command arg specifies one). 
 - **Repo context:** Specifies the working local and remote repo state. Consists of the local repo path and branch name, and the remote repo URL and branch name. By definition, the local repo is that resolved from the user’s current working directory.
 - **Default args:** The default branch (i.e. no branch name specified) for local and remote repo creation is "main". Otherwise, commands that reference a local and/or remote repo/branch default to the current repo context in the VGL state.
-- **File args:** Glob expansion and file listings must be bounded to the repository (do not walk the entire filesystem); use JGit working-tree iterators / index-aware listing.
+- **File args:** Glob expansion and file listings must be bounded to the repository (do not walk the entire filesystem).
 - **Nested repos:** Files inside nested repositories (directories that contain their own `.git`) are treated as Ignored for parent-level commands (e.g., status, glob expansion).
 - **.vgl treatment:** By default, `.vgl` is included in `.gitignore` when a VGL repo is created. As such, it should be treated as Ignored.
 - **Internal state:** The `.vgl` file may also store internal state such as undecided files, but this is not typically surfaced to the user.
@@ -30,19 +30,29 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - **Test Ceiling:** In test or CI, discovery honors `-Dvgl.test.base` to avoid searching above a configured test base directory. This is for safety. Otherwise commands will not be restricted during normal use.
 
 **Repository creation**
-- Creation occurs relative to a target directory, which can be the current working directory. It starts with Repo Resolution relative to the target directory.
-- If after resolution the target directory is nested under a git of vgl repo the user is warned and offered the option to continue creation.
+- Creation occurs relative to a target directory, which can be the current working directory. It starts with repo resolution relative to the target directory.
+- If after resolution the target directory is nested under a git or vgl repo the user is warned and offered the option to continue creation.
 - If a VGL repo does not exist, one will be created in the target directory, consisting of a git repository (.git and .gitignore) and a .vgl file to maintain VGL specific state.
 - If a VGL repo already exists in the target directory the user is warned and creation exits.
+- Upon repo creation .gitignore shall include specs for typically ignored files and directories in a repo (build products, etc.).
+- Repo admin files (.git, .vgl) are always ignored and cannot be tracked, which is consistent with Gitless and Git.
 
 **Status command:**
-  - **Overview:** Provides the overall status of workspace, and local and remote repo files. More detail is progressively revealed with the use of verbose flags (-v, -vv). Output also can be filtered using section name flags (e.g. -local).
+  - **Overview:** Provides the overall status of workspace, and local and remote repo files. More detail is progressively revealed with the use of verbose flags (-v, -vv). Output also can be filtered using section name flags (e.g. -local). Files in a VGL repo are classified as follows:
+    - The repo workspace consist of all files in the repo directory subtree.
+    - Only 'tracked' files can be committed to the local repo.
+    - All files in the workspace of a new repo, or added to an existing one, default to 'undecided' unless...
+    - Files are 'ignored' by default if they resolve from the glob specs in the repo .gitignore file.
+    - Nested repos and their files are also ignored by default.
+    - Files can be 'tracked' or 'untracked' by the user with the corresponding commands.
+    - Tracking overrides a file's ignored status (but its status reverts to ignored if it is untracked).
+    - Once an undecided file is tracked, untracked or ignored it is no longer undecided (there is no way to make a decided file undecided again).
   - **Default:** Default behavior is when neither -v or -vv flags are present. This prints the minimal status consisting of sections LOCAL/REMOTE/COMMITS/FILES. Each section includes a one or two line summary of the corresponding aspect of repo status. As needed paths and branch names will be shortened using elipses so that the format remains consistent and column aligned.
   - LOCAL shows the current valid VGL repo and branch (or '(none)' for each).
   - REMOTE shows the current remote repo and branch (or '(none)' or none for each).
-  - COMMITS shows summary counts for files to Commit, Push and Merge.
+  - COMMITS shows summary counts for files to Commit, Push and Pull.
   - FILES shows summary file counts for: Added, Modified, Renamed (includes moved), Deleted. And summary counts for: Undecided, Tracked, Untracked, Ignored.
-  - **Verbose:** This is when -v is present but -vv is not. Same as Default mode but paths and file names are indicated in full regardless of column formatting. COMMITS adds a subsection listing commit ids and truncated message to maintain a single line format. FILES adds subsections with 'Files to Commit', 'Files to Push', 'Files to Merge' and 'Undecided Files'. The the number of files in these sections shall match their respective summary count.
+  - **Verbose:** This is when -v is present but -vv is not. Same as Default mode but paths and file names are indicated in full regardless of column formatting. COMMITS adds a subsection listing commit ids and truncated message to maintain a single line format. FILES adds subsections with 'Files to Commit', 'Files to Push', 'Files to Pull' and 'Undecided Files'. The the number of files in these sections shall match their respective summary count.
   - **Very Verbose:** This is when -vv is present. Same as Verbose mode but LOCAL and REMOTE include branch list subsections, with the current branch (as indicated in the summary line) starred. COMMIT commit list messages are not truncated. FILES file names are not truncated and subsections for 'Tracked Files', 'Untracked Files' and 'Ignored Files' are added. The total number of files in these sections shall each match their summary count.
   - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -local, -remote, -commits, -files.
   - **General:**
