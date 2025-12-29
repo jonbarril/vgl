@@ -1,0 +1,75 @@
+Voodoo Gitless (TEST_VERSION) -- Git for mortals
+
+Note: See Flags (help -v/-vv) for flag combinations and defaults.
+
+Commands:
+  create [-f]                        Create repo/branch, then switch
+    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
+    -bb [BRANCH]                       (same name for local+remote)
+    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
+  delete [-f]                        Delete repo/branch
+    -lr [DIR]  -lb [BRANCH]            (local repo/branch)
+    -bb [BRANCH]                       (same name for local+remote)
+    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
+  switch [-f]                        Switch to repo/branch
+    -lb [BRANCH]                       (local repo/branch)
+    -bb [BRANCH]                       (same name for local+remote)
+    -rr [URL]  -rb [BRANCH]            (remote repo/branch)
+  split -from|-into                  Clone and switch to new branch
+    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
+    -bb [BRANCH]                       (same name for local+remote)
+    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
+  merge -into|-from                  Merge branches, then switch
+    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
+    -bb [BRANCH]                       (same name for local+remote)
+    -rr [URL]  -rb [BRANCH]            (remote repo/branch)
+  checkout [-f]                      Clone remote, then switch
+    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
+    -bb [BRANCH]                       (same name for local+remote)
+    -rr [URL]  -rb [BRANCH]            (remote repo/branch)
+  checkin -draft|-final              Push and create pull request
+
+  track GLOB...                      Add files to version control
+    -all                               Track all undecided file
+  untrack GLOB...                    Remove files from version control
+  commit "MESSAGE"                 Commit workspace changes
+    -new|-add "MESSAGE"              Ammend last commit message
+  restore [-f] [GLOB|*]              Replace working files with:
+    -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
+    -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit
+  pull [-f] [-noop]                  Merge remote changes into local branch
+  push [-noop]                       Replace remote branch from local changes
+  sync [-noop]                       Pull then push
+  abort                              Cancel ongoing merge or pull
+
+  status [-v|-vv] [COMMIT|GLOB|*]    Show workspace/repo/file status
+    [-local][-remote][-commits][-files] Show only some sections
+  diff [GLOB|*]                      Compare files between any two:
+    -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
+    -bb BRANCH                         (same name for local+remote)
+    -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit
+  log [-v|-vv] [-graph]              Show commit history
+  help [-v|-vv]                      Show this help
+
+Flags:
+  Note: In general, if no repo/branch  (-lr, -lb, -rr, -rb) is specified then
+        the corresponding switch state is used. If a switch state has not been set yet
+        DIR defaults to the local repo resolved from the CWD, local and remote BRANCH
+        default to 'main', and URL has no default. Branch flags can accept no name,
+        a BRANCH name and/or a COMMIT id in the branch.
+
+  CWD           Current workspace directory
+  -lr DIR       Local repository directory
+  -lb BRANCH    Local branch (default: 'main')
+  -rr URL       Remote repository URL
+  -rb BRANCH    Remote branch (default: 'main')
+  -bb BRANCH    Both local and remote branch (default: 'main')
+  -f            Bypass confirmation prompts
+  -noop         Dry run (no changes)
+  -v, -vv       Verbose output (more detail)
+
+Glob Patterns:
+  *.log              All .log files         -> app.log, build.log
+  file?.txt          Single-char wildcard   -> file1.txt, fileA.txt
+  **/*.py            Recursive search       -> main.py, lib/util.py
+  *.{png,jpg}        Multiple extensions    -> cat.png, dog.jpg

@@ -1,7 +1,11 @@
-﻿VGL, which stands for Voodoo Gitless, is a wrapper around git to simplify concepts and to make
-it safe for veteran and novice users. Its name honors the Voodoo Voltage FRC 4087 robotics team 
-and inspiration from Gitless. 
-------------------- 
-AI based iterative development should maintain the general directory structure, and freeze 
-the gradle and java code unless specifically required to effect a requested update.
-Development iterations should also include updates to the tests to assure full coverage.
+﻿VGL, which stands for Voodoo Gitless, is a version control system based on the principles espoused
+in Gitless. Its name honors the Voodoo Voltage FRC 4087 robotics team and Gitless, which provided
+inspiration for the VGL project.
+
+As with Gitless VGL provides a wrapper around Git to effect a simplified user model that is easy
+and concistent enough for novices to learn while still being effective for experts. VGL must be
+tolerant of changes to an underlying Git repository made outside of VGL.
+
+AI based iterative development should use UseCases.md and HelpCommand.java as the source of truth
+for all development, testing and refactoring. As needed, Gitless documentation and implementation
+should be used for general guidance. 
