@@ -1,13 +1,6 @@
-// --- VGL: decouple build from test, add explicit check task ---
-// Remove 'test' from 'build' dependencies so 'build' does not run tests automatically
-gradle.taskGraph.whenReady {
-    val buildTask = tasks.findByName("build")
-    if (buildTask != null) {
-        buildTask.setDependsOn(buildTask.dependsOn.filter { it != "test" })
-    }
-}
 
-// Ensure the existing 'check' task depends on 'test' (do not register a new one)
+
+// Ensure the existing 'check' task depends on 'test'
 tasks.named("check") {
     dependsOn("test")
     group = "verification"

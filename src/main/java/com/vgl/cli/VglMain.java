@@ -2,6 +2,18 @@ package com.vgl.cli;
 
 public class VglMain {
     public static void main(String[] args) {
+                    System.out.println("[DEBUG-VGLMAIN] VglMain.main() entered");
+                    System.err.println("[DEBUG-VGLMAIN] VglMain.main() entered (stderr)");
+                    System.out.flush();
+                    System.err.flush();
+                // Debug CLI output test hook
+                for (String arg : args) {
+                    if ("--debug-dummy".equals(arg)) {
+                        System.out.println("[DEBUG-CLI] CLI debug output is visible");
+                        System.err.println("[DEBUG-CLI] CLI debug output is visible (stderr)");
+                        System.exit(0);
+                    }
+                }
         // Determine command name before instantiating VglCli
         String commandName = (args.length > 0) ? args[0] : "help";
         int exitCode = 1;

@@ -16,6 +16,10 @@ public class StatusCommand implements Command {
 
     @Override
     public int run(List<String> args) throws Exception {
+            System.out.println("[DEBUG-STATUS] StatusCommand.run() entered");
+            System.err.println("[DEBUG-STATUS] StatusCommand.run() entered (stderr)");
+            System.out.flush();
+            System.err.flush();
         boolean showLocal = args.contains("-local");
         boolean showRemote = args.contains("-remote");
         boolean showCommits = args.contains("-commits");

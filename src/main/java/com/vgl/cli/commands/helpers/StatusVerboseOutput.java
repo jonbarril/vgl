@@ -4,7 +4,7 @@ import java.util.Set;
 
 public class StatusVerboseOutput {
     public static final String HEADER_UNTRACKED = "-- Untracked Files:";
-    public static void printVerbose(Set<String> trackedSet, Set<String> untrackedSet, Set<String> undecidedSet, Set<String> nestedRepos, String localDir, java.util.List<String> filters) {
+    public static void printVerbose(Set<String> addedSet, Set<String> trackedSet, Set<String> untrackedSet, Set<String> undecidedSet, Set<String> nestedRepos, String localDir, java.util.List<String> filters) {
         java.util.function.Predicate<String> matchesFilter = (p) -> {
             if (filters == null || filters.isEmpty()) return true;
             for (String f : filters) {
@@ -18,11 +18,28 @@ public class StatusVerboseOutput {
             return false;
         };
 
-        // Order: Undecided, Tracked, Untracked, Ignored
+
+        // Order: Added, Undecided, Tracked, Untracked, Ignored
+        final String HEADER_ADDED = "-- Added Files:";
         final String HEADER_UNDECIDED = "-- Undecided Files:";
         final String HEADER_TRACKED = "-- Tracked Files:";
         final String HEADER_IGNORED = "-- Ignored Files:";
         final String NONE = "  (none)";
+
+        System.out.println(HEADER_ADDED);
+        if (addedSet == null || addedSet.isEmpty()) {
+            System.out.println(NONE);
+        } else {
+            boolean anyPrinted = false;
+            java.util.List<String> sortedAdded = new java.util.ArrayList<>(addedSet);
+            java.util.Collections.sort(sortedAdded);
+            for (String p : sortedAdded) {
+                if (!matchesFilter.test(p)) continue;
+                System.out.println("  " + ensureTrailingSlash(p, localDir));
+                anyPrinted = true;
+            }
+            if (!anyPrinted) System.out.println(NONE);
+        }
 
         System.out.println(HEADER_UNDECIDED);
         if (undecidedSet == null || undecidedSet.isEmpty()) {
