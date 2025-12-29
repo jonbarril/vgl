@@ -1,5 +1,7 @@
 val vglVersion = "0.3.12"
 
+version = vglVersion
+
 plugins {
     application
     java
@@ -75,8 +77,6 @@ tasks.register<Test>("smokeTest") {
         showStandardStreams = true
     }
 }
-
-version = vglVersion
 
 tasks.jar {
     manifest {
