@@ -20,7 +20,7 @@ public class HelpCommand implements Command {
             "Note: See Flags (help -v/-vv) for flag combinations and defaults.",
             "",
             "Commands:",
-            "  create [-f]                        Create repo/branch, then switch",
+            "  create [-f]                        Create repo/branch, then switch (prints LOCAL/REMOTE)",
             "    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)",
             "    -bb [BRANCH]                       (same name for local+remote)",
             "    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)",

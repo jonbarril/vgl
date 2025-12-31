@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vgl.cli.commands.CreateCommandTest" tests="8" skipped="0" failures="0" errors="0" timestamp="2025-12-31T04:48:36" hostname="JONBVIVO" time="0.413">
+  <properties/>
+  <testcase name="create_failsIfRepoAlreadyExists()" classname="com.vgl.cli.commands.CreateCommandTest" time="0.025"/>
+  <testcase name="create_withUnknownFlag_printsUsage()" classname="com.vgl.cli.commands.CreateCommandTest" time="0.01"/>
+  <testcase name="create_withMissingLrValue_printsUsage()" classname="com.vgl.cli.commands.CreateCommandTest" time="0.009"/>
+  <testcase name="create_createsGitRepoVglFileAndGitignoreEntry()" classname="com.vgl.cli.commands.CreateCommandTest" time="0.02"/>
+  <testcase name="create_withPositionalTargetDir_printsUsage()" classname="com.vgl.cli.commands.CreateCommandTest" time="0.008"/>
+  <testcase name="create_withLbInExistingRepo_createsAndSwitchesBranch()" classname="com.vgl.cli.commands.CreateCommandTest" time="0.251"/>
+  <testcase name="create_withLrLbInNonCurrentRepo_warnsNoSwitchState()" classname="com.vgl.cli.commands.CreateCommandTest" time="0.079"/>
+  <testcase name="create_withTooManyPositionals_printsUsage()" classname="com.vgl.cli.commands.CreateCommandTest" time="0.006"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

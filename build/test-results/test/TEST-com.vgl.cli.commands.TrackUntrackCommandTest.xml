@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vgl.cli.commands.TrackUntrackCommandTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2025-12-31T04:48:37" hostname="JONBVIVO" time="0.116">
+  <properties/>
+  <testcase name="track_withNoArgs_printsUsage()" classname="com.vgl.cli.commands.TrackUntrackCommandTest" time="0.004"/>
+  <testcase name="untrack_withNoArgs_printsUsage()" classname="com.vgl.cli.commands.TrackUntrackCommandTest" time="0.007"/>
+  <testcase name="track_then_untrack_updatesGitIndex()" classname="com.vgl.cli.commands.TrackUntrackCommandTest" time="0.103"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

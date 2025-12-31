@@ -36,6 +36,15 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - If a VGL repo already exists in the target directory the user is warned and creation exits.
 - Upon repo creation .gitignore shall include specs for typically ignored files and directories in a repo (build products, etc.).
 - Repo admin files (.git, .vgl) are always ignored and cannot be tracked, which is consistent with Gitless and Git.
+- If creation or branch creation/switch results in changing the repo context resolved from the CWD, VGL prints the new switch state as the non-verbose LOCAL and REMOTE lines (same format as `status` default mode).
+- If a command targets a different local repo that does not resolve from the user’s CWD, the local switch state does not change and no switch-state output is printed.
+- In that case, VGL prints a concise warning to `stderr` indicating switch state is unchanged and suggesting the user `cd` to the target repo.
+
+**Repository deletion**
+- Deletion occurs relative to a target directory, which can be the current working directory. It starts with repo resolution relative to the target directory.
+- If a Vgl or Git repo exist at the target the user will be asked to confirm its deletion (otherwise the user is warned that none exists there).
+- If uncommitted changes and/or unpushed commits exist the user will be warned and asked to proceed or not.
+- If repo deletion is confirmed the user will be asked if the content should also be deleted. If so then the target directory should be deleted using system commands.
 
 **Status command:**
   - **Overview:** Provides the overall status of workspace, and local and remote repo files. More detail is progressively revealed with the use of verbose flags (-v, -vv). Output also can be filtered using section name flags (e.g. -local). Files in a VGL repo are classified as follows:
@@ -47,6 +56,9 @@ This document captures concrete user-facing use cases, edge cases, and the expec
     - Files can be 'tracked' or 'untracked' by the user with the corresponding commands.
     - Tracking overrides a file's ignored status (but its status reverts to ignored if it is untracked).
     - Once an undecided file is tracked, untracked or ignored it is no longer undecided (there is no way to make a decided file undecided again).
+    - File categories (Added/Modified/Deleted/Undecided/Tracked/Untracked/Ignored) and counts are as defined by VGL, not by Git, although there may be overlap.
+    - Nested repo paths appear in the Ignored set and are excluded from Undecided/Tracked/Untracked lists.
+    - Directories that appear in file lists include a trailing "/" indicating it is a directory and not just a file. If a dir is also a nested repo it will have an additional indicator (e.g. '(repo)').
   - **Default:** Default behavior is when neither -v or -vv flags are present. This prints the minimal status consisting of sections LOCAL/REMOTE/COMMITS/FILES. Each section includes a one or two line summary of the corresponding aspect of repo status. As needed paths and branch names will be shortened using elipses so that the format remains consistent and column aligned.
   - LOCAL shows the current valid VGL repo and branch (or '(none)' for each).
   - REMOTE shows the current remote repo and branch (or '(none)' or none for each).
@@ -56,9 +68,7 @@ This document captures concrete user-facing use cases, edge cases, and the expec
   - **Very Verbose:** This is when -vv is present. Same as Verbose mode but LOCAL and REMOTE include branch list subsections, with the current branch (as indicated in the summary line) starred. COMMIT commit list messages are not truncated. FILES file names are not truncated and subsections for 'Tracked Files', 'Untracked Files' and 'Ignored Files' are added. The total number of files in these sections shall each match their summary count.
   - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -local, -remote, -commits, -files.
   - **General:**
-  -- File counts and categories (Added/Modified/Deleted/Undecided/Tracked/Untracked/Ignored) are derived from JGit `Status` plus repo-index/working-tree listing.
-  -- Nested repo paths appear in the Ignored set and are excluded from Undecided/Tracked/Untracked lists.
-  -- Directories that appear in file lists include a trailing "/" indicating it is a directory and not just a file. If a dir is also a nested repo it will have an additional indicator (e.g. '(repo)').
+  
 
 **Interactive vs automated modes:**
 - **Interactive detection:** Use `Utils.isInteractive()`; honor `-Dvgl.noninteractive=true` for tests and CI to suppress prompts.

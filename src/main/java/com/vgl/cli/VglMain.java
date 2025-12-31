@@ -1,35 +1,31 @@
 package com.vgl.cli;
 
 import com.vgl.cli.commands.HelpCommand;
-import java.util.Arrays;
 import java.util.List;
+import picocli.CommandLine;
 
 public class VglMain {
     public static void main(String[] args) {
         System.exit(run(args));
     }
 
-    static int run(String[] args) {
-        List<String> argList = Arrays.asList(args);
+    public static int run(String[] args) {
         try {
-            if (argList.isEmpty()) {
+            if (args == null || args.length == 0) {
                 return new HelpCommand().run(List.of());
             }
 
-            String command = argList.get(0);
-            List<String> tailArgs = argList.subList(1, argList.size());
-
-            if (command.equals("help") || command.equals("-h") || command.equals("--help")) {
-                return new HelpCommand().run(tailArgs);
+            String first = args[0];
+            if (first.equals("-h") || first.equals("--help")) {
+                return new HelpCommand().run(List.of());
             }
 
-            if (command.equals("-v") || command.equals("-vv")) {
-                return new HelpCommand().run(argList);
+            if (first.equals("-v") || first.equals("-vv")) {
+                return new HelpCommand().run(List.of(first));
             }
 
-            System.err.println("Unknown command: " + command);
-            new HelpCommand().run(List.of());
-            return 1;
+            CommandLine cmd = VglCli.newCommandLine();
+            return cmd.execute(args);
         } catch (Exception e) {
             System.err.println("ERROR: " + e.getMessage());
             return 1;

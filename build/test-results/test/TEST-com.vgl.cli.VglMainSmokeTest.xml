@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.vgl.cli.VglMainSmokeTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2025-12-31T04:48:36" hostname="JONBVIVO" time="0.599">
+  <properties/>
+  <testcase name="vglMain_canCreateAndDeleteRepo()" classname="com.vgl.cli.VglMainSmokeTest" time="0.599"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
