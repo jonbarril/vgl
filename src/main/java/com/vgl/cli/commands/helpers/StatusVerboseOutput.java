@@ -10,6 +10,8 @@ public final class StatusVerboseOutput {
     private StatusVerboseOutput() {}
 
     private static final int DEFAULT_LINE_WIDTH = 80;
+    private static final int DEFAULT_MIN_GROUP_SIZE = 3;
+    private static final String REPO_PREFIX = "@ ";
 
     public static void printVeryVerbose(
         Set<String> tracked,
@@ -24,11 +26,38 @@ public final class StatusVerboseOutput {
     }
 
     /**
-     * Prints a file list subsection using a compact, ls-like horizontal layout.
-     * Items are separated by two spaces and wrapped at a fixed width for stable tests.
+     * Prints a file list subsection using a compact, ls-like layout:
+     * - Root-level items shown first in horizontal columns.
+     * - Directories with multiple items shown as a directory header followed by leaf names in columns.
      */
     public static void printCompactList(String header, Set<String> paths, String repoRoot, List<String> filters) {
         printList(header, paths, repoRoot, filters);
+    }
+
+    /**
+     * Prints entries using the same compact wrapping, preserving the provided order.
+     * Intended for lists that aren't simple file paths (e.g., "A path", "M path").
+     */
+    public static void printCompactEntries(String header, List<String> entries) {
+        if (header != null && !header.isBlank()) {
+            System.out.println(header);
+        }
+        if (entries == null || entries.isEmpty()) {
+            System.out.println("  (none)");
+            return;
+        }
+        List<String> display = new ArrayList<>();
+        for (String e : entries) {
+            if (e == null || e.isBlank()) {
+                continue;
+            }
+            display.add(e);
+        }
+        if (display.isEmpty()) {
+            System.out.println("  (none)");
+            return;
+        }
+        printLsStyleColumnsGroupedByDir(display, DEFAULT_LINE_WIDTH, DEFAULT_MIN_GROUP_SIZE);
     }
 
     private static boolean matchesAnyFilter(String path, List<String> filters) {
@@ -76,7 +105,7 @@ public final class StatusVerboseOutput {
             return;
         }
 
-        printWrappedEntries(display, DEFAULT_LINE_WIDTH);
+        printLsStyleColumnsGroupedByDir(display, DEFAULT_LINE_WIDTH, DEFAULT_MIN_GROUP_SIZE);
     }
 
     private static void printIgnored(String header, Set<String> paths, String repoRoot) {
@@ -90,19 +119,14 @@ public final class StatusVerboseOutput {
         Collections.sort(sorted);
         List<String> display = new ArrayList<>();
         for (String p : sorted) {
-            if (".git".equals(p)) {
-                display.add(".git (repo)");
-                continue;
-            }
-            if (p.endsWith(" (repo)")) {
-                display.add(ensureIgnoredRepoDecoration(p, repoRoot));
-                continue;
-            }
             File file = new File(repoRoot, p);
-            if (file.isDirectory() && new File(file, ".git").exists()) {
-                display.add((p.endsWith("/") ? p : p + "/") + " (repo)");
+
+            boolean isNestedRepo = file.isDirectory() && !".git".equals(p) && new File(file, ".git").exists();
+            String normalized = ensureTrailingSlash(p, repoRoot);
+            if (isNestedRepo) {
+                display.add(REPO_PREFIX + normalized);
             } else {
-                display.add(p);
+                display.add(normalized);
             }
         }
 
@@ -110,25 +134,85 @@ public final class StatusVerboseOutput {
             System.out.println("  (none)");
             return;
         }
-        printWrappedEntries(display, DEFAULT_LINE_WIDTH);
+
+        // Ignored stays flat (git-like): do not expand directory contents.
+        printWrappedEntries(display, DEFAULT_LINE_WIDTH, "  ");
     }
 
-    private static String ensureIgnoredRepoDecoration(String entry, String repoRoot) {
-        // Normalize repo decoration to ensure directories display with trailing '/'.
-        if (entry == null) {
-            return null;
+    private static void printLsStyleColumnsGroupedByDir(List<String> entries, int maxWidth, int minGroupSize) {
+        if (entries == null || entries.isEmpty()) {
+            System.out.println("  (none)");
+            return;
         }
-        if (!entry.endsWith(" (repo)")) {
-            return entry;
+
+        // First pass: group candidates by directory.
+        java.util.LinkedHashMap<String, java.util.List<ParsedEntry>> candidates = new java.util.LinkedHashMap<>();
+        java.util.List<String> rootLike = new java.util.ArrayList<>();
+
+        for (String entry : entries) {
+            if (entry == null || entry.isBlank()) {
+                continue;
+            }
+
+            ParsedEntry p = ParsedEntry.parse(entry);
+
+            // Do not expand directory entries (those ending in '/'); keep as-is.
+            if (p.isDirectoryEntry) {
+                rootLike.add(entry);
+                continue;
+            }
+
+            if (p.dirKey.isEmpty()) {
+                rootLike.add(entry);
+                continue;
+            }
+
+            candidates.computeIfAbsent(p.dirKey, k -> new java.util.ArrayList<>()).add(p);
         }
-        String base = entry.substring(0, entry.length() - " (repo)".length());
-        String withSlash = ensureTrailingSlash(base, repoRoot);
-        return withSlash + " (repo)";
+
+        // Second pass: expand only larger groups; keep small groups inline as full paths.
+        java.util.LinkedHashMap<String, java.util.List<String>> expanded = new java.util.LinkedHashMap<>();
+        for (var e : candidates.entrySet()) {
+            String dir = e.getKey();
+            java.util.List<ParsedEntry> ps = e.getValue();
+            if (ps == null || ps.isEmpty()) {
+                continue;
+            }
+            if (ps.size() < Math.max(1, minGroupSize)) {
+                for (ParsedEntry p : ps) {
+                    rootLike.add(p.fullDisplay);
+                }
+            } else {
+                java.util.List<String> leafs = new java.util.ArrayList<>();
+                for (ParsedEntry p : ps) {
+                    leafs.add(p.leafDisplay);
+                }
+                expanded.put(dir, leafs);
+            }
+        }
+
+        // Root-like items first (this matches typical ls behavior: files first, then dir blocks).
+        if (!rootLike.isEmpty()) {
+            printWrappedEntries(rootLike, maxWidth, "  ");
+        } else {
+            // Keep stable output for empty sections.
+            // If there are only expanded groups, we don't print a root line.
+        }
+
+        // Then each expanded directory block.
+        for (var e : expanded.entrySet()) {
+            System.out.println("  " + e.getKey() + "/");
+            printWrappedEntries(e.getValue(), maxWidth, "    ");
+        }
     }
 
-    private static void printWrappedEntries(List<String> entries, int maxWidth) {
-        String indent = "  ";
-        String sep = "  ";
+    private static void printWrappedEntries(List<String> entries, int maxWidth, String indent) {
+        if (entries == null || entries.isEmpty()) {
+            System.out.println(indent + "(none)");
+            return;
+        }
+
+        String sep = "   ";
 
         StringBuilder line = new StringBuilder(indent);
         boolean first = true;
@@ -143,7 +227,6 @@ public final class StatusVerboseOutput {
                 System.out.println(line);
                 line = new StringBuilder(indent);
                 first = true;
-                addition = entry;
             }
 
             if (!first) {
@@ -160,13 +243,65 @@ public final class StatusVerboseOutput {
         }
     }
 
+    private static final class ParsedEntry {
+        private final String dirKey;
+        private final String leafDisplay;
+        private final String fullDisplay;
+        private final boolean isDirectoryEntry;
+
+        private ParsedEntry(String dirKey, String leafDisplay, String fullDisplay, boolean isDirectoryEntry) {
+            this.dirKey = (dirKey == null) ? "" : dirKey;
+            this.leafDisplay = leafDisplay;
+            this.fullDisplay = fullDisplay;
+            this.isDirectoryEntry = isDirectoryEntry;
+        }
+
+        static ParsedEntry parse(String entry) {
+            String s = entry;
+
+            String statusPrefix = null;
+            if (s.length() > 2 && s.charAt(1) == ' ') {
+                statusPrefix = s.substring(0, 1);
+                s = s.substring(2);
+            }
+
+            boolean repoDecorated = false;
+            if (!s.isEmpty() && s.charAt(0) == '@') {
+                repoDecorated = true;
+                s = s.substring(1);
+            }
+
+            boolean isDirectoryEntry = s.endsWith("/");
+
+            int slash = s.lastIndexOf('/');
+            String dirKey;
+            String leaf;
+            if (slash < 0 || (isDirectoryEntry && slash == s.length() - 1)) {
+                // No directory component (or this is a directory entry itself).
+                dirKey = "";
+                leaf = s;
+            } else {
+                dirKey = s.substring(0, slash);
+                leaf = s.substring(slash + 1);
+            }
+
+            StringBuilder leafDisplay = new StringBuilder();
+            if (statusPrefix != null) {
+                leafDisplay.append(statusPrefix).append(' ');
+            }
+            if (repoDecorated) {
+                leafDisplay.append('@');
+            }
+            leafDisplay.append(leaf);
+
+            String fullDisplay = entry;
+            return new ParsedEntry(dirKey, leafDisplay.toString(), fullDisplay, isDirectoryEntry);
+        }
+    }
+
     private static String ensureTrailingSlash(String path, String repoRoot) {
         if (path == null) {
             return null;
-        }
-        // Preserve repo decoration entries like "dir (repo)" at the caller.
-        if (path.endsWith(" (repo)")) {
-            return path;
         }
         File file = new File(repoRoot, path);
         if (file.isDirectory() && !path.endsWith("/")) {

@@ -14,6 +14,43 @@ import org.eclipse.jgit.api.Git;
 public final class SwitchStateOutput {
     private SwitchStateOutput() {}
 
+    public static java.util.List<String> formatLines(
+        String localDir,
+        String localBranch,
+        String remoteUrl,
+        String remoteBranch,
+        int labelWidth,
+        boolean truncatePaths
+    ) {
+        int maxPathLen = 35;
+        String separator = " :: ";
+
+        String localDirSafe = (localDir != null) ? localDir : "(unknown)";
+        String remoteUrlSafe = (remoteUrl != null) ? remoteUrl : "";
+
+        String displayLocalDir = truncatePaths ? FormatUtils.truncateMiddle(localDirSafe, maxPathLen) : localDirSafe;
+
+        boolean hasRemote = remoteUrlSafe != null && !remoteUrlSafe.isBlank();
+        String displayRemoteUrl = hasRemote
+            ? (truncatePaths ? FormatUtils.truncateMiddle(remoteUrlSafe, maxPathLen) : remoteUrlSafe)
+            : "(none)";
+
+        int maxLen = Math.max(displayLocalDir.length(), displayRemoteUrl.length());
+
+        String localLabelPad = FormatUtils.padRight("LOCAL:", labelWidth + 1);
+        String remoteLabelPad = FormatUtils.padRight("REMOTE:", labelWidth + 1);
+
+        String localBranchSafe = (localBranch != null && !localBranch.isBlank()) ? localBranch : "(none)";
+        String remoteBranchSafe = hasRemote
+            ? ((remoteBranch != null && !remoteBranch.isBlank()) ? remoteBranch : "(none)")
+            : "(none)";
+
+        String localLine = localLabelPad + FormatUtils.padRight(displayLocalDir, maxLen) + separator + localBranchSafe;
+        String remoteLine = remoteLabelPad + FormatUtils.padRight(displayRemoteUrl, maxLen) + separator + remoteBranchSafe;
+
+        return java.util.List.of(localLine, remoteLine);
+    }
+
     public static void print(Path repoRoot) throws Exception {
         if (repoRoot == null) {
             return;
@@ -35,32 +72,10 @@ public final class SwitchStateOutput {
             localBranch = (gitBranch != null && !gitBranch.isBlank()) ? gitBranch : vglLocalBranch;
         }
 
-        int maxPathLen = 35;
-        String separator = " :: ";
-
-        String displayLocalDir = FormatUtils.truncateMiddle(repoRoot.toString(), maxPathLen);
-        String displayRemoteUrl = (remoteUrl != null && !remoteUrl.isBlank())
-            ? FormatUtils.truncateMiddle(remoteUrl, maxPathLen)
-            : "(none)";
-
-        int maxLen = Math.max(displayLocalDir.length(), displayRemoteUrl.length());
-
-        String localLabel = "LOCAL:";
-        String remoteLabel = "REMOTE:";
-        int labelWidth = Math.max(localLabel.length(), remoteLabel.length());
-
-        String localLabelPad = FormatUtils.padRight(localLabel, labelWidth + 1);
-        String remoteLabelPad = FormatUtils.padRight(remoteLabel, labelWidth + 1);
-
-        System.out.println(localLabelPad + FormatUtils.padRight(displayLocalDir, maxLen) + separator + (localBranch != null ? localBranch : "(none)"));
-
-        boolean hasRemote = remoteUrl != null && !remoteUrl.isBlank();
-        if (!hasRemote) {
-            System.out.println(remoteLabelPad + FormatUtils.padRight("(none)", maxLen) + separator + "(none)");
-            return;
+        int labelWidth = Math.max("LOCAL:".length(), "REMOTE:".length());
+        for (String line : formatLines(repoRoot.toString(), localBranch, remoteUrl, remoteBranch, labelWidth, true)) {
+            System.out.println(line);
         }
-
-        System.out.println(remoteLabelPad + FormatUtils.padRight(displayRemoteUrl, maxLen) + separator + (remoteBranch != null ? remoteBranch : "(none)"));
     }
 
 }

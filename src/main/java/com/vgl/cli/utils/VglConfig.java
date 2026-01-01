@@ -16,6 +16,7 @@ public final class VglConfig {
     private VglConfig() {}
 
     public static final String KEY_LOCAL_BRANCH = "local.branch";
+    public static final String KEY_LOCAL_BRANCHES = "local.branches";
     public static final String KEY_REMOTE_URL = "remote.url";
     public static final String KEY_REMOTE_BRANCH = "remote.branch";
 
@@ -72,6 +73,51 @@ public final class VglConfig {
             out.add(normalizeRepoRelativePath(trimmed));
         }
         return out;
+    }
+
+    public static Set<String> getStringSet(Properties props, String key) {
+        Set<String> out = new LinkedHashSet<>();
+        if (props == null || key == null || key.isBlank()) {
+            return out;
+        }
+        String val = props.getProperty(key, "");
+        if (val == null || val.isBlank()) {
+            return out;
+        }
+        String[] parts = val.split(",");
+        for (String p : parts) {
+            if (p == null) {
+                continue;
+            }
+            String trimmed = p.trim();
+            if (trimmed.isEmpty()) {
+                continue;
+            }
+            out.add(trimmed);
+        }
+        return out;
+    }
+
+    public static void setStringSet(Properties props, String key, Collection<String> values) {
+        if (props == null || key == null || key.isBlank()) {
+            return;
+        }
+        if (values == null || values.isEmpty()) {
+            props.remove(key);
+            return;
+        }
+        List<String> normalized = new ArrayList<>();
+        for (String v : values) {
+            if (v == null || v.isBlank()) {
+                continue;
+            }
+            normalized.add(v.trim());
+        }
+        if (normalized.isEmpty()) {
+            props.remove(key);
+        } else {
+            props.setProperty(key, String.join(",", normalized));
+        }
     }
 
     public static void setPathSet(Properties props, String key, Collection<String> paths) {

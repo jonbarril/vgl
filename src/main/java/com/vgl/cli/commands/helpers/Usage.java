@@ -9,8 +9,10 @@ public final class Usage {
             "  vgl <command> [args]",
             "",
             "Commands:",
+            "  commit",
             "  create",
             "  delete",
+            "  switch",
             "  track",
             "  untrack",
             "  status",
@@ -50,6 +52,22 @@ public final class Usage {
         return String.join("\n",
             "Usage:",
             "  vgl untrack <glob...> | -all"
+        );
+    }
+
+    public static String switchCmd() {
+        return String.join("\n",
+            "Usage:",
+            "  vgl switch [-lr DIR] [-lb BRANCH|-bb BRANCH]"
+        );
+    }
+
+    public static String commit() {
+        return String.join("\n",
+            "Usage:",
+            "  vgl commit [-lr DIR] MESSAGE",
+            "  vgl commit [-lr DIR] -new MESSAGE",
+            "  vgl commit [-lr DIR] -add MESSAGE"
         );
     }
 }

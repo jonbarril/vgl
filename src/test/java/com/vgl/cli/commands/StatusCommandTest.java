@@ -242,9 +242,20 @@ class StatusCommandTest {
                 continue;
             }
 
-            // List items are indented. Output may be compact/wrapped where multiple items
-            // appear on a single indented line separated by two spaces.
+            // Compact ls-style output:
+            // - Root items can be on 2-space indented lines in horizontal columns.
+            // - Expanded directory blocks have a 2-space indented dir header like 'dir0/'
+            //   followed by 4-space indented lines with horizontal columns of leaf names.
+            // - Ignore dir header lines (they are not items).
             if (line.startsWith("  ")) {
+                // Directory header line: two-space indent + single token ending in '/'
+                // (avoid misclassifying ignored entries like '.git/' and '@repo/' which start with '.'/'@').
+                if (line.startsWith("  ") && !line.startsWith("    ")) {
+                    if (trimmed.endsWith("/") && !trimmed.startsWith(".") && !trimmed.startsWith("@") && !trimmed.contains(" ")) {
+                        continue;
+                    }
+                }
+
                 String[] items = trimmed.split("\\s{2,}");
                 for (String item : items) {
                     if (item != null && !item.isBlank()) {

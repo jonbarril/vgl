@@ -1,9 +1,7 @@
 package com.vgl.cli.utils;
 
 import java.nio.file.Path;
-
 import java.util.List;
-import java.nio.file.Path;
 
 public final class Messages {
     private Messages() {}
@@ -19,6 +17,9 @@ public final class Messages {
     public static final String OUT_DELETED_REPO_CONTENTS_PREFIX = "Deleted VGL repository directory: ";
     public static final String OUT_DELETED_BRANCH_PREFIX = "Deleted branch: ";
     public static final String OUT_SWITCHED_BRANCH_PREFIX = "Switched to branch: ";
+    public static final String OUT_SWITCHED_EXISTING_BRANCH_PREFIX = "Switched to existing branch: ";
+    public static final String OUT_CREATED_AND_SWITCHED_BRANCH_PREFIX = "Created and switched to branch: ";
+    public static final String OUT_ALREADY_ON_BRANCH_PREFIX = "Already on branch: ";
 
     public static final String ERR_BRANCH_NOT_FOUND_PREFIX = "Error: Branch does not exist: ";
     public static final String WARN_DELETE_BRANCH_NOT_MERGED_PREFIX = "Warning: Branch is not merged into the current branch: ";
@@ -40,8 +41,10 @@ public final class Messages {
     private static final String USAGE_UNTRACK = "Usage:\n  vgl untrack <glob...> | -all";
 
     public static String nestedRepoPrompt(Path parentRepoRootOrNull) {
-        String suffix = (parentRepoRootOrNull != null) ? " at: " + parentRepoRootOrNull : "";
-        return WARN_NESTED_REPO_PREFIX + suffix + ". Continue? [y/N] ";
+        if (parentRepoRootOrNull != null) {
+            return WARN_NESTED_REPO_PREFIX + ":\n  " + parentRepoRootOrNull + "\nContinue? [y/N] ";
+        }
+        return WARN_NESTED_REPO_PREFIX + ".\nContinue? [y/N] ";
     }
 
     public static String createRepoRefusingNested() {
@@ -101,6 +104,18 @@ public final class Messages {
 
     public static String switchedBranch(String branch) {
         return OUT_SWITCHED_BRANCH_PREFIX + branch;
+    }
+
+    public static String switchedToExistingBranch(String branch) {
+        return OUT_SWITCHED_EXISTING_BRANCH_PREFIX + branch;
+    }
+
+    public static String createdAndSwitchedBranch(String branch) {
+        return OUT_CREATED_AND_SWITCHED_BRANCH_PREFIX + branch;
+    }
+
+    public static String alreadyOnBranch(String branch) {
+        return OUT_ALREADY_ON_BRANCH_PREFIX + branch;
     }
 
     public static String branchNotFound(String branch) {
@@ -199,6 +214,6 @@ public final class Messages {
 
     public static String warnTargetRepoNotCurrent(Path targetRepoRoot) {
         String target = (targetRepoRoot != null) ? targetRepoRoot.toString() : "(unknown)";
-        return "Warning: Target repo is not current; switch state unchanged. cd " + target;
+        return "Warning: Target repo is not current; current switch state unchanged.\n  To switch: cd " + target;
     }
 }

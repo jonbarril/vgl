@@ -1,8 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
-import com.vgl.cli.commands.helpers.CommandWarnings;
-import com.vgl.cli.commands.helpers.SwitchStateOutput;
+import com.vgl.cli.commands.helpers.StateChangeOutput;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.RepoResolver;
 import com.vgl.cli.utils.RepoUtils;
@@ -14,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Properties;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -51,8 +51,7 @@ public class CreateCommand implements Command {
             if (!hasExplicitTarget) {
                 return createOrSwitchLocalBranch(branchStartDir, requestedBranch);
             }
-            if (targetLooksLikeRepo || nearest != null) {
-                // When -lr points into a repo subtree, prefer the nearest repo root.
+            if (targetLooksLikeRepo) {
                 return createOrSwitchLocalBranch(branchStartDir, requestedBranch);
             }
         }
@@ -91,13 +90,8 @@ public class CreateCommand implements Command {
 
         System.out.println(Messages.createdRepo(targetDir, finalLocalBranch));
 
-        // A repo is only considered "switched" when it is the one resolved from the CWD.
-        Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
-        if (cwd.equals(targetDir)) {
-            SwitchStateOutput.print(targetDir);
-        } else if (hasExplicitTarget) {
-            CommandWarnings.warnTargetRepoNotCurrent(targetDir);
-        }
+        // Always report the (possibly unchanged) switch state for commands that may switch state.
+        StateChangeOutput.printSwitchStateAndWarnIfNotCurrent(targetDir, hasExplicitTarget);
         return 0;
     }
 
@@ -107,13 +101,25 @@ public class CreateCommand implements Command {
             return 1;
         }
 
+        Properties priorProps = VglConfig.readProps(repoRoot);
+        boolean knownInVgl = VglConfig.getStringSet(priorProps, VglConfig.KEY_LOCAL_BRANCHES).contains(branch);
+
+        String priorBranch = null;
+        boolean existed = false;
+        boolean headResolves = false;
+
         try (Git git = GitUtils.openGit(repoRoot)) {
             Repository repo = git.getRepository();
 
-            Ref ref = repo.findRef("refs/heads/" + branch);
-            boolean exists = ref != null;
+            try {
+                priorBranch = repo.getBranch();
+            } catch (Exception ignored) {
+                priorBranch = null;
+            }
 
-            boolean headResolves;
+            Ref ref = repo.findRef("refs/heads/" + branch);
+            existed = ref != null;
+
             try {
                 headResolves = repo.resolve(Constants.HEAD) != null;
             } catch (Exception e) {
@@ -126,7 +132,7 @@ public class CreateCommand implements Command {
                 repo.updateRef(Constants.HEAD).link("refs/heads/" + branch);
             } else {
                 var checkout = git.checkout().setName(branch);
-                if (!exists) {
+                if (!existed) {
                     checkout.setCreateBranch(true);
                 }
                 checkout.call();
@@ -134,18 +140,23 @@ public class CreateCommand implements Command {
         }
 
         VglConfig.ensureGitignoreHasVgl(repoRoot);
-        VglConfig.writeProps(repoRoot, props -> props.setProperty(VglConfig.KEY_LOCAL_BRANCH, branch));
+        VglConfig.writeProps(repoRoot, props -> {
+            props.setProperty(VglConfig.KEY_LOCAL_BRANCH, branch);
+            var branches = VglConfig.getStringSet(props, VglConfig.KEY_LOCAL_BRANCHES);
+            branches.add(branch);
+            VglConfig.setStringSet(props, VglConfig.KEY_LOCAL_BRANCHES, branches);
+        });
 
-        System.out.println(Messages.switchedBranch(branch));
-
-        // Print the new switch state (non-verbose LOCAL/REMOTE) only if it affects the repo resolved from CWD.
-        Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
-        Path cwdRepoRoot = RepoUtils.findNearestRepoRoot(cwd);
-        if (cwdRepoRoot != null && cwdRepoRoot.toAbsolutePath().normalize().equals(repoRoot)) {
-            SwitchStateOutput.print(repoRoot);
+        if (priorBranch != null && priorBranch.equals(branch)) {
+            System.out.println(Messages.alreadyOnBranch(branch));
+        } else if (knownInVgl || existed) {
+            System.out.println(Messages.switchedToExistingBranch(branch));
         } else {
-            CommandWarnings.warnTargetRepoNotCurrent(repoRoot);
+            System.out.println(Messages.createdAndSwitchedBranch(branch));
         }
+
+        // Always report the (possibly unchanged) switch state for commands that may switch state.
+        StateChangeOutput.printSwitchStateAndWarnIfNotCurrent(repoRoot, true);
         return 0;
     }
 }

@@ -72,11 +72,11 @@ public class HelpCommand implements Command {
         if (args.contains("-v") || args.contains("-vv")) {
             helpText.append("\n\nFlags:\n");
             helpText.append(String.join("\n",
-                "  Note: In general, if no repo/branch  (-lr, -lb, -rr, -rb) is specified then",
-                "        the corresponding switch state is used. If a switch state has not been set yet",
-                "        DIR defaults to the local repo resolved from the CWD, local and remote BRANCH",
+                "  Note: If no repo/branch (-lr, -lb, -rr, -rb) is specified then the corresponding",
+                "        switch state is used. If a switch state is not set or resolved DIR defaults",
+                "        to the current local repo (resolved from the CWD), local and remote BRANCH",
                 "        default to 'main', and URL has no default. Branch flags can accept no name,",
-                "        a BRANCH name and/or a COMMIT id in the branch.",
+                "        a BRANCH and/or a COMMIT id in the branch.",
                 "",
                 "  CWD           Current workspace directory",
                 "  -lr DIR       Local repository directory",

@@ -1,8 +1,10 @@
 package com.vgl.cli;
 
 import com.vgl.cli.commands.CreateCommand;
+import com.vgl.cli.commands.CommitCommand;
 import com.vgl.cli.commands.DeleteCommand;
 import com.vgl.cli.commands.HelpCommand;
+import com.vgl.cli.commands.SwitchCommand;
 import com.vgl.cli.commands.StatusCommand;
 import com.vgl.cli.commands.TrackCommand;
 import com.vgl.cli.commands.UntrackCommand;
@@ -43,8 +45,10 @@ public final class VglCli {
     @Command(
         name = "vgl",
         subcommands = {
+            Commit.class,
             Create.class,
             Delete.class,
+            Switch.class,
             Track.class,
             Untrack.class,
             Status.class,
@@ -53,6 +57,45 @@ public final class VglCli {
     )
     static class Root {
         // Root command intentionally does not implement business logic.
+    }
+
+    @Command(name = "commit")
+    static class Commit implements Callable<Integer> {
+
+        @Option(names = "-lr", paramLabel = "DIR")
+        Path localRepoDir;
+
+        @Option(names = "-new", paramLabel = "MESSAGE")
+        String newMessage;
+
+        @Option(names = "-add", paramLabel = "MESSAGE")
+        String addMessage;
+
+        @picocli.CommandLine.Parameters(arity = "0..1", paramLabel = "MESSAGE")
+        String message;
+
+        @Override
+        public Integer call() throws Exception {
+            List<String> forwarded = new ArrayList<>();
+            if (localRepoDir != null) {
+                forwarded.add("-lr");
+                forwarded.add(localRepoDir.toString());
+            }
+
+            if (newMessage != null) {
+                forwarded.add("-new");
+                forwarded.add(newMessage);
+            }
+            if (addMessage != null) {
+                forwarded.add("-add");
+                forwarded.add(addMessage);
+            }
+
+            if (message != null) {
+                forwarded.add(message);
+            }
+            return new CommitCommand().run(forwarded);
+        }
     }
 
     @Command(name = "create")
@@ -194,6 +237,41 @@ public final class VglCli {
         }
     }
 
+    @Command(name = "switch")
+    static class Switch implements Callable<Integer> {
+
+        @Option(names = "-lr", paramLabel = "DIR")
+        Path localRepoDir;
+
+        @Option(names = "-lb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
+        String localBranch;
+
+        @Option(names = "-bb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
+        String bothBranch;
+
+        @Override
+        public Integer call() throws Exception {
+            List<String> forwarded = new ArrayList<>();
+            if (localRepoDir != null) {
+                forwarded.add("-lr");
+                forwarded.add(localRepoDir.toString());
+            }
+
+            String branch = (bothBranch != null) ? bothBranch : localBranch;
+            if (branch != null) {
+                if (bothBranch != null) {
+                    forwarded.add("-bb");
+                    forwarded.add(branch);
+                } else {
+                    forwarded.add("-lb");
+                    forwarded.add(branch);
+                }
+            }
+
+            return new SwitchCommand().run(forwarded);
+        }
+    }
+
     @Command(name = "status")
     static class Status implements Callable<Integer> {
 
@@ -300,12 +378,16 @@ public final class VglCli {
                 err.println(Usage.create());
             } else if ("delete".equals(first)) {
                 err.println(Usage.delete());
+            } else if ("commit".equals(first)) {
+                err.println(Usage.commit());
             } else if ("track".equals(first)) {
                 err.println(Usage.track());
             } else if ("untrack".equals(first)) {
                 err.println(Usage.untrack());
             } else if ("status".equals(first)) {
                 err.println(Usage.status());
+            } else if ("switch".equals(first)) {
+                err.println(Usage.switchCmd());
             } else {
                 err.println(Usage.root());
             }

@@ -63,9 +63,10 @@ This document captures concrete user-facing use cases, edge cases, and the expec
   - LOCAL shows the current valid VGL repo and branch (or '(none)' for each).
   - REMOTE shows the current remote repo and branch (or '(none)' or none for each).
   - COMMITS shows summary counts for files to Commit, Push and Pull.
-  - FILES shows summary file counts for: Added, Modified, Renamed (includes moved), Deleted. And summary counts for: Undecided, Tracked, Untracked, Ignored.
-  - **Verbose:** This is when -v is present but -vv is not. Same as Default mode but paths and file names are indicated in full regardless of column formatting. COMMITS adds a subsection listing commit ids and truncated message to maintain a single line format. FILES adds subsections with 'Files to Commit', 'Files to Push', 'Files to Pull' and 'Undecided Files'. The the number of files in these sections shall match their respective summary count.
-  - **Very Verbose:** This is when -vv is present. Same as Verbose mode but LOCAL and REMOTE include branch list subsections, with the current branch (as indicated in the summary line) starred. COMMIT commit list messages are not truncated. FILES file names are not truncated and subsections for 'Tracked Files', 'Untracked Files' and 'Ignored Files' are added. The total number of files in these sections shall each match their summary count.
+  - COMMITS also shows summary counts for: Added, Modified, Renamed (includes moved), Deleted (based on the Files-to-Commit set).
+  - FILES shows summary file counts for: Undecided, Tracked, Untracked, Ignored.
+  - **Verbose:** This is when -v is present but -vv is not. Same as Default mode but paths and file names are indicated in full regardless of column formatting, and LOCAL and REMOTE include branch list subsections, with the current branch (as indicated in the summary line) starred. COMMITS adds a subsection listing commit ids and truncated message to maintain a single line format. FILES adds subsections with 'Files to Commit', 'Files to Push', 'Files to Pull' and 'Undecided Files'. The the number of files in these sections shall match their respective summary count.
+  - **Very Verbose:** This is when -vv is present. COMMIT commit list messages are not truncated. FILES file names are not truncated and subsections for 'Tracked Files', 'Untracked Files' and 'Ignored Files' are added. The total number of files in these sections shall each match their summary count.
   - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -local, -remote, -commits, -files.
   - **General:**
   
@@ -78,6 +79,7 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - Keep prompts and warnings single-line where practical to reduce noise.
 - Print warnings to `stderr` so normal command output remains parseable.
 - Preserve backwards compatibility of `status` textual layout (section headings, two-line FILES summary) so tests that assert exact output remain stable.
+- Commands that change state (e.g. create/delete/switch/commit/track/untrack) should print a concise state-change report: what changed, and the resulting state (e.g. LOCAL/REMOTE switch state, affected files, etc.).
 
 **Testing guidance & focused tests:**
 - Add focused unit tests for these scenarios:
