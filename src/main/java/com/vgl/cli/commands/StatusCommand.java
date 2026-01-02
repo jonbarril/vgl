@@ -95,7 +95,8 @@ public class StatusCommand implements Command {
             int maxPathLen = 35;
             String separator = " :: ";
 
-            String displayLocalDir = (verbose || veryVerbose) ? repoRoot.toString() : FormatUtils.truncateMiddle(repoRoot.toString(), maxPathLen);
+            String localDir = Utils.formatPath(repoRoot);
+            String displayLocalDir = (verbose || veryVerbose) ? localDir : FormatUtils.truncateMiddle(localDir, maxPathLen);
             String displayRemoteUrl = (remoteUrl != null && !remoteUrl.isBlank())
                 ? ((verbose || veryVerbose) ? remoteUrl : FormatUtils.truncateMiddle(remoteUrl, maxPathLen))
                 : "(none)";
@@ -488,7 +489,7 @@ public class StatusCommand implements Command {
             StatusVerboseOutput.printCompactList(
                 "-- Undecided Files:",
                 computed.undecided,
-                repoRoot.toString(),
+                Utils.formatPath(repoRoot),
                 filters
             );
         }
@@ -498,7 +499,7 @@ public class StatusCommand implements Command {
                 computed.tracked,
                 computed.untracked,
                 computed.ignored,
-                repoRoot.toString(),
+                Utils.formatPath(repoRoot),
                 filters
             );
         }

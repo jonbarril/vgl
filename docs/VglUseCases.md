@@ -89,6 +89,7 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 **UX invariants & minimal output:**
 - Keep prompts and warnings single-line where practical to reduce noise.
 - Print warnings to `stderr` so normal command output remains parseable.
+- **Copy/paste friendly paths:** When VGL prints local filesystem paths in user-facing output (warnings, hints, status, info), it should format them for the user's active shell execution environment so they can be copied directly (e.g., Git Bash/MSYS users see `/c/Users/...` on Windows; PowerShell/CMD users see `C:\Users\...`).
 - Preserve backwards compatibility of `status` textual layout (section headings, two-line FILES summary) so tests that assert exact output remain stable.
 - Commands that change state (e.g. create/delete/switch/commit/track/untrack) should print a concise state-change report: what changed, and the resulting state (e.g. LOCAL/REMOTE switch state, affected files, etc.).
 

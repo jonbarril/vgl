@@ -106,7 +106,7 @@ public class RestoreCommand implements Command {
             }
 
             System.out.println("Files to restore:");
-            StatusVerboseOutput.printCompactList("", toRestore, repoRoot.toString(), List.of());
+            StatusVerboseOutput.printCompactList("", toRestore, Utils.formatPath(repoRoot), List.of());
 
             if (!force) {
                 if (!Utils.confirm("Continue? [y/N] ")) {

@@ -57,7 +57,7 @@ public final class Messages {
 
     public static String nestedRepoPrompt(Path parentRepoRootOrNull) {
         if (parentRepoRootOrNull != null) {
-            return WARN_NESTED_REPO_PREFIX + ":\n  " + parentRepoRootOrNull + "\nContinue? [y/N] ";
+            return WARN_NESTED_REPO_PREFIX + ":\n  " + Utils.formatPath(parentRepoRootOrNull) + "\nContinue? [y/N] ";
         }
         return WARN_NESTED_REPO_PREFIX + ".\nContinue? [y/N] ";
     }
@@ -67,19 +67,19 @@ public final class Messages {
     }
 
     public static String repoAlreadyExists(Path repoRoot) {
-        return ERR_REPO_EXISTS_PREFIX + repoRoot;
+        return ERR_REPO_EXISTS_PREFIX + Utils.formatPath(repoRoot);
     }
 
     public static String createdRepo(Path repoRoot, String branch) {
-        return OUT_CREATED_REPO_PREFIX + repoRoot + " (branch: " + branch + ")";
+        return OUT_CREATED_REPO_PREFIX + Utils.formatPath(repoRoot) + " (branch: " + branch + ")";
     }
 
     public static String deleteRepoPrompt(Path repoRoot) {
-        return "Delete repository support files (.git, .vgl, .gitignore) at " + repoRoot + "? [y/N] ";
+        return "Delete repository support files (.git, .vgl, .gitignore) at " + Utils.formatPath(repoRoot) + "? [y/N] ";
     }
 
     public static String deleteRepoChoiceHeader(Path repoRoot) {
-        return "For repo at:\n  " + repoRoot;
+        return "For repo at:\n  " + Utils.formatPath(repoRoot);
     }
 
     public static String deleteRepoChoicePrompt() {
@@ -89,9 +89,11 @@ public final class Messages {
     public static String deleteRepoInfo(Path repoRoot) {
         return String.join("\n",
             "Delete info:",
-            "  Repo: " + repoRoot,
-            "  Metadata: " + repoRoot.resolve(".git") + ", " + repoRoot.resolve(".vgl") + ", " + repoRoot.resolve(".gitignore"),
-            "  Directory: " + repoRoot + " (entire folder)"
+            "  Repo: " + Utils.formatPath(repoRoot),
+            "  Metadata: " + Utils.formatPath(repoRoot.resolve(".git"))
+                + ", " + Utils.formatPath(repoRoot.resolve(".vgl"))
+                + ", " + Utils.formatPath(repoRoot.resolve(".gitignore")),
+            "  Directory: " + Utils.formatPath(repoRoot) + " (entire folder)"
         );
     }
 
@@ -100,18 +102,18 @@ public final class Messages {
     }
 
     public static String deleteRepoContentsPrompt(Path repoRoot) {
-        return "Delete repository contents too (delete directory) at " + repoRoot + "? [y/N] ";
+        return "Delete repository contents too (delete directory) at " + Utils.formatPath(repoRoot) + "? [y/N] ";
     }
 
     public static String noRepoAtTarget(Path targetDir) {
-        return ERR_NO_REPO_AT_TARGET_PREFIX + targetDir;
+        return ERR_NO_REPO_AT_TARGET_PREFIX + Utils.formatPath(targetDir);
     }
 
     public static String malformedRepo(Path repoRoot, String problem) {
         if (problem == null || problem.isBlank()) {
-            return WARN_MALFORMED_REPO_PREFIX + repoRoot;
+            return WARN_MALFORMED_REPO_PREFIX + Utils.formatPath(repoRoot);
         }
-        return WARN_MALFORMED_REPO_PREFIX + repoRoot + ". " + problem;
+        return WARN_MALFORMED_REPO_PREFIX + Utils.formatPath(repoRoot) + ". " + problem;
     }
 
     public static String warnHintBranchMismatch(String vglBranch, String gitBranch) {
@@ -130,14 +132,14 @@ public final class Messages {
 
     public static String warnHintVglUnreadable(Path repoRoot) {
         return String.join("\n",
-            "Warning: .vgl is unreadable at: " + repoRoot,
+            "Warning: .vgl is unreadable at: " + Utils.formatPath(repoRoot),
             "Hint: Fix or regenerate .vgl (you may lose tracked/untracked decisions)."
         );
     }
 
     public static String warnHintGitInvalid(Path repoRoot) {
         return String.join("\n",
-            "Warning: .git appears invalid at: " + repoRoot,
+            "Warning: .git appears invalid at: " + Utils.formatPath(repoRoot),
             "Hint: Run Git directly (e.g., 'git status') to diagnose or repair."
         );
     }
@@ -147,11 +149,11 @@ public final class Messages {
     }
 
     public static String deletedRepoMetadata(Path repoRoot) {
-        return OUT_DELETED_REPO_METADATA_PREFIX + repoRoot;
+        return OUT_DELETED_REPO_METADATA_PREFIX + Utils.formatPath(repoRoot);
     }
 
     public static String deletedRepoContents(Path repoRoot) {
-        return OUT_DELETED_REPO_CONTENTS_PREFIX + repoRoot;
+        return OUT_DELETED_REPO_CONTENTS_PREFIX + Utils.formatPath(repoRoot);
     }
 
     public static String refusingDeleteCurrentBranch(String branch) {
@@ -200,24 +202,24 @@ public final class Messages {
 
     public static String statusGitOnlyRepoHint(Path repoRoot) {
         return String.join("\n",
-            "Warning: Found Git repository without .vgl at: " + repoRoot,
+            "Warning: Found Git repository without .vgl at: " + Utils.formatPath(repoRoot),
             "Hint: Re-run in interactive mode to convert."
         );
     }
 
     public static String statusVglOnlyRepoHint(Path repoRoot) {
         return String.join("\n",
-            "Warning: Found .vgl without .git at: " + repoRoot,
+            "Warning: Found .vgl without .git at: " + Utils.formatPath(repoRoot),
             "Hint: Re-run in interactive mode to initialize Git."
         );
     }
 
     public static String statusConvertGitToVglPrompt(Path repoRoot) {
-        return "Convert Git repository to VGL (create .vgl) at " + repoRoot + "? [y/N] ";
+        return "Convert Git repository to VGL (create .vgl) at " + Utils.formatPath(repoRoot) + "? [y/N] ";
     }
 
     public static String statusInitGitFromVglPrompt(Path repoRoot) {
-        return "Initialize Git repository from .vgl at " + repoRoot + "? [y/N] ";
+        return "Initialize Git repository from .vgl at " + Utils.formatPath(repoRoot) + "? [y/N] ";
     }
 
     public static String trackUsage() {
@@ -325,7 +327,7 @@ public final class Messages {
     }
 
     public static String checkoutCompleted(Path repoRoot, String branch) {
-        return "Checked out: " + repoRoot + " (branch: " + branch + ")";
+        return "Checked out: " + Utils.formatPath(repoRoot) + " (branch: " + branch + ")";
     }
 
     public static String checkinCompleted(boolean draft) {
@@ -383,7 +385,7 @@ public final class Messages {
     }
 
     public static String warnTargetRepoNotCurrent(Path targetRepoRoot) {
-        String target = (targetRepoRoot != null) ? targetRepoRoot.toString() : "(unknown)";
+        String target = (targetRepoRoot != null) ? Utils.formatPath(targetRepoRoot) : "(unknown)";
         return "Warning: Target repo is not current; current switch state unchanged.\n  To switch: cd " + target;
     }
 

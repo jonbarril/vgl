@@ -2,6 +2,7 @@ package com.vgl.cli.commands.helpers;
 
 import com.vgl.cli.utils.FormatUtils;
 import com.vgl.cli.utils.GitUtils;
+import com.vgl.cli.utils.Utils;
 import com.vgl.cli.utils.VglConfig;
 import java.nio.file.Path;
 import java.util.Properties;
@@ -73,7 +74,7 @@ public final class SwitchStateOutput {
         }
 
         int labelWidth = Math.max("LOCAL:".length(), "REMOTE:".length());
-        for (String line : formatLines(repoRoot.toString(), localBranch, remoteUrl, remoteBranch, labelWidth, true)) {
+        for (String line : formatLines(Utils.formatPath(repoRoot), localBranch, remoteUrl, remoteBranch, labelWidth, true)) {
             System.out.println(line);
         }
     }
