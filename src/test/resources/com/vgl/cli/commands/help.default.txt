@@ -1,52 +1,32 @@
 Voodoo Gitless (TEST_VERSION) -- Git for mortals
 
-Note: See Flags (help -v/-vv) for flag combinations and defaults.
+Usage:
+  vgl <command> [args]
 
 Commands:
-  create [-f]                        Create repo/branch, then switch (prints LOCAL/REMOTE)
-    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
-  delete [-f]                        Delete repo/branch
-    -lr [DIR]  -lb [BRANCH]            (local repo/branch)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
-  switch [-f]                        Switch to repo/branch
-    -lb [BRANCH]                       (local repo/branch)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (remote repo/branch)
-  split -from|-into                  Clone and switch to new branch
-    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
-  merge -into|-from                  Merge branches, then switch
-    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (remote repo/branch)
-  checkout [-f]                      Clone remote, then switch
-    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (remote repo/branch)
-  checkin -draft|-final              Push and create pull request
+  create     Create repo/branch, then switch (prints LOCAL/REMOTE)
+  delete     Delete repo/branch
+  switch     Switch to repo/branch
+  split      Clone and switch to new branch
+  merge      Merge branches, then switch
+  checkout   Clone remote, then switch
+  checkin    Push and create pull request
 
-  track GLOB...                      Add files to version control
-    -all                               Track all undecided file
-  untrack GLOB...                    Remove files from version control
-  commit "MESSAGE"                 Commit workspace changes
-    -new|-add "MESSAGE"              Ammend last commit message
-  restore [-f] [GLOB|*]              Replace working files with:
-    -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
-    -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit
-  pull [-f] [-noop]                  Merge remote changes into local branch
-  push [-noop]                       Replace remote branch from local changes
-  sync [-noop]                       Pull then push
-  abort                              Cancel ongoing merge or pull
+  track      Add files to version control
+  untrack    Remove files from version control
+  commit     Commit workspace changes
+  restore    Replace working files with prior versions
+  pull       Merge remote changes into local branch
+  push       Replace remote branch from local changes
+  sync       Pull then push
+  abort      Cancel ongoing merge or pull
 
-  status [-v|-vv] [COMMIT|GLOB|*]    Show workspace/repo/file status
-    [-local][-remote][-commits][-files] Show only some sections
-  diff [GLOB|*]                      Compare files between any two:
-    -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
-    -bb BRANCH                         (same name for local+remote)
-    -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit
-  log [-v|-vv] [-graph]              Show commit history
-  help [-v|-vv]                      Show this help
+  status     Show workspace/repo/file status
+  diff       Compare files between any two
+  log        Show commit history
+  help       Show help
+
+More help:
+  vgl help -v         Show command flags and defaults
+  vgl help -vv        Show a quick workflow guide
+  vgl help <command>  Show help for one command

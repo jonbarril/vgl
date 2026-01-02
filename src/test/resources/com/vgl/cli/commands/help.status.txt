@@ -1,0 +1,17 @@
+Voodoo Gitless (TEST_VERSION) -- Git for mortals
+
+status -- Show workspace/repo/file status
+
+Usage:
+  vgl status [-v|-vv] [-local] [-remote] [-changes] [-history] [-files]
+
+Options:
+  -v, -vv     Verbose output (more detail)
+  -local      Show LOCAL section
+  -remote     Show REMOTE section
+  -changes    Show CHANGES section
+  -history    Show HISTORY section
+  -files      Show FILES section
+
+Notes:
+  - If no section flags are specified, all sections are shown.

@@ -65,6 +65,18 @@ class HelpCommandGoldenTest {
         assertThat(normalize(out)).isEqualTo(normalize(loadResourceText("help.vv.txt")));
     }
 
+    @Test
+    void help_statusOutput_isStable() throws Exception {
+        new HelpCommand().run(List.of("status"));
+        assertThat(normalize(out)).isEqualTo(normalize(loadResourceText("help.status.txt")));
+    }
+
+    @Test
+    void help_createOutput_isStable() throws Exception {
+        new HelpCommand().run(List.of("create"));
+        assertThat(normalize(out)).isEqualTo(normalize(loadResourceText("help.create.txt")));
+    }
+
     private static String normalize(ByteArrayOutputStream out) {
         return normalize(out.toString(StandardCharsets.UTF_8));
     }

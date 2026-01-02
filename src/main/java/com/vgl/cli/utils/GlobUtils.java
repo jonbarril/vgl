@@ -15,6 +15,41 @@ import java.util.Set;
 public final class GlobUtils {
     private GlobUtils() {}
 
+    /** Returns true if {@code repoRelativePath} matches any of {@code globs}. */
+    public static boolean matchesAny(String repoRelativePath, List<String> globs) {
+        if (repoRelativePath == null || repoRelativePath.isBlank()) {
+            return false;
+        }
+        if (globs == null || globs.isEmpty()) {
+            return false;
+        }
+
+        String p = repoRelativePath.replace('\\', '/');
+        for (String g : globs) {
+            if (g == null || g.isBlank()) {
+                continue;
+            }
+            String trimmed = g.trim();
+            if (trimmed.equals("*") || trimmed.equals(".")) {
+                return true;
+            }
+
+            // Match literal paths and literal directories.
+            if (!hasWildcard(trimmed)) {
+                String lit = trimmed.replace('\\', '/');
+                if (p.equals(lit) || p.startsWith(lit + "/")) {
+                    return true;
+                }
+            }
+
+            String regex = globToRegex(trimmed);
+            if (p.matches(regex)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /**
      * Expands glob-ish patterns into repo-root-relative file paths (with '/' separators).
      * Expansion is bounded to {@code repoRoot} and excludes nested git repositories.

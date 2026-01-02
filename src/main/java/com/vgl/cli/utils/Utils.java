@@ -14,6 +14,15 @@ public final class Utils {
         if (version == null || version.isBlank()) {
             version = "dev";
         }
+
+        // Optional build metadata (e.g., git hash) for dev builds.
+        String build = System.getProperty("vgl.build");
+        if (build != null) {
+            build = build.trim();
+            if (!build.isBlank() && !"unknown".equalsIgnoreCase(build)) {
+                version = version + "+" + build;
+            }
+        }
         return version;
     }
 
@@ -43,6 +52,46 @@ public final class Utils {
             return trimmed.equals("y") || trimmed.equals("yes");
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * Prompt the user to choose one of a small set of single-letter choices.
+     *
+     * <p>Returns {@code defaultChoice} when the user hits Enter. Returns {@code defaultChoice}
+     * when not interactive.
+     */
+    public static char promptChoice(String prompt, char defaultChoice, char... allowedChoices) {
+        char def = Character.toLowerCase(defaultChoice);
+        if (!isInteractive()) {
+            return def;
+        }
+
+        try {
+            while (true) {
+                System.err.print(prompt);
+                System.err.flush();
+
+                BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
+                String line = reader.readLine();
+                if (line == null) {
+                    return def;
+                }
+                String trimmed = line.trim();
+                if (trimmed.isEmpty()) {
+                    return def;
+                }
+
+                char c = Character.toLowerCase(trimmed.charAt(0));
+                for (char a : allowedChoices) {
+                    if (c == Character.toLowerCase(a)) {
+                        return c;
+                    }
+                }
+                // Unknown choice; re-prompt.
+            }
+        } catch (Exception e) {
+            return def;
         }
     }
 }

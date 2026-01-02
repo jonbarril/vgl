@@ -3,14 +3,20 @@ package com.vgl.cli.commands;
 import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.StatusVerboseOutput;
 import com.vgl.cli.commands.helpers.Usage;
+import com.vgl.cli.commands.helpers.CommandWarnings;
 import com.vgl.cli.utils.GitUtils;
+import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoResolver;
 import com.vgl.cli.utils.RepoUtils;
+import com.vgl.cli.utils.Utils;
+import com.vgl.cli.utils.VglConfig;
 import java.util.Comparator;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
 import java.util.TreeMap;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
@@ -25,6 +31,8 @@ public class CommitCommand implements Command {
 
     @Override
     public int run(List<String> args) throws Exception {
+        boolean force = args != null && args.contains("-f");
+
         CommitMode mode = CommitMode.NORMAL;
         String message = null;
 
@@ -90,18 +98,51 @@ public class CommitCommand implements Command {
                 System.out.println("Commit message updated:");
                 System.out.println("  " + (shortId.isBlank() ? "" : shortId + " ") + oneLine);
             } else {
-                // Stage tracked modifications/deletions. This intentionally does not add new untracked files.
-                try {
-                    git.add().addFilepattern(".").setUpdate(true).call();
-                } catch (Exception ignored) {
-                    // best-effort
-                }
+                Status status;
+                Map<String, String> staged;
+                boolean hasStagedChanges;
 
-                Status status = git.status().call();
-                Map<String, String> staged = collectStaged(status);
-                boolean hasStagedChanges = !status.getAdded().isEmpty()
-                    || !status.getChanged().isEmpty()
-                    || !status.getRemoved().isEmpty();
+                while (true) {
+                    // Stage tracked modifications/deletions. This intentionally does not add new untracked files.
+                    try {
+                        git.add().addFilepattern(".").setUpdate(true).call();
+                    } catch (Exception ignored) {
+                        // best-effort
+                    }
+
+                    status = git.status().call();
+                    staged = collectStaged(status);
+                    hasStagedChanges = !status.getAdded().isEmpty()
+                        || !status.getChanged().isEmpty()
+                        || !status.getRemoved().isEmpty();
+
+                    // Warn if any undecided files exist (per use-cases spec).
+                    // Do this even when there are no commit-eligible changes, so users
+                    // get a hint why their new file didn't commit (it is likely undecided).
+                    boolean hasUndecided = hasUndecidedFiles(repoRoot, status);
+                    if (hasUndecided) {
+                        char choice = CommandWarnings.warnHintAndMaybePromptChoice(
+                            Messages.commitUndecidedFilesHint(),
+                            force,
+                            "Action? [A]bort / [C]ontinue / [T]rack-all then continue [C]: ",
+                            'c',
+                            'a',
+                            'c',
+                            't'
+                        );
+                        if (choice == 'a') {
+                            System.out.println("Commit cancelled.");
+                            return 0;
+                        }
+                        if (choice == 't') {
+                            // Apply the hint by tracking all undecided files, then re-check status.
+                            runTrackAllAtRepoRoot(repoRoot);
+                            continue;
+                        }
+                    }
+
+                    break;
+                }
 
                 if (!hasStagedChanges) {
                     System.out.println("No changes to commit.");
@@ -144,6 +185,92 @@ public class CommitCommand implements Command {
         }
 
         return 0;
+    }
+
+    private static void runTrackAllAtRepoRoot(Path repoRoot) throws Exception {
+        String priorUserDir = System.getProperty("user.dir");
+        try {
+            System.setProperty("user.dir", repoRoot.toString());
+            new TrackCommand().run(List.of("-all"));
+        } finally {
+            if (priorUserDir == null) {
+                System.clearProperty("user.dir");
+            } else {
+                System.setProperty("user.dir", priorUserDir);
+            }
+        }
+    }
+
+    private static boolean hasUndecidedFiles(Path repoRoot, Status status) {
+        if (repoRoot == null) {
+            return false;
+        }
+        try {
+            if (status == null) {
+                return false;
+            }
+
+            Set<String> gitUntracked = status.getUntracked();
+            if (gitUntracked == null || gitUntracked.isEmpty()) {
+                return false;
+            }
+
+            // Remove VGL metadata.
+            java.util.Set<String> candidates = new java.util.LinkedHashSet<>();
+            for (String p : gitUntracked) {
+                if (p == null || p.isBlank()) {
+                    continue;
+                }
+                String norm = p.replace('\\', '/');
+                if (".vgl".equals(norm) || ".git".equals(norm)) {
+                    continue;
+                }
+                // Avoid noisy warnings in brand new repos where only .gitignore is undecided.
+                if (".gitignore".equals(norm)) {
+                    continue;
+                }
+                candidates.add(norm);
+            }
+            if (candidates.isEmpty()) {
+                return false;
+            }
+
+            // Remove nested-repo content.
+            java.util.Set<String> nested = GitUtils.listNestedRepos(repoRoot);
+            candidates.removeIf(p -> isInsideAnyNestedRepo(p, nested));
+            if (candidates.isEmpty()) {
+                return false;
+            }
+
+            Properties props = VglConfig.readProps(repoRoot);
+            Set<String> decidedTracked = VglConfig.getPathSet(props, VglConfig.KEY_TRACKED_FILES);
+            Set<String> decidedUntracked = VglConfig.getPathSet(props, VglConfig.KEY_UNTRACKED_FILES);
+
+            for (String p : candidates) {
+                if (decidedTracked.contains(p) || decidedUntracked.contains(p)) {
+                    continue;
+                }
+                return true;
+            }
+            return false;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    private static boolean isInsideAnyNestedRepo(String relPath, java.util.Set<String> nestedRepos) {
+        if (relPath == null || nestedRepos == null || nestedRepos.isEmpty()) {
+            return false;
+        }
+        for (String n : nestedRepos) {
+            if (n == null || n.isBlank()) {
+                continue;
+            }
+            if (relPath.equals(n) || relPath.startsWith(n + "/")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private enum CommitMode {

@@ -68,12 +68,15 @@ class CommitCommandTest {
         // Modify tracked file but do not stage it.
         Files.writeString(tracked, "hello2\n", StandardCharsets.UTF_8);
 
+        // Add an undecided file so commit warns per spec.
+        Files.writeString(repoDir.resolve("undecided.txt"), "u\n", StandardCharsets.UTF_8);
+
         String priorUserDir = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", repoDir.toString());
             try (StdIoCapture io = new StdIoCapture()) {
                 assertThat(VglMain.run(new String[] {"commit", "update"})).isEqualTo(0);
-                assertThat(io.stderr()).isEmpty();
+                assertThat(io.stderr()).isEqualTo(Messages.commitUndecidedFilesHint());
                 assertThat(io.stdout()).contains("Committed files:\n");
                 assertThat(io.stdout()).contains("M tracked.txt");
                 assertThat(io.stdout()).contains("Commit message:\n");
@@ -113,6 +116,9 @@ class CommitCommandTest {
         }
         Files.writeString(tracked, "hello2\n", StandardCharsets.UTF_8);
 
+        // Add an undecided file so commit warns per spec.
+        Files.writeString(repoDir.resolve("undecided.txt"), "u\n", StandardCharsets.UTF_8);
+
         String priorUserDir = System.getProperty("user.dir");
         try {
             System.setProperty("user.dir", tempDir.toString());
@@ -121,7 +127,8 @@ class CommitCommandTest {
                 assertThat(io.stdout()).contains("Committed files:\n");
                 assertThat(io.stdout()).contains("M tracked.txt");
                 assertThat(io.stdout()).contains("Commit message:\n");
-                assertThat(io.stderr()).isEqualTo(Messages.warnTargetRepoNotCurrent(repoDir.toAbsolutePath().normalize()));
+                assertThat(io.stderr()).contains(Messages.commitUndecidedFilesHint());
+                assertThat(io.stderr()).contains(Messages.warnTargetRepoNotCurrent(repoDir.toAbsolutePath().normalize()));
             }
         } finally {
             if (priorUserDir == null) {

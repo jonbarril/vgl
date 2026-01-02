@@ -12,10 +12,15 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 **VGL State and Arguments:**
 - **Vgl Concepts:** VGL concepts are loosely based on Gitless. Unlike Git, in Vgl there is no concept of staging. File changes in the working space are immediately eligible for commit to the local repo. As such Vgl files exist in three conceptual locations: workspace, local repo, and remote repo, with remote repo being optional. Users are allowed to operate using Git directly if desired, moving between Vgl and Git as needed. Thus Vgl must tolerate underlying changes to Git state. However, as with Gitless, the intent of Vgl is to divorce the user from the complexities and pitfalls of Git concepts and operation.
 - **VGL state:** VGL application state is maintained in the current repoΓÇÖs `.vgl` file. The current VGL repo is always the one resolved from the userΓÇÖs current working directory (unless a command arg specifies one). 
-- **Repo context:** Specifies the working local and remote repo state. Consists of the local repo path and branch name, and the remote repo URL and branch name. By definition, the local repo is that resolved from the userΓÇÖs current working directory.
+- **Repo context:** Specifies the working local and remote repo state. Also called the "switch state" as it is set and changed using the switch command.
+- Consists of the local repo path and branch name, and the remote repo URL and branch name.
+- By definition, the local repo is that resolved from the user current working directory.
+- **Repo Scope**
+- A given repo's workspace consists of all files in that repo's root directory (i.e. directory containing a .git file) subtree.
+- Files inside nested repositories (directories that contain their own `.git`) are treated as Ignored for parent-level commands (e.g., status, glob expansion).
+- By changing working direcory the user may move up or down nested repo trees, with the current local repo being the closest ancestor repo resolved from the current working directory.
 - **Default args:** The default branch (i.e. no branch name specified) for local and remote repo creation is "main". Otherwise, commands that reference a local and/or remote repo/branch default to the current repo context in the VGL state.
 - **File args:** Glob expansion and file listings must be bounded to the repository (do not walk the entire filesystem).
-- **Nested repos:** Files inside nested repositories (directories that contain their own `.git`) are treated as Ignored for parent-level commands (e.g., status, glob expansion).
 - **.vgl treatment:** By default, `.vgl` is included in `.gitignore` when a VGL repo is created. As such, it should be treated as Ignored.
 - **Internal state:** The `.vgl` file may also store internal state such as undecided files, but this is not typically surfaced to the user.
 
@@ -46,30 +51,36 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - If uncommitted changes and/or unpushed commits exist the user will be warned and asked to proceed or not.
 - If repo deletion is confirmed the user will be asked if the content should also be deleted. If so then the target directory should be deleted using system commands.
 
+**Commits**
+- Only 'tracked' files can be committed to the local repo.
+- When trying to commit changes the user will first be warned if any files in the repo are undecided, with a hist to use "track -all" to track all undecided files.
+
 **Status command:**
   - **Overview:** Provides the overall status of workspace, and local and remote repo files. More detail is progressively revealed with the use of verbose flags (-v, -vv). Output also can be filtered using section name flags (e.g. -local). Files in a VGL repo are classified as follows:
-    - The repo workspace consist of all files in the repo directory subtree.
-    - Only 'tracked' files can be committed to the local repo.
     - All files in the workspace of a new repo, or added to an existing one, default to 'undecided' unless...
-    - Files are 'ignored' by default if they resolve from the glob specs in the repo .gitignore file.
-    - Nested repos and their files are also ignored by default.
+      - Files are 'ignored' by default if they resolve from the glob specs in the repo .gitignore file.
+      - Nested repos and their files are also ignored by default (i.e. never in undecided/tracked/untrack lists). Besides being indicated as a directory in the ignored list a repo will be decorated (@ <REPO_ROOT_PATH>/).
     - Files can be 'tracked' or 'untracked' by the user with the corresponding commands.
     - Tracking overrides a file's ignored status (but its status reverts to ignored if it is untracked).
     - Once an undecided file is tracked, untracked or ignored it is no longer undecided (there is no way to make a decided file undecided again).
-    - File categories (Added/Modified/Deleted/Undecided/Tracked/Untracked/Ignored) and counts are as defined by VGL, not by Git, although there may be overlap.
-    - Nested repo paths appear in the Ignored set and are excluded from Undecided/Tracked/Untracked lists.
-    - Directories that appear in file lists include a trailing "/" indicating it is a directory and not just a file. If a dir is also a nested repo it will have an additional indicator (e.g. '(repo)').
-  - **Default:** Default behavior is when neither -v or -vv flags are present. This prints the minimal status consisting of sections LOCAL/REMOTE/COMMITS/FILES. Each section includes a one or two line summary of the corresponding aspect of repo status. As needed paths and branch names will be shortened using elipses so that the format remains consistent and column aligned.
-  - LOCAL shows the current valid VGL repo and branch (or '(none)' for each).
-  - REMOTE shows the current remote repo and branch (or '(none)' or none for each).
-  - COMMITS shows summary counts for files to Commit, Push and Pull.
-  - COMMITS also shows summary counts for: Added, Modified, Renamed (includes moved), Deleted (based on the Files-to-Commit set).
+    - File categories (Added/Modified/Deleted/Renamed/Undecided/Tracked/Untracked/Ignored) and counts are as defined by VGL, not by Git, although there may be overlap.
+    - Directories that appear in file lists include a trailing "/" indicating it is a directory and not just a file.
+  - **Default:** Default behavior is when neither -v or -vv flags are present. This prints the minimal status. Each section includes a one or two line summary of an aspect of repo status. As needed paths and branch names will be shortened using elipses so that the format remains consistent and column aligned.
+  - LOCAL shows the current local repo and branch (or '(none)' for each).
+  - REMOTE shows the current remote repo and branch (or '(none)' for each).
+  - CHANGES shows summary counts for: Files to commit, commits to push, commits to pull.
+  - HISTORY shows summary counts for Local commits, Remote commits.
   - FILES shows summary file counts for: Undecided, Tracked, Untracked, Ignored.
-  - **Verbose:** This is when -v is present but -vv is not. Same as Default mode but paths and file names are indicated in full regardless of column formatting, and LOCAL and REMOTE include branch list subsections, with the current branch (as indicated in the summary line) starred. COMMITS adds a subsection listing commit ids and truncated message to maintain a single line format. FILES adds subsections with 'Files to Commit', 'Files to Push', 'Files to Pull' and 'Undecided Files'. The the number of files in these sections shall match their respective summary count.
-  - **Very Verbose:** This is when -vv is present. COMMIT commit list messages are not truncated. FILES file names are not truncated and subsections for 'Tracked Files', 'Untracked Files' and 'Ignored Files' are added. The total number of files in these sections shall each match their summary count.
-  - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -local, -remote, -commits, -files.
-  - **General:**
-  
+  - **Verbose:** This is when -v is present but -vv is not. Same as Default mode but paths and file names are indicated in full regardless of column formatting.
+  - LOCAL and REMOTE include branch list subsections, with the current branch (corresponding to that in the summary) decorated (* <BRANCH>).
+  - CHANGES adds subsections for Files to Commit (with file change letters), with count matching that for files to commit.
+  - HISTORY adds subsection for Local-only and Remote-only commits, shown as hash and truncated message on a single line, with counts matching summary counts.
+  - FILES adds subsection for 'Undecided Files', with count matching summary count.
+  - **Very Verbose:** This is when -vv is present.
+  - All commit entries show hash, date, author, and full message.
+  - CHANGES adds subsections for 'Commits to Push' and 'Commits to Pull', with counts matching summary counts.
+  - FILES adds subsections for 'Tracked Files', 'Untracked Files' and 'Ignored Files', with counts matching summary counts.
+  - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -local, -remote, -changes, -history, -files.
 
 **Interactive vs automated modes:**
 - **Interactive detection:** Use `Utils.isInteractive()`; honor `-Dvgl.noninteractive=true` for tests and CI to suppress prompts.
@@ -91,7 +102,7 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - Use `-Dvgl.test.base` to limit upward searches in tests.
 - Use `VglTestHarness.runCommandWithInput` for simulating interactive input in tests.
 
-**Refactor Policy ΓÇö Living Use Cases Document**
+**Refactor Policy For Living Use Cases Document**
 - **Review on refactor:** Every time code is refactored (behavioral, architectural, or API changes), the author must review `docs/VglUseCases.md` and update it as necessary.
 - **Conflict detection:** If a planned refactor introduces behavior that conflicts with existing use-cases, the conflict must be documented in the file as a noted "Refactor Conflict" entry and discussed with maintainers before merging.
 - **Pull request checklist:** Include a short note in the PR description confirming the use-case document was reviewed and updated (or explain why no changes were needed).

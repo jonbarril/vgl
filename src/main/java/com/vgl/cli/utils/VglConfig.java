@@ -15,6 +15,8 @@ import java.util.function.Consumer;
 public final class VglConfig {
     private VglConfig() {}
 
+    public static final String FILENAME = ".vgl";
+
     public static final String KEY_LOCAL_BRANCH = "local.branch";
     public static final String KEY_LOCAL_BRANCHES = "local.branches";
     public static final String KEY_REMOTE_URL = "remote.url";
@@ -28,7 +30,7 @@ public final class VglConfig {
         if (repoRoot == null) {
             return props;
         }
-        Path vgl = repoRoot.resolve(".vgl");
+        Path vgl = repoRoot.resolve(FILENAME);
         if (!Files.isRegularFile(vgl)) {
             return props;
         }
@@ -46,7 +48,7 @@ public final class VglConfig {
         }
         Properties props = readProps(repoRoot);
         mutator.accept(props);
-        Path vgl = repoRoot.resolve(".vgl");
+        Path vgl = repoRoot.resolve(FILENAME);
         try (var out = Files.newOutputStream(vgl)) {
             props.store(out, "VGL state");
         }

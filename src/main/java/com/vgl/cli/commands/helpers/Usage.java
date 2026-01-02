@@ -1,5 +1,7 @@
 package com.vgl.cli.commands.helpers;
 
+import com.vgl.cli.utils.Messages;
+
 public final class Usage {
     private Usage() {}
 
@@ -9,9 +11,20 @@ public final class Usage {
             "  vgl <command> [args]",
             "",
             "Commands:",
+            "  abort",
+            "  pull",
+            "  push",
+            "  sync",
+            "  restore",
+            "  diff",
+            "  log",
             "  commit",
+            "  checkin",
+            "  checkout",
             "  create",
             "  delete",
+            "  merge",
+            "  split",
             "  switch",
             "  track",
             "  untrack",
@@ -37,22 +50,60 @@ public final class Usage {
     public static String status() {
         return String.join("\n",
             "Usage:",
-            "  vgl status [-v|-vv] [-local] [-remote] [-commits] [-files] [COMMIT|GLOB|*]"
+            "  vgl status [-v|-vv] [-local] [-remote] [-changes] [-history] [-files]"
         );
     }
 
     public static String track() {
-        return String.join("\n",
-            "Usage:",
-            "  vgl track <glob...> | -all"
-        );
+        return Messages.trackUsage();
     }
 
     public static String untrack() {
-        return String.join("\n",
-            "Usage:",
-            "  vgl untrack <glob...> | -all"
-        );
+        return Messages.untrackUsage();
+    }
+
+    public static String abort() {
+        return Messages.abortUsage();
+    }
+
+    public static String pull() {
+        return Messages.pullUsage();
+    }
+
+    public static String push() {
+        return Messages.pushUsage();
+    }
+
+    public static String sync() {
+        return Messages.syncUsage();
+    }
+
+    public static String restore() {
+        return Messages.restoreUsage();
+    }
+
+    public static String diff() {
+        return Messages.diffUsage();
+    }
+
+    public static String log() {
+        return Messages.logUsage();
+    }
+
+    public static String merge() {
+        return Messages.mergeUsage();
+    }
+
+    public static String split() {
+        return Messages.splitUsage();
+    }
+
+    public static String checkout() {
+        return Messages.checkoutUsage();
+    }
+
+    public static String checkin() {
+        return Messages.checkinUsage();
     }
 
     public static String switchCmd() {
@@ -65,9 +116,9 @@ public final class Usage {
     public static String commit() {
         return String.join("\n",
             "Usage:",
-            "  vgl commit [-lr DIR] MESSAGE",
-            "  vgl commit [-lr DIR] -new MESSAGE",
-            "  vgl commit [-lr DIR] -add MESSAGE"
+            "  vgl commit [-f] [-lr DIR] MESSAGE",
+            "  vgl commit [-f] [-lr DIR] -new MESSAGE",
+            "  vgl commit [-f] [-lr DIR] -add MESSAGE"
         );
     }
 }

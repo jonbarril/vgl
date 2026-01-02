@@ -1,0 +1,14 @@
+Voodoo Gitless (TEST_VERSION) -- Git for mortals
+
+create -- Create repo/branch, then switch (prints LOCAL/REMOTE)
+
+Usage:
+  vgl create [-f] [-lr DIR] [-lb BRANCH|-bb BRANCH]
+
+Options:
+  -f                 Bypass confirmation prompts
+  -lr DIR            Local repository directory (no switch if DIR != CWD)
+  -lb BRANCH         Local branch (default: 'main')
+  -bb BRANCH         Same name for local+remote (default: 'main')
+  -rr URL            Remote repository URL (TBD: use hosting tools)
+  -rb BRANCH         Remote branch (default: 'main')

@@ -32,8 +32,8 @@ Commands:
   track GLOB...                      Add files to version control
     -all                               Track all undecided file
   untrack GLOB...                    Remove files from version control
-  commit "MESSAGE"                 Commit workspace changes
-    -new|-add "MESSAGE"              Ammend last commit message
+  commit "MESSAGE"                   Commit workspace changes
+    -new|-add "MESSAGE"                Ammend last commit message
   restore [-f] [GLOB|*]              Replace working files with:
     -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
     -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit
@@ -42,14 +42,14 @@ Commands:
   sync [-noop]                       Pull then push
   abort                              Cancel ongoing merge or pull
 
-  status [-v|-vv] [COMMIT|GLOB|*]    Show workspace/repo/file status
-    [-local][-remote][-commits][-files] Show only some sections
+  status [-v|-vv]                    Show workspace/repo/file status
+    [-local][-remote][-changes][-history][-files] Show only some sections
   diff [GLOB|*]                      Compare files between any two:
     -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
     -bb BRANCH                         (same name for local+remote)
     -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit
   log [-v|-vv] [-graph]              Show commit history
-  help [-v|-vv]                      Show this help
+  help [-v|-vv] [COMMAND]            Show help (or help for one command)
 
 Flags:
   Note: If no repo/branch (-lr, -lb, -rr, -rb) is specified then the corresponding

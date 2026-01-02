@@ -2,6 +2,18 @@ val vglVersion = "0.3.12"
 
 version = vglVersion
 
+val vglBuild: String = run {
+    try {
+        val out = providers.exec {
+            commandLine("git", "rev-parse", "--short", "HEAD")
+            isIgnoreExitValue = true
+        }.standardOutput.asText.get().trim()
+        if (out.isBlank()) "unknown" else out
+    } catch (_: Exception) {
+        "unknown"
+    }
+}
+
 plugins {
     application
     java
@@ -29,7 +41,10 @@ dependencies {
 
 application {
     mainClass.set("com.vgl.cli.VglMain")
-    applicationDefaultJvmArgs = listOf("-Dvgl.version=${project.version}")
+    applicationDefaultJvmArgs = listOf(
+        "-Dvgl.version=${project.version}",
+        "-Dvgl.build=$vglBuild"
+    )
 }
 
 tasks.test {
@@ -83,7 +98,8 @@ tasks.jar {
     manifest {
         attributes(
             "Implementation-Title" to "VGL",
-            "Implementation-Version" to project.version
+            "Implementation-Version" to project.version,
+            "Implementation-Build" to vglBuild
         )
     }
 }

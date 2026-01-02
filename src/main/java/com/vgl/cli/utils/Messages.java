@@ -35,10 +35,25 @@ public final class Messages {
     public static final String ERR_UNKNOWN_COMMAND_PREFIX = "Unknown command: ";
     public static final String ERR_UNHANDLED_PREFIX = "ERROR: ";
 
-    public static final String WARN_STATUS_NO_REPO_FOUND = "Warning: No VGL repository found. Run 'vgl create -lr <path>' to make one.";
+    public static final String WARN_STATUS_NO_REPO_FOUND = String.join("\n",
+        "Warning: No VGL repository found.",
+        "Hint: Run 'vgl create -lr <path>' to make one."
+    );
 
     private static final String USAGE_TRACK = "Usage:\n  vgl track <glob...> | -all";
     private static final String USAGE_UNTRACK = "Usage:\n  vgl untrack <glob...> | -all";
+
+    private static final String USAGE_PULL = "Usage:\n  vgl pull [-f] [-noop]";
+    private static final String USAGE_PUSH = "Usage:\n  vgl push [-noop]";
+    private static final String USAGE_SYNC = "Usage:\n  vgl sync [-noop]";
+    private static final String USAGE_ABORT = "Usage:\n  vgl abort";
+    private static final String USAGE_RESTORE = "Usage:\n  vgl restore [-f] [GLOB|*]";
+    private static final String USAGE_DIFF = "Usage:\n  vgl diff [GLOB|*] [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]";
+    private static final String USAGE_LOG = "Usage:\n  vgl log [-v|-vv] [-graph]";
+    private static final String USAGE_MERGE = "Usage:\n  vgl merge -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]";
+    private static final String USAGE_SPLIT = "Usage:\n  vgl split -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]";
+    private static final String USAGE_CHECKOUT = "Usage:\n  vgl checkout [-f] [-lr DIR] [-rr URL] [-rb BRANCH]";
+    private static final String USAGE_CHECKIN = "Usage:\n  vgl checkin -draft|-final [-m MESSAGE] [GLOB|*]";
 
     public static String nestedRepoPrompt(Path parentRepoRootOrNull) {
         if (parentRepoRootOrNull != null) {
@@ -162,6 +177,110 @@ public final class Messages {
         return USAGE_UNTRACK;
     }
 
+    public static String pullUsage() {
+        return USAGE_PULL;
+    }
+
+    public static String pushUsage() {
+        return USAGE_PUSH;
+    }
+
+    public static String syncUsage() {
+        return USAGE_SYNC;
+    }
+
+    public static String abortUsage() {
+        return USAGE_ABORT;
+    }
+
+    public static String restoreUsage() {
+        return USAGE_RESTORE;
+    }
+
+    public static String diffUsage() {
+        return USAGE_DIFF;
+    }
+
+    public static String logUsage() {
+        return USAGE_LOG;
+    }
+
+    public static String mergeUsage() {
+        return USAGE_MERGE;
+    }
+
+    public static String splitUsage() {
+        return USAGE_SPLIT;
+    }
+
+    public static String checkoutUsage() {
+        return USAGE_CHECKOUT;
+    }
+
+    public static String checkinUsage() {
+        return USAGE_CHECKIN;
+    }
+
+    public static String pullDryRun() {
+        return "Dry run: no changes (pull).";
+    }
+
+    public static String pullCancelled() {
+        return "Pull cancelled.";
+    }
+
+    public static String pullCompleted() {
+        return "Pulled remote changes.";
+    }
+
+    public static String pullHadConflicts() {
+        return "Warning: Pull completed with conflicts.";
+    }
+
+    public static String pushDryRun() {
+        return "Dry run: no changes (push).";
+    }
+
+    public static String pushNoRemoteConfigured() {
+        return "Error: No remote configured.";
+    }
+
+    public static String pushed() {
+        return "Pushed local changes.";
+    }
+
+    public static String syncDryRun() {
+        return "Dry run: no changes (sync).";
+    }
+
+    public static String restoredCount(int n) {
+        return "Restored " + n + " file(s).";
+    }
+
+    public static String restoreCancelled() {
+        return "Restore cancelled.";
+    }
+
+    public static String restoreNoMatches() {
+        return "No matching files to restore.";
+    }
+
+    public static String abortNothingToAbort() {
+        return "Nothing to abort.";
+    }
+
+    public static String abortCompleted() {
+        return "Aborted.";
+    }
+
+    public static String checkoutCompleted(Path repoRoot, String branch) {
+        return "Checked out: " + repoRoot + " (branch: " + branch + ")";
+    }
+
+    public static String checkinCompleted(boolean draft) {
+        return draft ? "Checkin (draft) complete." : "Checkin (final) complete.";
+    }
+
     public static String trackNothingToDo() {
         return "No undecided files to track.";
     }
@@ -215,5 +334,12 @@ public final class Messages {
     public static String warnTargetRepoNotCurrent(Path targetRepoRoot) {
         String target = (targetRepoRoot != null) ? targetRepoRoot.toString() : "(unknown)";
         return "Warning: Target repo is not current; current switch state unchanged.\n  To switch: cd " + target;
+    }
+
+    public static String commitUndecidedFilesHint() {
+        return String.join("\n",
+            "Warning: Repository has undecided files.",
+            "Hint: Use 'vgl track -all' to track all undecided files."
+        );
     }
 }

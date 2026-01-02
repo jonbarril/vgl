@@ -47,11 +47,10 @@ public class StatusCommand implements Command {
 
         boolean showLocal = args.contains("-local");
         boolean showRemote = args.contains("-remote");
-        boolean showCommits = args.contains("-commits");
+        boolean showChanges = args.contains("-changes") || args.contains("-commits");
+        boolean showHistory = args.contains("-history");
         boolean showFiles = args.contains("-files");
-        boolean anySectionFlag = showLocal || showRemote || showCommits || showFiles;
-
-        List<String> filters = extractFilters(args);
+        boolean anySectionFlag = showLocal || showRemote || showChanges || showHistory || showFiles;
 
         Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
         RepoResolution resolved = resolveRepoForStatus(cwd);
@@ -97,16 +96,22 @@ public class StatusCommand implements Command {
 
             String localLabel = "LOCAL:";
             String remoteLabel = "REMOTE:";
-            String commitsLabel = "COMMITS:";
+            String changesLabel = "CHANGES:";
+            String historyLabel = "HISTORY:";
             String filesLabel = "FILES:";
-            int labelWidth = Math.max(Math.max(localLabel.length(), remoteLabel.length()), Math.max(commitsLabel.length(), filesLabel.length()));
+            int labelWidth = Math.max(
+                Math.max(localLabel.length(), remoteLabel.length()),
+                Math.max(Math.max(changesLabel.length(), historyLabel.length()), filesLabel.length())
+            );
 
             String localLabelPad = FormatUtils.padRight(localLabel, labelWidth + 1);
             String remoteLabelPad = FormatUtils.padRight(remoteLabel, labelWidth + 1);
-            String commitsLabelPad = FormatUtils.padRight(commitsLabel, labelWidth + 1);
+            String changesLabelPad = FormatUtils.padRight(changesLabel, labelWidth + 1);
+            String historyLabelPad = FormatUtils.padRight(historyLabel, labelWidth + 1);
             String filesLabelPad = FormatUtils.padRight(filesLabel, labelWidth + 1);
 
-            StatusComputation computed = computeStatus(git, repoRoot, remoteUrl, remoteBranch, filters);
+            StatusComputation computed = computeStatus(git, repoRoot, remoteUrl, remoteBranch);
+            CommitDeltas deltas = computeCommitDeltas(git, remoteUrl, remoteBranch);
 
             if (anySectionFlag) {
                 if (showLocal) {
@@ -115,17 +120,21 @@ public class StatusCommand implements Command {
                 if (showRemote) {
                     printRemoteSection(git, displayRemoteUrl, remoteUrl, remoteBranch, verbose, veryVerbose, remoteLabelPad, separator, maxLen);
                 }
-                if (showCommits) {
-                    printCommitsSection(git, commitsLabelPad, remoteUrl, remoteBranch, localBranch, computed, verbose, veryVerbose);
+                if (showChanges) {
+                    printChangesSection(changesLabelPad, computed, deltas, verbose, veryVerbose);
+                }
+                if (showHistory) {
+                    printHistorySection(historyLabelPad, deltas, verbose, veryVerbose);
                 }
                 if (showFiles) {
-                    printFilesSection(filesLabelPad, computed, verbose, veryVerbose, repoRoot, filters);
+                    printFilesSection(filesLabelPad, computed, verbose, veryVerbose, repoRoot, List.of());
                 }
             } else {
                 printLocalSection(git, repoRoot, displayLocalDir, localBranch, vglLocalBranches, verbose, veryVerbose, localLabelPad, separator, maxLen);
                 printRemoteSection(git, displayRemoteUrl, remoteUrl, remoteBranch, verbose, veryVerbose, remoteLabelPad, separator, maxLen);
-                printCommitsSection(git, commitsLabelPad, remoteUrl, remoteBranch, localBranch, computed, verbose, veryVerbose);
-                printFilesSection(filesLabelPad, computed, verbose, veryVerbose, repoRoot, filters);
+                printChangesSection(changesLabelPad, computed, deltas, verbose, veryVerbose);
+                printHistorySection(historyLabelPad, deltas, verbose, veryVerbose);
+                printFilesSection(filesLabelPad, computed, verbose, veryVerbose, repoRoot, List.of());
             }
 
             return 0;
@@ -262,121 +271,58 @@ public class StatusCommand implements Command {
         System.out.println(labelPad + FormatUtils.padRight(displayRemoteUrl, maxLen) + separator + (remoteBranch != null ? remoteBranch : "(none)"));
     }
 
-    private static void printCommitsSection(
-        Git git,
-        String commitsLabelPad,
-        String remoteUrl,
-        String remoteBranch,
-        String localBranch,
+    private static void printChangesSection(
+        String changesLabelPad,
         StatusComputation computed,
+        CommitDeltas deltas,
         boolean verbose,
         boolean veryVerbose
     ) {
-        System.out.println(commitsLabelPad + computed.filesToCommit.size() + " to Commit, " + computed.filesToPush.size() + " to Push, " + computed.filesToPull.size() + " to Pull");
+        int commitsToPush = (deltas != null && deltas.hasComparableRemote) ? deltas.localOnly.size() : 0;
+        int commitsToPull = (deltas != null && deltas.hasComparableRemote) ? deltas.remoteOnly.size() : 0;
 
-        int numAdded = (int) computed.filesToCommit.values().stream().filter(v -> "A".equals(v)).count();
-        int numModified = (int) computed.filesToCommit.values().stream().filter(v -> "M".equals(v)).count();
-        int numRenamed = (int) computed.filesToCommit.values().stream().filter(v -> "R".equals(v)).count();
-        int numDeleted = (int) computed.filesToCommit.values().stream().filter(v -> "D".equals(v)).count();
-
-        StringBuilder pad = new StringBuilder();
-        for (int i = 0; i < commitsLabelPad.length(); i++) {
-            pad.append(' ');
-        }
-        System.out.println(pad + StatusFileSummary.getSummaryCountsLine(numAdded, numModified, numRenamed, numDeleted));
+        System.out.println(changesLabelPad + computed.filesToCommit.size() + " to Commit, " + commitsToPush + " to Push, " + commitsToPull + " to Pull");
 
         if (!(verbose || veryVerbose)) {
             return;
         }
 
-        printCommitLists(git, remoteUrl, remoteBranch, localBranch, veryVerbose);
-
         printCommitMap("-- Files to Commit:", computed.filesToCommit);
-        printCommitMap("-- Files to Push:", computed.filesToPush);
-        printCommitMap("-- Files to Pull:", computed.filesToPull);
+
+        if (veryVerbose) {
+            printCommitList("-- Commits to Push:", deltas != null ? deltas.localOnly : java.util.List.of(), true);
+            printCommitList("-- Commits to Pull:", deltas != null ? deltas.remoteOnly : java.util.List.of(), true);
+        }
     }
 
-    private static void printCommitLists(Git git, String remoteUrlFromVgl, String remoteBranchFromVgl, String localBranch, boolean veryVerbose) {
-        if (git == null) {
+    private static void printHistorySection(
+        String historyLabelPad,
+        CommitDeltas deltas,
+        boolean verbose,
+        boolean veryVerbose
+    ) {
+        int localCount = (deltas != null) ? deltas.localOnly.size() : 0;
+        int remoteCount = (deltas != null && deltas.hasComparableRemote) ? deltas.remoteOnly.size() : 0;
+
+        System.out.println(historyLabelPad + localCount + " Local, " + remoteCount + " Remote");
+
+        if (!(verbose || veryVerbose)) {
             return;
         }
-        if (!GitUtils.hasCommits(git.getRepository())) {
-            // Unborn repo.
-            System.out.println("-- Commits:");
+
+        boolean showDetail = veryVerbose;
+        printCommitList("-- Local-only Commits:", deltas != null ? deltas.localOnly : java.util.List.of(), showDetail);
+        printCommitList("-- Remote-only Commits:", deltas != null ? deltas.remoteOnly : java.util.List.of(), showDetail);
+    }
+
+    private static void printCommitList(String header, java.util.List<RevCommit> commits, boolean veryVerbose) {
+        System.out.println(header);
+        if (commits == null || commits.isEmpty()) {
             System.out.println("  (none)");
             return;
         }
-
-        boolean hasRemote = remoteUrlFromVgl != null && !remoteUrlFromVgl.isBlank();
-        String remoteBranch = (remoteBranchFromVgl != null && !remoteBranchFromVgl.isBlank()) ? remoteBranchFromVgl : "main";
-
-        if (!hasRemote) {
-            try {
-                String originUrl = git.getRepository().getConfig().getString("remote", "origin", "url");
-                if (originUrl != null && !originUrl.isBlank()) {
-                    hasRemote = true;
-                }
-            } catch (Exception ignored) {
-                // best-effort
-            }
-        }
-
-        org.eclipse.jgit.lib.ObjectId localHead;
-        org.eclipse.jgit.lib.ObjectId remoteHead;
-        try {
-            localHead = git.getRepository().resolve("HEAD");
-            remoteHead = hasRemote ? git.getRepository().resolve("origin/" + remoteBranch) : null;
-        } catch (Exception e) {
-            return;
-        }
-
-        if (!hasRemote || remoteHead == null) {
-            // No remote configured: show local commits.
-            System.out.println("-- Commits:");
-            try {
-                boolean any = false;
-                for (RevCommit c : git.log().call()) {
-                    any = true;
-                    System.out.println("  " + formatCommitLine(c, veryVerbose));
-                }
-                if (!any) {
-                    System.out.println("  (none)");
-                }
-            } catch (Exception ignored) {
-                System.out.println("  (none)");
-            }
-            return;
-        }
-
-        // Remote configured: show commits to push and pull.
-        System.out.println("-- Commits to Push:");
-        try {
-            boolean any = false;
-            Iterable<RevCommit> toPush = (localHead != null) ? git.log().add(localHead).not(remoteHead).call() : java.util.List.of();
-            for (RevCommit c : toPush) {
-                any = true;
-                System.out.println("  " + formatCommitLine(c, veryVerbose));
-            }
-            if (!any) {
-                System.out.println("  (none)");
-            }
-        } catch (Exception ignored) {
-            System.out.println("  (none)");
-        }
-
-        System.out.println("-- Commits to Pull:");
-        try {
-            boolean any = false;
-            Iterable<RevCommit> toPull = (localHead != null) ? git.log().add(remoteHead).not(localHead).call() : java.util.List.of();
-            for (RevCommit c : toPull) {
-                any = true;
-                System.out.println("  " + formatCommitLine(c, veryVerbose));
-            }
-            if (!any) {
-                System.out.println("  (none)");
-            }
-        } catch (Exception ignored) {
-            System.out.println("  (none)");
+        for (RevCommit c : commits) {
+            System.out.println("  " + (veryVerbose ? formatCommitLineVeryVerbose(c) : formatCommitLine(c, false)));
         }
     }
 
@@ -397,6 +343,106 @@ public class StatusCommand implements Command {
             return shortId;
         }
         return shortId + " " + oneLine;
+    }
+
+    private static String formatCommitLineVeryVerbose(RevCommit commit) {
+        if (commit == null) {
+            return "";
+        }
+        String id = commit.getName();
+        String shortId = (id != null && id.length() >= 7) ? id.substring(0, 7) : (id != null ? id : "");
+
+        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter
+            .ofPattern("yyyy-MM-dd HH:mm")
+            .withZone(java.time.ZoneId.systemDefault());
+        String date = fmt.format(java.time.Instant.ofEpochSecond(commit.getCommitTime()));
+
+        String author = (commit.getAuthorIdent() != null) ? commit.getAuthorIdent().getName() : "";
+        String msg = commit.getFullMessage();
+        String oneLine = (msg == null) ? "" : msg.replace('\n', ' ').replace('\r', ' ').replaceAll("\\s+", " ").trim();
+
+        if (!author.isBlank()) {
+            if (oneLine.isBlank()) {
+                return shortId + "  " + date + "  " + author;
+            }
+            return shortId + "  " + date + "  " + author + "  " + oneLine;
+        }
+        if (oneLine.isBlank()) {
+            return shortId + "  " + date;
+        }
+        return shortId + "  " + date + "  " + oneLine;
+    }
+
+    private static CommitDeltas computeCommitDeltas(Git git, String remoteUrlFromVgl, String remoteBranchFromVgl) {
+        if (git == null) {
+            return new CommitDeltas(false, false, java.util.List.of(), java.util.List.of());
+        }
+
+        Repository repo = git.getRepository();
+        if (repo == null || !GitUtils.hasCommits(repo)) {
+            return new CommitDeltas(false, false, java.util.List.of(), java.util.List.of());
+        }
+
+        boolean hasRemoteConfigured = remoteUrlFromVgl != null && !remoteUrlFromVgl.isBlank();
+        if (!hasRemoteConfigured) {
+            try {
+                String originUrl = repo.getConfig().getString("remote", "origin", "url");
+                if (originUrl != null && !originUrl.isBlank()) {
+                    hasRemoteConfigured = true;
+                }
+            } catch (Exception ignored) {
+                // best-effort
+            }
+        }
+
+        String remoteBranch = (remoteBranchFromVgl != null && !remoteBranchFromVgl.isBlank()) ? remoteBranchFromVgl : "main";
+
+        org.eclipse.jgit.lib.ObjectId localHead;
+        org.eclipse.jgit.lib.ObjectId remoteHead;
+        try {
+            localHead = repo.resolve("HEAD");
+            remoteHead = hasRemoteConfigured ? repo.resolve("origin/" + remoteBranch) : null;
+        } catch (Exception e) {
+            localHead = null;
+            remoteHead = null;
+        }
+
+        boolean hasComparableRemote = hasRemoteConfigured && remoteHead != null;
+
+        if (!hasComparableRemote) {
+            java.util.List<RevCommit> local = new java.util.ArrayList<>();
+            try {
+                for (RevCommit c : git.log().call()) {
+                    local.add(c);
+                }
+            } catch (Exception ignored) {
+                // best-effort
+            }
+            return new CommitDeltas(hasRemoteConfigured, false, local, java.util.List.of());
+        }
+
+        java.util.List<RevCommit> toPush = new java.util.ArrayList<>();
+        java.util.List<RevCommit> toPull = new java.util.ArrayList<>();
+
+        try {
+            Iterable<RevCommit> it = (localHead != null) ? git.log().add(localHead).not(remoteHead).call() : java.util.List.of();
+            for (RevCommit c : it) {
+                toPush.add(c);
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+
+        try {
+            Iterable<RevCommit> it = (localHead != null) ? git.log().add(remoteHead).not(localHead).call() : java.util.List.of();
+            for (RevCommit c : it) {
+                toPull.add(c);
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+
+        return new CommitDeltas(true, true, toPush, toPull);
     }
 
     private static String truncateEnd(String s, int maxLen) {
@@ -513,7 +559,7 @@ public class StatusCommand implements Command {
         }
     }
 
-    private static StatusComputation computeStatus(Git git, Path repoRoot, String remoteUrl, String remoteBranch, List<String> filters) throws Exception {
+    private static StatusComputation computeStatus(Git git, Path repoRoot, String remoteUrl, String remoteBranch) throws Exception {
         Map<String, String> filesToCommit = new LinkedHashMap<>();
         Map<String, String> filesToPush = new LinkedHashMap<>();
         Map<String, String> filesToPull = new LinkedHashMap<>();
@@ -686,18 +732,6 @@ public class StatusCommand implements Command {
         // Push/pull: if a remote is configured and both sides exist, compute file-diff summaries.
         computePushPullFileDiffs(git, remoteUrl, remoteBranch, filesToPush, filesToPull);
 
-        // Apply optional path filter to all output-driving collections.
-        if (filters != null && !filters.isEmpty()) {
-            filesToCommit = filterCommitMap(filesToCommit, filters);
-            filesToPush = filterCommitMap(filesToPush, filters);
-            filesToPull = filterCommitMap(filesToPull, filters);
-
-            tracked = filterSet(tracked, filters);
-            undecided = filterSet(undecided, filters);
-            untracked = filterSet(untracked, filters);
-            // ignored stays unfiltered: it mostly contains metadata and nested repos.
-        }
-
         return new StatusComputation(filesToCommit, filesToPush, filesToPull, tracked, untracked, undecided, ignored);
     }
 
@@ -859,62 +893,6 @@ public class StatusCommand implements Command {
         }
     }
 
-    private static Map<String, String> filterCommitMap(Map<String, String> map, List<String> filters) {
-        Map<String, String> out = new LinkedHashMap<>();
-        for (var e : map.entrySet()) {
-            if (matchesAnyFilter(e.getKey(), filters)) {
-                out.put(e.getKey(), e.getValue());
-            }
-        }
-        return out;
-    }
-
-    private static Set<String> filterSet(Set<String> set, List<String> filters) {
-        Set<String> out = new LinkedHashSet<>();
-        for (String p : set) {
-            if (matchesAnyFilter(p, filters)) {
-                out.add(p);
-            }
-        }
-        return out;
-    }
-
-    private static boolean matchesAnyFilter(String path, List<String> filters) {
-        if (filters == null || filters.isEmpty()) {
-            return true;
-        }
-        for (String f : filters) {
-            if (f == null || f.isBlank()) {
-                continue;
-            }
-            if (f.contains("*") || f.contains("?")) {
-                String regex = f.replace(".", "\\.").replace("*", ".*").replace("?", ".");
-                if (path.matches(regex)) {
-                    return true;
-                }
-            } else {
-                if (path.equals(f) || path.startsWith(f + "/") || path.contains("/" + f)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    private static List<String> extractFilters(List<String> args) {
-        List<String> filters = new ArrayList<>();
-        for (String a : args) {
-            if (a == null) {
-                continue;
-            }
-            if (a.startsWith("-")) {
-                continue;
-            }
-            filters.add(a);
-        }
-        return filters;
-    }
-
     private static String safeGitBranch(Repository repo) {
         try {
             return repo.getBranch();
@@ -1035,5 +1013,12 @@ public class StatusCommand implements Command {
         Set<String> untracked,
         Set<String> undecided,
         Set<String> ignored
+    ) {}
+
+    private record CommitDeltas(
+        boolean hasRemoteConfigured,
+        boolean hasComparableRemote,
+        java.util.List<RevCommit> localOnly,
+        java.util.List<RevCommit> remoteOnly
     ) {}
 }

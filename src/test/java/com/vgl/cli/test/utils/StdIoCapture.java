@@ -8,12 +8,17 @@ public final class StdIoCapture implements AutoCloseable {
     private final PrintStream originalOut;
     private final PrintStream originalErr;
 
+    private final String priorNonInteractive;
+
     private final ByteArrayOutputStream out;
     private final ByteArrayOutputStream err;
 
     public StdIoCapture() {
         originalOut = System.out;
         originalErr = System.err;
+
+        priorNonInteractive = System.getProperty("vgl.noninteractive");
+        System.setProperty("vgl.noninteractive", "true");
 
         out = new ByteArrayOutputStream();
         err = new ByteArrayOutputStream();
@@ -45,5 +50,11 @@ public final class StdIoCapture implements AutoCloseable {
     public void close() {
         System.setOut(originalOut);
         System.setErr(originalErr);
+
+        if (priorNonInteractive == null) {
+            System.clearProperty("vgl.noninteractive");
+        } else {
+            System.setProperty("vgl.noninteractive", priorNonInteractive);
+        }
     }
 }
