@@ -26,6 +26,8 @@ public final class RepoPreflight {
             return false;
         }
 
+        boolean prompt = Boolean.parseBoolean(System.getProperty("vgl.preflight.prompt", "false"));
+
         // 1) Ensure Git can be opened.
         String gitBranch = null;
         try (Git git = GitUtils.openGit(repoRoot)) {
@@ -35,15 +37,8 @@ public final class RepoPreflight {
                 gitBranch = null;
             }
         } catch (Exception e) {
-            char choice = Utils.warnHintAndMaybePromptChoice(
-                Messages.warnHintGitInvalid(repoRoot),
-                false,
-                "Action? [A]bort / [C]ontinue: ",
-                'a',
-                'a',
-                'c'
-            );
-            return choice != 'a';
+            System.err.println(Messages.warnHintGitInvalid(repoRoot));
+            return false;
         }
 
         // 2) If .vgl exists, ensure it's readable enough to load properties.
@@ -53,24 +48,28 @@ public final class RepoPreflight {
             try (InputStream in = Files.newInputStream(vgl)) {
                 props.load(in);
             } catch (Exception e) {
-                char choice = Utils.warnHintAndMaybePromptChoice(
-                    Messages.warnHintVglUnreadable(repoRoot),
-                    false,
-                    "Action? [A]bort / [C]ontinue / [R]ecreate-.vgl then continue: ",
-                    'c',
-                    'a',
-                    'c',
-                    'r'
-                );
-                if (choice == 'a') {
-                    return false;
-                }
-                if (choice == 'r') {
-                    final String branchToWrite = (gitBranch == null || gitBranch.isBlank()) ? "main" : gitBranch;
-                    try {
-                        VglConfig.writeProps(repoRoot, p -> p.setProperty(VglConfig.KEY_LOCAL_BRANCH, branchToWrite));
-                    } catch (Exception ignored) {
-                        // keep going
+                if (!prompt) {
+                    System.err.println(Messages.warnHintVglUnreadable(repoRoot));
+                } else {
+                    char choice = Utils.warnHintAndMaybePromptChoice(
+                        Messages.warnHintVglUnreadable(repoRoot),
+                        false,
+                        "Action? [A]bort / [C]ontinue / [R]ecreate-.vgl then continue: ",
+                        'c',
+                        'a',
+                        'c',
+                        'r'
+                    );
+                    if (choice == 'a') {
+                        return false;
+                    }
+                    if (choice == 'r') {
+                        final String branchToWrite = (gitBranch == null || gitBranch.isBlank()) ? "main" : gitBranch;
+                        try {
+                            VglConfig.writeProps(repoRoot, p -> p.setProperty(VglConfig.KEY_LOCAL_BRANCH, branchToWrite));
+                        } catch (Exception ignored) {
+                            // keep going
+                        }
                     }
                 }
                 // Continue with empty props.
@@ -82,24 +81,33 @@ public final class RepoPreflight {
         String vglBranch = props.getProperty(VglConfig.KEY_LOCAL_BRANCH);
         if (vglBranch != null && !vglBranch.isBlank() && gitBranch != null && !gitBranch.isBlank()) {
             if (!vglBranch.equals(gitBranch)) {
-                char choice = Utils.warnHintAndMaybePromptChoice(
-                    Messages.warnHintBranchMismatch(vglBranch, gitBranch),
-                    false,
-                    "Action? [A]bort / [C]ontinue / [U]pdate-.vgl then continue: ",
-                    'c',
-                    'a',
-                    'c',
-                    'u'
-                );
-                if (choice == 'a') {
-                    return false;
-                }
-                if (choice == 'u') {
-                    final String branchToWrite = gitBranch;
+                if (!prompt) {
                     try {
+                        final String branchToWrite = gitBranch;
                         VglConfig.writeProps(repoRoot, p -> p.setProperty(VglConfig.KEY_LOCAL_BRANCH, branchToWrite));
                     } catch (Exception e) {
-                        System.err.println(Messages.warnHintVglUnreadable(repoRoot));
+                        System.err.println(Messages.warnHintBranchMismatch(vglBranch, gitBranch));
+                    }
+                } else {
+                    char choice = Utils.warnHintAndMaybePromptChoice(
+                        Messages.warnHintBranchMismatch(vglBranch, gitBranch),
+                        false,
+                        "Action? [A]bort / [C]ontinue / [U]pdate-.vgl then continue: ",
+                        'c',
+                        'a',
+                        'c',
+                        'u'
+                    );
+                    if (choice == 'a') {
+                        return false;
+                    }
+                    if (choice == 'u') {
+                        final String branchToWrite = gitBranch;
+                        try {
+                            VglConfig.writeProps(repoRoot, p -> p.setProperty(VglConfig.KEY_LOCAL_BRANCH, branchToWrite));
+                        } catch (Exception e) {
+                            System.err.println(Messages.warnHintVglUnreadable(repoRoot));
+                        }
                     }
                 }
             }
@@ -110,19 +118,8 @@ public final class RepoPreflight {
         missing.addAll(findMissingPaths(repoRoot, VglConfig.getPathSet(props, VglConfig.KEY_TRACKED_FILES)));
         missing.addAll(findMissingPaths(repoRoot, VglConfig.getPathSet(props, VglConfig.KEY_UNTRACKED_FILES)));
         if (!missing.isEmpty()) {
-            char choice = Utils.warnHintAndMaybePromptChoice(
-                Messages.warnHintVglHasMissingPaths(missing.size()),
-                false,
-                "Action? [A]bort / [C]ontinue / [P]rune-missing then continue: ",
-                'c',
-                'a',
-                'c',
-                'p'
-            );
-            if (choice == 'a') {
-                return false;
-            }
-            if (choice == 'p') {
+            if (!prompt) {
+                // Non-disruptive default: silently prune missing paths.
                 final Set<String> toRemove = new LinkedHashSet<>(missing);
                 try {
                     VglConfig.writeProps(repoRoot, p -> {
@@ -135,7 +132,36 @@ public final class RepoPreflight {
                         VglConfig.setPathSet(p, VglConfig.KEY_UNTRACKED_FILES, untracked);
                     });
                 } catch (Exception e) {
-                    System.err.println(Messages.warnHintVglUnreadable(repoRoot));
+                    System.err.println(Messages.warnHintVglHasMissingPaths(missing.size()));
+                }
+            } else {
+                char choice = Utils.warnHintAndMaybePromptChoice(
+                    Messages.warnHintVglHasMissingPaths(missing.size()),
+                    false,
+                    "Action? [A]bort / [C]ontinue / [P]rune-missing then continue: ",
+                    'c',
+                    'a',
+                    'c',
+                    'p'
+                );
+                if (choice == 'a') {
+                    return false;
+                }
+                if (choice == 'p') {
+                    final Set<String> toRemove = new LinkedHashSet<>(missing);
+                    try {
+                        VglConfig.writeProps(repoRoot, p -> {
+                            Set<String> tracked = VglConfig.getPathSet(p, VglConfig.KEY_TRACKED_FILES);
+                            tracked.removeAll(toRemove);
+                            VglConfig.setPathSet(p, VglConfig.KEY_TRACKED_FILES, tracked);
+
+                            Set<String> untracked = VglConfig.getPathSet(p, VglConfig.KEY_UNTRACKED_FILES);
+                            untracked.removeAll(toRemove);
+                            VglConfig.setPathSet(p, VglConfig.KEY_UNTRACKED_FILES, untracked);
+                        });
+                    } catch (Exception e) {
+                        System.err.println(Messages.warnHintVglUnreadable(repoRoot));
+                    }
                 }
             }
         }

@@ -77,33 +77,44 @@ public class DeleteCommand implements Command {
             System.err.println(Messages.malformedRepo(repoRoot, m.problem()));
         }
 
-        // Repo deletion flow (UseCases): confirm deletion, warn if uncommitted/unpushed, optionally delete contents.
+        // Repo deletion flow (UseCases): interactive choice prompt, with optional risk hint.
+        boolean deleteContents = false;
         if (!force) {
-            if (!Utils.confirm(Messages.deleteRepoPrompt(repoRoot))) {
+            if (!Utils.isInteractive()) {
                 System.err.println(Messages.deleteRepoRefusing());
                 return 1;
             }
 
+            RepoRisk risk = new RepoRisk(false, false);
             if (hasGitDir && !(validation instanceof RepoValidation.Result.Malformed)) {
-                RepoRisk risk = computeRepoRisk(repoRoot);
-                if (risk.hasUncommittedChanges || risk.hasUnpushedCommits) {
-                    if (!Utils.confirm(Messages.deleteRepoDirtyOrAheadPrompt())) {
-                        System.err.println(Messages.deleteRepoRefusing());
-                        return 1;
-                    }
-                }
-            } else {
-                // If we can't reliably inspect status (no .git or malformed state), still give a safety prompt.
-                if (!Utils.confirm(Messages.deleteRepoDirtyOrAheadPrompt())) {
-                    System.err.println(Messages.deleteRepoRefusing());
-                    return 1;
-                }
+                risk = computeRepoRisk(repoRoot);
             }
-        }
 
-        boolean deleteContents = false;
-        if (!force && Utils.isInteractive()) {
-            deleteContents = Utils.confirm(Messages.deleteRepoContentsPrompt(repoRoot));
+            if (risk.hasUncommittedChanges || risk.hasUnpushedCommits) {
+                System.err.println(Messages.WARN_REPO_DIRTY_OR_AHEAD);
+            }
+
+            System.err.println(Messages.deleteRepoChoiceHeader(repoRoot));
+            char choice = Utils.promptChoice(
+                Messages.deleteRepoChoicePrompt(),
+                'a',
+                'a',
+                'i',
+                'm',
+                'd'
+            );
+
+            if (choice == 'a') {
+                System.out.println("Delete cancelled.");
+                return 0;
+            }
+            if (choice == 'i') {
+                System.out.println(Messages.deleteRepoInfo(repoRoot));
+                return 0;
+            }
+            if (choice == 'd') {
+                deleteContents = true;
+            }
         }
 
         if (deleteContents) {

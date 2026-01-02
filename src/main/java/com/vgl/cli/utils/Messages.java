@@ -78,6 +78,23 @@ public final class Messages {
         return "Delete repository support files (.git, .vgl, .gitignore) at " + repoRoot + "? [y/N] ";
     }
 
+    public static String deleteRepoChoiceHeader(Path repoRoot) {
+        return "For repo at:\n  " + repoRoot;
+    }
+
+    public static String deleteRepoChoicePrompt() {
+        return "Delete: [A]bort / [I]nfo / [M]etadata / [D]irectory: ";
+    }
+
+    public static String deleteRepoInfo(Path repoRoot) {
+        return String.join("\n",
+            "Delete info:",
+            "  Repo: " + repoRoot,
+            "  Metadata: " + repoRoot.resolve(".git") + ", " + repoRoot.resolve(".vgl") + ", " + repoRoot.resolve(".gitignore"),
+            "  Directory: " + repoRoot + " (entire folder)"
+        );
+    }
+
     public static String deleteRepoDirtyOrAheadPrompt() {
         return WARN_REPO_DIRTY_OR_AHEAD + " Continue? [y/N] ";
     }
