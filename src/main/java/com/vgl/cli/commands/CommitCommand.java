@@ -124,7 +124,7 @@ public class CommitCommand implements Command {
                         char choice = CommandWarnings.warnHintAndMaybePromptChoice(
                             Messages.commitUndecidedFilesHint(),
                             force,
-                            "Action? [A]bort / [C]ontinue / [T]rack-all then continue [C]: ",
+                            "Action? [A]bort / [C]ontinue / [T]rack-all then continue: ",
                             'c',
                             'a',
                             'c',

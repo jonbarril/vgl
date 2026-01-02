@@ -21,13 +21,13 @@ public final class CommandWarnings {
         char defaultChoice,
         char... allowedChoices
     ) {
-        if (warningAndHintMessage != null && !warningAndHintMessage.isBlank()) {
-            System.err.println(warningAndHintMessage);
-        }
-        if (!Utils.isInteractive() || force) {
-            return Character.toLowerCase(defaultChoice);
-        }
-        return Utils.promptChoice(prompt, defaultChoice, allowedChoices);
+        return Utils.warnHintAndMaybePromptChoice(
+            warningAndHintMessage,
+            force,
+            prompt,
+            defaultChoice,
+            allowedChoices
+        );
     }
 
     public static void warnTargetRepoNotCurrent(Path targetRepoRoot) {

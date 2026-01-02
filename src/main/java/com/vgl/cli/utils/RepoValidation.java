@@ -23,7 +23,7 @@ public final class RepoValidation {
             return Result.none("No .git or .vgl found");
         }
 
-        StringBuilder problems = new StringBuilder();
+        StringBuilder fatalProblems = new StringBuilder();
         String vglLocalBranch = null;
 
         if (hasVglFile) {
@@ -34,7 +34,7 @@ public final class RepoValidation {
                 }
                 vglLocalBranch = props.getProperty("local.branch");
             } catch (IOException e) {
-                problems.append(".vgl is unreadable: ").append(e.getMessage());
+                fatalProblems.append(".vgl is unreadable: ").append(e.getMessage());
             }
         }
 
@@ -48,31 +48,27 @@ public final class RepoValidation {
                     gitBranch = null;
                 }
             } catch (Exception e) {
-                if (!problems.isEmpty()) {
-                    problems.append("; ");
+                if (!fatalProblems.isEmpty()) {
+                    fatalProblems.append("; ");
                 }
-                problems.append(".git is not a valid git repo: ").append(e.getMessage());
+                fatalProblems.append(".git is not a valid git repo: ").append(e.getMessage());
             }
+        }
+
+        if (!fatalProblems.isEmpty()) {
+            return Result.malformed(normalized, hasGitDir, hasVglFile, fatalProblems.toString());
         }
 
         if (hasGitDir && hasVglFile && vglLocalBranch != null && gitBranch != null) {
             if (!vglLocalBranch.equals(gitBranch)) {
-                if (!problems.isEmpty()) {
-                    problems.append("; ");
-                }
-                problems.append("Inconsistent state: .vgl local.branch=").append(vglLocalBranch)
-                    .append(" but git branch=").append(gitBranch);
+                return Result.inconsistentBranches(normalized, hasGitDir, hasVglFile, vglLocalBranch, gitBranch);
             }
         }
 
-        if (problems.isEmpty()) {
-            return Result.valid(normalized, hasGitDir, hasVglFile);
-        }
-
-        return Result.malformed(normalized, hasGitDir, hasVglFile, problems.toString());
+        return Result.valid(normalized, hasGitDir, hasVglFile);
     }
 
-    public sealed interface Result permits Result.None, Result.Valid, Result.Malformed {
+    public sealed interface Result permits Result.None, Result.Valid, Result.Malformed, Result.InconsistentBranches {
         static None none(String reason) {
             return new None(reason);
         }
@@ -85,10 +81,28 @@ public final class RepoValidation {
             return new Malformed(repoRoot, hasGitDir, hasVglFile, problem);
         }
 
+        static InconsistentBranches inconsistentBranches(
+            Path repoRoot,
+            boolean hasGitDir,
+            boolean hasVglFile,
+            String vglLocalBranch,
+            String gitBranch
+        ) {
+            return new InconsistentBranches(repoRoot, hasGitDir, hasVglFile, vglLocalBranch, gitBranch);
+        }
+
         record None(String reason) implements Result {}
 
         record Valid(Path repoRoot, boolean hasGitDir, boolean hasVglFile) implements Result {}
 
         record Malformed(Path repoRoot, boolean hasGitDir, boolean hasVglFile, String problem) implements Result {}
+
+        record InconsistentBranches(
+            Path repoRoot,
+            boolean hasGitDir,
+            boolean hasVglFile,
+            String vglLocalBranch,
+            String gitBranch
+        ) implements Result {}
     }
 }

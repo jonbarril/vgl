@@ -70,6 +70,10 @@ public final class RepoResolver {
             return null;
         }
 
+        if (!RepoPreflight.preflight(repoRoot)) {
+            return null;
+        }
+
         return repoRoot;
     }
 

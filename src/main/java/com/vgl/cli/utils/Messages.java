@@ -97,6 +97,34 @@ public final class Messages {
         return WARN_MALFORMED_REPO_PREFIX + repoRoot + ". " + problem;
     }
 
+    public static String warnHintBranchMismatch(String vglBranch, String gitBranch) {
+        return String.join("\n",
+            "Warning: Repository branch metadata differs.",
+            "Hint: .vgl local.branch=" + vglBranch + " but Git branch=" + gitBranch + "."
+        );
+    }
+
+    public static String warnHintVglHasMissingPaths(int missingCount) {
+        return String.join("\n",
+            "Warning: .vgl references " + missingCount + " path(s) that no longer exist.",
+            "Hint: You can prune missing paths to keep .vgl tidy."
+        );
+    }
+
+    public static String warnHintVglUnreadable(Path repoRoot) {
+        return String.join("\n",
+            "Warning: .vgl is unreadable at: " + repoRoot,
+            "Hint: Fix or regenerate .vgl (you may lose tracked/untracked decisions)."
+        );
+    }
+
+    public static String warnHintGitInvalid(Path repoRoot) {
+        return String.join("\n",
+            "Warning: .git appears invalid at: " + repoRoot,
+            "Hint: Run Git directly (e.g., 'git status') to diagnose or repair."
+        );
+    }
+
     public static String deleteRepoRefusing() {
         return ERR_REFUSING_DELETE_REPO;
     }
@@ -154,11 +182,17 @@ public final class Messages {
     }
 
     public static String statusGitOnlyRepoHint(Path repoRoot) {
-        return "Warning: Found Git repository without .vgl at: " + repoRoot + ". Re-run in interactive mode to convert.";
+        return String.join("\n",
+            "Warning: Found Git repository without .vgl at: " + repoRoot,
+            "Hint: Re-run in interactive mode to convert."
+        );
     }
 
     public static String statusVglOnlyRepoHint(Path repoRoot) {
-        return "Warning: Found .vgl without .git at: " + repoRoot + ". Re-run in interactive mode to initialize Git.";
+        return String.join("\n",
+            "Warning: Found .vgl without .git at: " + repoRoot,
+            "Hint: Re-run in interactive mode to initialize Git."
+        );
     }
 
     public static String statusConvertGitToVglPrompt(Path repoRoot) {

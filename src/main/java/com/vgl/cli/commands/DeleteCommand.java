@@ -4,6 +4,7 @@ import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.utils.Messages;
+import com.vgl.cli.utils.RepoPreflight;
 import com.vgl.cli.utils.RepoValidation;
 import com.vgl.cli.utils.Utils;
 import java.io.IOException;
@@ -61,10 +62,16 @@ public class DeleteCommand implements Command {
         }
 
         Path repoRoot = (validation instanceof RepoValidation.Result.Valid v) ? v.repoRoot()
+            : (validation instanceof RepoValidation.Result.InconsistentBranches ib) ? ib.repoRoot()
             : ((RepoValidation.Result.Malformed) validation).repoRoot();
 
         boolean hasGitDir = (validation instanceof RepoValidation.Result.Valid v) ? v.hasGitDir()
+            : (validation instanceof RepoValidation.Result.InconsistentBranches ib) ? ib.hasGitDir()
             : ((RepoValidation.Result.Malformed) validation).hasGitDir();
+
+        if (!RepoPreflight.preflight(repoRoot)) {
+            return 1;
+        }
 
         if (validation instanceof RepoValidation.Result.Malformed m) {
             System.err.println(Messages.malformedRepo(repoRoot, m.problem()));

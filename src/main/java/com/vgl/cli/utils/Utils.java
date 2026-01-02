@@ -94,4 +94,26 @@ public final class Utils {
             return def;
         }
     }
+
+    /**
+     * Print a warning/hint message, and optionally prompt the user for a single-letter choice.
+     *
+     * <p>In non-interactive mode or when {@code force} is true, no prompt is printed and
+     * {@code defaultChoice} is returned.
+     */
+    public static char warnHintAndMaybePromptChoice(
+        String warningAndHintMessage,
+        boolean force,
+        String prompt,
+        char defaultChoice,
+        char... allowedChoices
+    ) {
+        if (warningAndHintMessage != null && !warningAndHintMessage.isBlank()) {
+            System.err.println(warningAndHintMessage);
+        }
+        if (!isInteractive() || force) {
+            return Character.toLowerCase(defaultChoice);
+        }
+        return promptChoice(prompt, defaultChoice, allowedChoices);
+    }
 }

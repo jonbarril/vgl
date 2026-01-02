@@ -7,6 +7,7 @@ import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.utils.RepoValidation;
+import com.vgl.cli.utils.RepoPreflight;
 import com.vgl.cli.utils.Utils;
 import com.vgl.cli.utils.VglConfig;
 import java.io.IOException;
@@ -60,6 +61,10 @@ public class StatusCommand implements Command {
 
         Path repoRoot = resolved.repoRoot;
 
+        if (!RepoPreflight.preflight(repoRoot)) {
+            return 1;
+        }
+
         RepoValidation.Result validation = RepoValidation.validateRepoAt(repoRoot);
         if (validation instanceof RepoValidation.Result.None) {
             System.err.println(Messages.statusNoRepoFoundHint());
@@ -68,6 +73,9 @@ public class StatusCommand implements Command {
         if (validation instanceof RepoValidation.Result.Malformed m) {
             System.err.println(Messages.malformedRepo(repoRoot, m.problem()));
             return 1;
+        }
+        if (validation instanceof RepoValidation.Result.InconsistentBranches) {
+            // Non-fatal: VGL prefers the actual Git branch at runtime.
         }
 
         Properties vglProps = readVglProps(repoRoot);
