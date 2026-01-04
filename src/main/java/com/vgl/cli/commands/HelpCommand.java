@@ -447,8 +447,8 @@ public class HelpCommand implements Command {
                 "  vgl split -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]",
                 "",
                 "Notes:",
-                "  - Use -from when you are on the source branch.",
-                "  - Use -into when you are on the destination branch."
+                "  - Use -into when you are on the source branch.",
+                "  - Use -from when you are on the destination branch."
             );
             case "checkout" -> String.join("\n",
                 header(),

@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 
@@ -52,6 +53,13 @@ public class SplitCommand implements Command {
         try (Git git = GitUtils.openGit(repoRoot)) {
             Repository repo = git.getRepository();
 
+            boolean headResolves;
+            try {
+                headResolves = repo.resolve(Constants.HEAD) != null;
+            } catch (Exception e) {
+                headResolves = false;
+            }
+
             String current;
             try {
                 current = repo.getBranch();
@@ -67,7 +75,17 @@ public class SplitCommand implements Command {
                 }
 
                 // Create branch from current HEAD and switch.
-                git.checkout().setCreateBranch(true).setName(branch).call();
+                // For unborn repositories, avoid JGit checkout failure ("Ref HEAD cannot be resolved").
+                try {
+                    if (!headResolves) {
+                        repo.updateRef(Constants.HEAD).link("refs/heads/" + branch);
+                    } else {
+                        git.checkout().setCreateBranch(true).setName(branch).call();
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error: Cannot create branch '" + branch + "'.");
+                    return 1;
+                }
 
                 VglConfig.writeProps(repoRoot, props -> {
                     props.setProperty(VglConfig.KEY_LOCAL_BRANCH, branch);
@@ -79,6 +97,11 @@ public class SplitCommand implements Command {
                 System.out.println(Messages.createdAndSwitchedBranch(branch));
                 StateChangeOutput.printSwitchStateAndWarnIfNotCurrent(repoRoot, hasExplicitTarget);
                 return 0;
+            }
+
+            if (!headResolves) {
+                System.err.println("Error: Repository has no commits yet.");
+                return 1;
             }
 
             // -from: best-effort "create current switch-state branch from source".
@@ -98,7 +121,12 @@ public class SplitCommand implements Command {
                 return 1;
             }
 
-            git.checkout().setCreateBranch(true).setName(targetBranch).setStartPoint("refs/heads/" + branch).call();
+            try {
+                git.checkout().setCreateBranch(true).setName(targetBranch).setStartPoint("refs/heads/" + branch).call();
+            } catch (Exception e) {
+                System.err.println("Error: Cannot create branch '" + targetBranch + "' from '" + branch + "'.");
+                return 1;
+            }
 
             VglConfig.writeProps(repoRoot, props -> {
                 props.setProperty(VglConfig.KEY_LOCAL_BRANCH, targetBranch);
