@@ -96,7 +96,10 @@ public class DiffCommand implements Command {
                     System.err.println("Error: Cannot resolve diff endpoints.");
                     return 1;
                 }
-                diffTrees(repo, oldTreeId, newTreeId, globs);
+                boolean any = diffTrees(repo, oldTreeId, newTreeId, globs);
+                if (!any) {
+                    System.out.println("No differences.");
+                }
                 return 0;
             }
 
@@ -106,7 +109,10 @@ public class DiffCommand implements Command {
                     System.err.println("Error: Cannot resolve origin/" + remoteBranch);
                     return 1;
                 }
-                diffTreeToWorking(repo, oldTreeId, workingTree, globs);
+                boolean any = diffTreeToWorking(repo, oldTreeId, workingTree, globs);
+                if (!any) {
+                    System.out.println("No differences.");
+                }
                 return 0;
             }
 
@@ -117,7 +123,10 @@ public class DiffCommand implements Command {
                 System.err.println("Error: Cannot resolve " + ref);
                 return 1;
             }
-            diffTreeToWorking(repo, oldTreeId, workingTree, globs);
+            boolean any = diffTreeToWorking(repo, oldTreeId, workingTree, globs);
+            if (!any) {
+                System.out.println("No differences.");
+            }
             return 0;
         }
     }
@@ -133,7 +142,8 @@ public class DiffCommand implements Command {
         }
     }
 
-    private static void diffTreeToWorking(Repository repo, ObjectId oldTreeId, FileTreeIterator workingTree, List<String> globs) throws Exception {
+    private static boolean diffTreeToWorking(Repository repo, ObjectId oldTreeId, FileTreeIterator workingTree, List<String> globs) throws Exception {
+        boolean any = false;
         try (ObjectReader reader = repo.newObjectReader()) {
             CanonicalTreeParser oldTree = new CanonicalTreeParser();
             oldTree.reset(reader, oldTreeId);
@@ -148,12 +158,15 @@ public class DiffCommand implements Command {
                         continue;
                     }
                     df.format(d);
+                    any = true;
                 }
             }
         }
+        return any;
     }
 
-    private static void diffTrees(Repository repo, ObjectId oldTreeId, ObjectId newTreeId, List<String> globs) throws Exception {
+    private static boolean diffTrees(Repository repo, ObjectId oldTreeId, ObjectId newTreeId, List<String> globs) throws Exception {
+        boolean any = false;
         try (ObjectReader reader = repo.newObjectReader()) {
             CanonicalTreeParser oldTree = new CanonicalTreeParser();
             oldTree.reset(reader, oldTreeId);
@@ -170,9 +183,11 @@ public class DiffCommand implements Command {
                         continue;
                     }
                     df.format(d);
+                    any = true;
                 }
             }
         }
+        return any;
     }
 
     private static boolean matchesAny(DiffEntry d, List<String> globs) {

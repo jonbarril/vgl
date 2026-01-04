@@ -168,7 +168,7 @@ public class StatusCommand implements Command {
     ) {
         boolean showBranches = verbose || veryVerbose;
         if (showBranches) {
-            System.out.println(labelPad + repoRoot + separator + (localBranch != null ? localBranch : "(none)"));
+            System.out.println(labelPad + displayLocalDir + separator + (localBranch != null ? localBranch : "(none)"));
             if (git != null) {
                 try {
                     System.out.println("-- Branches:");
@@ -183,7 +183,7 @@ public class StatusCommand implements Command {
                     }
 
                     java.util.Set<String> union = new java.util.LinkedHashSet<>();
-                    java.util.List<String> gitBranches = listBranchesByPrefix(repo, Constants.R_HEADS);
+                    java.util.List<String> gitBranches = listLocalBranches(git);
                     union.addAll(gitBranches);
 
                     // Only include .vgl "known branches" when the repo is unborn or Git has no branch refs.
@@ -557,6 +557,32 @@ public class StatusCommand implements Command {
                     continue;
                 }
                 String shortName = name.substring(prefix.length());
+                if (!shortName.isBlank()) {
+                    out.add(shortName);
+                }
+            }
+            java.util.Collections.sort(out);
+            return out;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    private static List<String> listLocalBranches(Git git) {
+        if (git == null) {
+            return List.of();
+        }
+        try {
+            java.util.List<String> out = new java.util.ArrayList<>();
+            for (Ref r : git.branchList().call()) {
+                if (r == null) {
+                    continue;
+                }
+                String name = r.getName();
+                if (name == null || !name.startsWith(Constants.R_HEADS)) {
+                    continue;
+                }
+                String shortName = name.substring(Constants.R_HEADS.length());
                 if (!shortName.isBlank()) {
                     out.add(shortName);
                 }

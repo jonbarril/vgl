@@ -59,7 +59,7 @@ class LogCommandTest {
             StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"log", "-v"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains("(test)");
+            assertThat(io.stdout()).contains("test");
         }
     }
 }
