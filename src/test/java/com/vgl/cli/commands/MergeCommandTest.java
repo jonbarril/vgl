@@ -47,4 +47,17 @@ class MergeCommandTest {
 
         assertThat(Files.exists(repoDir.resolve("feature.txt"))).isTrue();
     }
+
+    @Test
+    void merge_onUnbornRepo_failsWithoutHeadError() throws Exception {
+        Path repoDir = tempDir.resolve("repo-unborn");
+        RepoTestUtils.createVglRepo(repoDir);
+
+        try (UserDirOverride ignored = new UserDirOverride(repoDir);
+            StdIoCapture io = new StdIoCapture()) {
+            assertThat(VglMain.run(new String[] {"merge", "-lb", "feature"})).isEqualTo(1);
+            assertThat(io.stderr()).contains("Repository has no commits yet");
+            assertThat(io.stderr()).doesNotContain("Ref HEAD cannot be resolved");
+        }
+    }
 }

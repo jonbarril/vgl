@@ -11,6 +11,7 @@ import java.util.List;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
@@ -54,6 +55,17 @@ public class MergeCommand implements Command {
         try (Git git = GitUtils.openGit(repoRoot)) {
             Repository repo = git.getRepository();
 
+            boolean headResolves;
+            try {
+                headResolves = repo.resolve(Constants.HEAD) != null;
+            } catch (Exception e) {
+                headResolves = false;
+            }
+            if (!headResolves) {
+                System.err.println("Error: Repository has no commits yet.");
+                return 1;
+            }
+
             Status status = git.status().call();
             boolean dirty = !status.getAdded().isEmpty()
                 || !status.getChanged().isEmpty()
@@ -87,7 +99,12 @@ public class MergeCommand implements Command {
                 }
 
                 if (!targetBranch.equals(originalBranch)) {
-                    git.checkout().setName(targetBranch).call();
+                    try {
+                        git.checkout().setName(targetBranch).call();
+                    } catch (Exception e) {
+                        System.err.println("Error: Cannot switch to branch: " + targetBranch);
+                        return 1;
+                    }
                 }
 
                 VglConfig.writeProps(repoRoot, props -> {

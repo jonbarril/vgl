@@ -27,7 +27,14 @@ public class VglMain {
             CommandLine cmd = VglCli.newCommandLine();
             return cmd.execute(args);
         } catch (Exception e) {
-            System.err.println("ERROR: " + e.getMessage());
+            String msg = e.getMessage();
+            if (msg != null && msg.contains("Ref HEAD cannot be resolved")) {
+                msg = "Repository has no commits yet.";
+            }
+            if (msg == null || msg.isBlank()) {
+                msg = "(unknown error)";
+            }
+            System.err.println("ERROR: " + msg);
             return 1;
         }
     }
