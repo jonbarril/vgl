@@ -17,7 +17,9 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
+import org.eclipse.jgit.treewalk.EmptyTreeIterator;
 
 public class LogCommand implements Command {
     @Override
@@ -75,25 +77,32 @@ public class LogCommand implements Command {
             newTree = repo.resolve(commit.getName() + "^{tree}");
             oldTree = (commit.getParentCount() > 0)
                 ? repo.resolve(commit.getParent(0).getName() + "^{tree}")
-                : repo.resolve(Constants.EMPTY_TREE_ID.name());
+                : null;
         } catch (Exception e) {
             return;
         }
 
-        if (newTree == null || oldTree == null) {
+        if (newTree == null) {
             return;
         }
 
         try (ObjectReader reader = repo.newObjectReader()) {
-            CanonicalTreeParser oldParser = new CanonicalTreeParser();
-            oldParser.reset(reader, oldTree);
+            AbstractTreeIterator oldIter;
+            if (commit.getParentCount() > 0 && oldTree != null) {
+                CanonicalTreeParser oldParser = new CanonicalTreeParser();
+                oldParser.reset(reader, oldTree);
+                oldIter = oldParser;
+            } else {
+                oldIter = new EmptyTreeIterator();
+            }
+
             CanonicalTreeParser newParser = new CanonicalTreeParser();
             newParser.reset(reader, newTree);
 
             try (DiffFormatter df = new DiffFormatter(new ByteArrayOutputStream())) {
                 df.setRepository(repo);
                 df.setDetectRenames(true);
-                java.util.List<DiffEntry> diffs = df.scan(oldParser, newParser);
+                java.util.List<DiffEntry> diffs = df.scan(oldIter, newParser);
                 if (diffs == null || diffs.isEmpty()) {
                     return;
                 }

@@ -62,4 +62,24 @@ class LogCommandTest {
             assertThat(io.stdout()).contains("test");
         }
     }
+
+    @Test
+    void log_veryVerbose_includesFileChanges() throws Exception {
+        Path repoDir = tempDir.resolve("repo3");
+        RepoTestUtils.createVglRepo(repoDir);
+
+        try (Git git = Git.open(repoDir.toFile())) {
+            PersonIdent ident = new PersonIdent("test", "test@example.com");
+            RepoTestUtils.writeFile(repoDir, "a.txt", "a\n");
+            git.add().addFilepattern("a.txt").call();
+            git.commit().setMessage("init").setAuthor(ident).setCommitter(ident).call();
+        }
+
+        try (UserDirOverride ignored = new UserDirOverride(repoDir);
+            StdIoCapture io = new StdIoCapture()) {
+            assertThat(VglMain.run(new String[] {"log", "-vv"})).isEqualTo(0);
+            assertThat(io.stderr()).isEmpty();
+            assertThat(io.stdout()).contains("A a.txt");
+        }
+    }
 }

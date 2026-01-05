@@ -287,7 +287,7 @@ public class StatusCommand implements Command {
         boolean verbose,
         boolean veryVerbose
     ) {
-        int commitsToPush = (deltas != null && deltas.hasComparableRemote) ? deltas.localOnly.size() : 0;
+        int commitsToPush = (deltas != null) ? deltas.localOnly.size() : 0;
         int commitsToPull = (deltas != null && deltas.hasComparableRemote) ? deltas.remoteOnly.size() : 0;
 
         System.out.println(changesLabelPad + computed.filesToCommit.size() + " to Commit, " + commitsToPush + " to Push, " + commitsToPull + " to Pull");
