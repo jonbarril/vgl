@@ -163,7 +163,7 @@ public class HelpCommand implements Command {
             "    -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit",
             "    -bb BRANCH                         (same name for local+remote)",
             "    -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit",
-            "  log [-v|-vv] [-graph]              Show commit history",
+            "  log [-v|-vv] [-graph] [COMMIT]     Show commit history",
             "  help [-v|-vv] [COMMAND]            Show help (or help for one command)"
         ));
 

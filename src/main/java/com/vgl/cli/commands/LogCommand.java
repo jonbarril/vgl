@@ -34,7 +34,11 @@ public class LogCommand implements Command {
             return 0;
         }
 
+        boolean verbose = args.contains("-v") || args.contains("-vv");
         boolean veryVerbose = args.contains("-vv");
+        boolean graph = args.contains("-graph");
+
+        String commitArg = firstPositionalOrNull(args);
 
         Path startDir = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
         Path repoRoot = RepoResolver.resolveRepoRootForCommand(startDir);
@@ -44,7 +48,22 @@ public class LogCommand implements Command {
 
         try (Git git = GitUtils.openGit(repoRoot)) {
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
-            Iterable<RevCommit> logs = git.log().call();
+            var logCmd = git.log();
+            if (commitArg != null) {
+                ObjectId start = null;
+                try {
+                    start = git.getRepository().resolve(commitArg);
+                } catch (Exception ignored) {
+                    start = null;
+                }
+                if (start == null) {
+                    System.err.println("Error: Cannot resolve commit: " + commitArg);
+                    return 1;
+                }
+                logCmd.add(start);
+            }
+
+            Iterable<RevCommit> logs = logCmd.call();
             for (RevCommit c : logs) {
                 String id = c.getId().abbreviate(7).name();
                 String date = fmt.format(Instant.ofEpochSecond(c.getCommitTime()));
@@ -52,18 +71,37 @@ public class LogCommand implements Command {
                 String msg = oneLine(c.getFullMessage());
 
                 // Default log format matches status -vv style (no truncation).
+                String prefix = graph ? "* " : "";
                 if (!author.isBlank()) {
-                    System.out.println(id + "  " + date + "  " + author + "  " + msg);
+                    System.out.println(prefix + id + "  " + date + "  " + author + "  " + msg);
                 } else {
-                    System.out.println(id + "  " + date + "  " + msg);
+                    System.out.println(prefix + id + "  " + date + "  " + msg);
                 }
 
                 if (veryVerbose) {
                     printCommitChanges(git.getRepository(), c);
+                } else if (verbose) {
+                    // keep -v compatible with previous behavior (author already included)
                 }
             }
             return 0;
         }
+    }
+
+    private static String firstPositionalOrNull(List<String> args) {
+        if (args == null) {
+            return null;
+        }
+        for (String a : args) {
+            if (a == null) {
+                continue;
+            }
+            if (a.startsWith("-")) {
+                continue;
+            }
+            return a;
+        }
+        return null;
     }
 
     private static void printCommitChanges(Repository repo, RevCommit commit) {

@@ -226,19 +226,19 @@ public final class VglCli {
     static class Diff implements Callable<Integer> {
 
         @Option(names = "-lr", paramLabel = "DIR")
-        Path localRepoDir;
+        List<Path> localRepoDirs;
 
         @Option(names = "-lb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
-        String localBranch;
+        List<String> localBranches;
 
         @Option(names = "-bb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
         String bothBranch;
 
         @Option(names = "-rr", paramLabel = "URL")
-        String remoteUrl;
+        List<String> remoteUrls;
 
         @Option(names = "-rb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
-        String remoteBranch;
+        List<String> remoteBranches;
 
         @picocli.CommandLine.Parameters(arity = "0..*", paramLabel = "GLOB|*")
         List<String> globs;
@@ -246,29 +246,42 @@ public final class VglCli {
         @Override
         public Integer call() throws Exception {
             List<String> forwarded = new ArrayList<>();
-            if (localRepoDir != null) {
-                forwarded.add("-lr");
-                forwarded.add(localRepoDir.toString());
+            int maxPairs = 0;
+            if (localRepoDirs != null) {
+                maxPairs = Math.max(maxPairs, localRepoDirs.size());
+            }
+            if (localBranches != null) {
+                maxPairs = Math.max(maxPairs, localBranches.size());
+            }
+            if (remoteUrls != null) {
+                maxPairs = Math.max(maxPairs, remoteUrls.size());
+            }
+            if (remoteBranches != null) {
+                maxPairs = Math.max(maxPairs, remoteBranches.size());
             }
 
-            String branch = (bothBranch != null) ? bothBranch : localBranch;
-            if (branch != null) {
-                if (bothBranch != null) {
-                    forwarded.add("-bb");
-                    forwarded.add(branch);
-                } else {
+            for (int i = 0; i < maxPairs; i++) {
+                if (localRepoDirs != null && i < localRepoDirs.size() && localRepoDirs.get(i) != null) {
+                    forwarded.add("-lr");
+                    forwarded.add(localRepoDirs.get(i).toString());
+                }
+                if (localBranches != null && i < localBranches.size() && localBranches.get(i) != null) {
                     forwarded.add("-lb");
-                    forwarded.add(branch);
+                    forwarded.add(localBranches.get(i));
+                }
+                if (remoteUrls != null && i < remoteUrls.size() && remoteUrls.get(i) != null) {
+                    forwarded.add("-rr");
+                    forwarded.add(remoteUrls.get(i));
+                }
+                if (remoteBranches != null && i < remoteBranches.size() && remoteBranches.get(i) != null) {
+                    forwarded.add("-rb");
+                    forwarded.add(remoteBranches.get(i));
                 }
             }
 
-            if (remoteUrl != null) {
-                forwarded.add("-rr");
-                forwarded.add(remoteUrl);
-            }
-            if (remoteBranch != null) {
-                forwarded.add("-rb");
-                forwarded.add(remoteBranch);
+            if (bothBranch != null) {
+                forwarded.add("-bb");
+                forwarded.add(bothBranch);
             }
             if (globs != null) {
                 forwarded.addAll(globs);
@@ -290,6 +303,9 @@ public final class VglCli {
         @Option(names = "-graph")
         boolean graph;
 
+        @picocli.CommandLine.Parameters(arity = "0..1", paramLabel = "COMMIT")
+        String commit;
+
         @Override
         public Integer call() throws Exception {
             List<String> forwarded = new ArrayList<>();
@@ -300,6 +316,9 @@ public final class VglCli {
             }
             if (graph) {
                 forwarded.add("-graph");
+            }
+            if (commit != null && !commit.isBlank()) {
+                forwarded.add(commit);
             }
             return new LogCommand().run(forwarded);
         }

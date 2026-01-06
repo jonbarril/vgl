@@ -48,8 +48,13 @@ public final class Messages {
     private static final String USAGE_SYNC = "Usage:\n  vgl sync [-noop]";
     private static final String USAGE_ABORT = "Usage:\n  vgl abort";
     private static final String USAGE_RESTORE = "Usage:\n  vgl restore [-f] [GLOB|*]";
-    private static final String USAGE_DIFF = "Usage:\n  vgl diff [GLOB|*] [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]";
-    private static final String USAGE_LOG = "Usage:\n  vgl log [-v|-vv] [-graph]";
+    private static final String USAGE_DIFF = String.join("\n",
+        "Usage:",
+        "  vgl diff [GLOB|*] [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]",
+        "  vgl diff COMMIT1 COMMIT2",
+        "  vgl diff -lb BRANCH1 -lb BRANCH2"
+    );
+    private static final String USAGE_LOG = "Usage:\n  vgl log [-v|-vv] [-graph] [COMMIT]";
     private static final String USAGE_MERGE = "Usage:\n  vgl merge -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH]";
     private static final String USAGE_SPLIT = "Usage:\n  vgl split -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH]";
     private static final String USAGE_CHECKOUT = "Usage:\n  vgl checkout [-f] -rr URL [-rb BRANCH]";
