@@ -8,7 +8,9 @@ import com.vgl.cli.utils.VglConfig;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.RefSpec;
@@ -62,6 +64,21 @@ public class PushCommand implements Command {
                 return 1;
             }
 
+            Status status = git.status().call();
+            boolean dirty = !status.getAdded().isEmpty()
+                || !status.getChanged().isEmpty()
+                || !status.getModified().isEmpty()
+                || !status.getRemoved().isEmpty()
+                || !status.getMissing().isEmpty();
+
+            if (dirty) {
+                System.err.println(Messages.pushWarnUncommittedChanges());
+            }
+
+            if (hasUndecidedFiles(repoRoot, status)) {
+                System.err.println(Messages.commitUndecidedFilesHint());
+            }
+
             String localBranch;
             try {
                 localBranch = repo.getBranch();
@@ -76,6 +93,52 @@ public class PushCommand implements Command {
 
             System.out.println(Messages.pushed());
             return 0;
+        }
+    }
+
+    private static boolean hasUndecidedFiles(Path repoRoot, Status status) {
+        if (repoRoot == null || status == null) {
+            return false;
+        }
+        try {
+            Set<String> gitUntracked = status.getUntracked();
+            if (gitUntracked == null || gitUntracked.isEmpty()) {
+                return false;
+            }
+
+            java.util.Set<String> nested = GitUtils.listNestedRepos(repoRoot);
+            Properties props = VglConfig.readProps(repoRoot);
+            Set<String> decidedTracked = VglConfig.getPathSet(props, VglConfig.KEY_TRACKED_FILES);
+            Set<String> decidedUntracked = VglConfig.getPathSet(props, VglConfig.KEY_UNTRACKED_FILES);
+
+            for (String p : gitUntracked) {
+                if (p == null || p.isBlank()) {
+                    continue;
+                }
+                String norm = p.replace('\\', '/');
+                if (".vgl".equals(norm) || ".git".equals(norm) || ".gitignore".equals(norm)) {
+                    continue;
+                }
+
+                boolean insideNested = false;
+                for (String n : nested) {
+                    if (norm.equals(n) || norm.startsWith(n + "/")) {
+                        insideNested = true;
+                        break;
+                    }
+                }
+                if (insideNested) {
+                    continue;
+                }
+
+                if (decidedTracked.contains(norm) || decidedUntracked.contains(norm)) {
+                    continue;
+                }
+                return true;
+            }
+            return false;
+        } catch (Exception ignored) {
+            return false;
         }
     }
 }

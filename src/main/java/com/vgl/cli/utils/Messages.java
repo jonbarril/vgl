@@ -50,9 +50,10 @@ public final class Messages {
     private static final String USAGE_RESTORE = "Usage:\n  vgl restore [-f] [GLOB|*]";
     private static final String USAGE_DIFF = String.join("\n",
         "Usage:",
-        "  vgl diff [GLOB|*] [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]",
-        "  vgl diff COMMIT1 COMMIT2",
-        "  vgl diff -lb BRANCH1 -lb BRANCH2"
+        "  vgl diff [-noop] [GLOB|*] [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]",
+        "  vgl diff [-noop] COMMIT1 COMMIT2",
+        "  vgl diff [-noop] -lb BRANCH1 -lb BRANCH2",
+        "  vgl diff [-noop] -lr DIR1 -lr DIR2"
     );
     private static final String USAGE_LOG = "Usage:\n  vgl log [-v|-vv] [-graph] [COMMIT]";
     private static final String USAGE_MERGE = "Usage:\n  vgl merge -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH]";
@@ -285,7 +286,7 @@ public final class Messages {
     }
 
     public static String pullDryRun() {
-        return "Dry run: no changes (pull).";
+        return "Dry run: no changes, no conflicts (pull).";
     }
 
     public static String pullCancelled() {
@@ -296,12 +297,24 @@ public final class Messages {
         return "Pulled remote changes.";
     }
 
+    public static String pullNoChangesNoConflicts() {
+        return "No changes; no conflicts.";
+    }
+
     public static String pullHadConflicts() {
         return "Warning: Pull completed with conflicts.";
     }
 
     public static String pushDryRun() {
         return "Dry run: no changes (push).";
+    }
+
+    public static String pushWarnUncommittedChanges() {
+        return "Warning: Repository has uncommitted changes.";
+    }
+
+    public static String diffDryRunSummary(int filesWillChange) {
+        return "Dry run: " + filesWillChange + " file(s) will change, 0 in conflict. Review recommended.";
     }
 
     public static String pushNoRemoteConfigured() {

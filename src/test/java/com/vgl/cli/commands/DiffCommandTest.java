@@ -6,6 +6,7 @@ import com.vgl.cli.VglMain;
 import com.vgl.cli.test.utils.RepoTestUtils;
 import com.vgl.cli.test.utils.StdIoCapture;
 import com.vgl.cli.test.utils.UserDirOverride;
+import com.vgl.cli.utils.Messages;
 import java.nio.file.Path;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.PersonIdent;
@@ -114,6 +115,28 @@ class DiffCommandTest {
             assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
             assertThat(io.stdout()).contains("-one");
             assertThat(io.stdout()).contains("+two");
+        }
+    }
+
+    @Test
+    void diff_noop_summarizesWorkingTreeChanges() throws Exception {
+        Path repoDir = tempDir.resolve("repo3");
+        RepoTestUtils.createVglRepo(repoDir);
+
+        PersonIdent ident = new PersonIdent("test", "test@example.com");
+        try (Git git = Git.open(repoDir.toFile())) {
+            RepoTestUtils.writeFile(repoDir, "file.txt", "one\n");
+            git.add().addFilepattern("file.txt").call();
+            git.commit().setMessage("init").setAuthor(ident).setCommitter(ident).call();
+        }
+
+        RepoTestUtils.writeFile(repoDir, "file.txt", "two\n");
+
+        try (UserDirOverride ignored = new UserDirOverride(repoDir);
+            StdIoCapture io = new StdIoCapture()) {
+            assertThat(VglMain.run(new String[] {"diff", "-noop", "file.txt"})).isEqualTo(0);
+            assertThat(io.stderr()).isEmpty();
+            assertThat(io.stdout()).isEqualTo(Messages.diffDryRunSummary(1));
         }
     }
 }

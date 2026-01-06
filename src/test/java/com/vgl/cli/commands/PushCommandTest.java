@@ -63,4 +63,33 @@ class PushCommandTest {
             assertThat(remoteHead).isEqualTo(localHead);
         }
     }
+
+    @Test
+    void push_warnsWhenDirtyAndUndecided() throws Exception {
+        Path repoDir = tempDir.resolve("repoDirty");
+        Path remoteDir = tempDir.resolve("remoteDirty.git");
+
+        RepoTestUtils.createVglRepo(repoDir);
+        RepoTestUtils.initBareRemote(remoteDir);
+        RepoTestUtils.setVglRemote(repoDir, remoteDir, "main");
+
+        try (Git git = Git.open(repoDir.toFile())) {
+            PersonIdent ident = new PersonIdent("test", "test@example.com");
+            RepoTestUtils.writeFile(repoDir, "file.txt", "one\n");
+            git.add().addFilepattern("file.txt").call();
+            git.commit().setMessage("one").setAuthor(ident).setCommitter(ident).call();
+        }
+
+        // Make the working tree dirty and add an undecided file.
+        RepoTestUtils.writeFile(repoDir, "file.txt", "two\n");
+        RepoTestUtils.writeFile(repoDir, "new.txt", "new\n");
+
+        try (UserDirOverride ignored = new UserDirOverride(repoDir);
+            StdIoCapture io = new StdIoCapture()) {
+            assertThat(VglMain.run(new String[] {"push"})).isEqualTo(0);
+            assertThat(io.stdout()).isEqualTo(Messages.pushed());
+            assertThat(io.stderr()).contains(Messages.pushWarnUncommittedChanges());
+            assertThat(io.stderr()).contains("Warning: Repository has undecided files.");
+        }
+    }
 }

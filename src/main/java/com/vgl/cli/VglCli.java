@@ -225,6 +225,9 @@ public final class VglCli {
     @Command(name = "diff")
     static class Diff implements Callable<Integer> {
 
+        @Option(names = "-noop")
+        boolean noop;
+
         @Option(names = "-lr", paramLabel = "DIR")
         List<Path> localRepoDirs;
 
@@ -246,6 +249,9 @@ public final class VglCli {
         @Override
         public Integer call() throws Exception {
             List<String> forwarded = new ArrayList<>();
+            if (noop) {
+                forwarded.add("-noop");
+            }
             int maxPairs = 0;
             if (localRepoDirs != null) {
                 maxPairs = Math.max(maxPairs, localRepoDirs.size());

@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.lib.StoredConfig;
@@ -81,7 +82,21 @@ public class PullCommand implements Command {
 
             PullResult r = git.pull().setRemote("origin").setRemoteBranchName(remoteBranch).call();
             if (r.isSuccessful()) {
-                System.out.println(Messages.pullCompleted());
+                boolean upToDate = false;
+                try {
+                    MergeResult mr = r.getMergeResult();
+                    if (mr != null && mr.getMergeStatus() == MergeResult.MergeStatus.ALREADY_UP_TO_DATE) {
+                        upToDate = true;
+                    }
+                } catch (Exception ignored) {
+                    upToDate = false;
+                }
+
+                if (upToDate) {
+                    System.out.println(Messages.pullNoChangesNoConflicts());
+                } else {
+                    System.out.println(Messages.pullCompleted());
+                }
                 return 0;
             }
 

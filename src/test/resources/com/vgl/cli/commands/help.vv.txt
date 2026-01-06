@@ -45,7 +45,7 @@ Commands:
 
   status [-v|-vv]                    Show workspace/repo/file status
     [-local][-remote][-changes][-history][-files] Show only some sections
-  diff [GLOB|*]                      Compare files between any two:
+  diff [-noop] [GLOB|*]              Compare files between any two:
     -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
     -bb BRANCH                         (same name for local+remote)
     -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit

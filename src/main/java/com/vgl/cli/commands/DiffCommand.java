@@ -13,8 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,13 +28,8 @@ import org.eclipse.jgit.diff.RawTextComparator;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.RevCommit;
-import org.eclipse.jgit.revwalk.RevWalk;
-import org.eclipse.jgit.treewalk.AbstractTreeIterator;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
-import org.eclipse.jgit.treewalk.TreeWalk;
-import org.eclipse.jgit.util.io.DisabledOutputStream;
 
 /**
  * Diff between the working tree and a local/remote reference.
@@ -61,6 +54,8 @@ public class DiffCommand implements Command {
             return 0;
         }
 
+        boolean noop = ArgsHelper.hasFlag(args, "-noop");
+
         List<String> positionals = collectPositionals(args);
 
         // Cross-repo diff: `diff -lr R0 -lr R1` compares working trees.
@@ -69,6 +64,12 @@ public class DiffCommand implements Command {
             Path left = localRepoDirs.get(0).toAbsolutePath().normalize();
             Path right = localRepoDirs.get(1).toAbsolutePath().normalize();
             List<String> globs = positionals.isEmpty() ? List.of("*") : positionals;
+            if (noop) {
+                int changed = countWorkingTreeDiffBetweenRoots(left, right, globs);
+                System.out.println(Messages.diffDryRunSummary(changed));
+                return 0;
+            }
+
             boolean any = diffWorkingTrees(left, right, globs);
             if (!any) {
                 System.out.println("No differences.");
@@ -98,6 +99,11 @@ public class DiffCommand implements Command {
                     System.err.println("Error: Cannot resolve diff endpoints.");
                     return 1;
                 }
+                if (noop) {
+                    int changed = countTreeDiff(repo, t1, t2, globs);
+                    System.out.println(Messages.diffDryRunSummary(changed));
+                    return 0;
+                }
                 boolean any = diffTrees(repo, t1, t2, globs);
                 if (!any) {
                     System.out.println("No differences.");
@@ -119,6 +125,11 @@ public class DiffCommand implements Command {
                     System.err.println("Error: Cannot resolve diff endpoints.");
                     return 1;
                 }
+                if (noop) {
+                    int changed = countTreeDiff(repo, t1, t2, globs);
+                    System.out.println(Messages.diffDryRunSummary(changed));
+                    return 0;
+                }
                 boolean any = diffTrees(repo, t1, t2, globs);
                 if (!any) {
                     System.out.println("No differences.");
@@ -137,6 +148,11 @@ public class DiffCommand implements Command {
                 if (t1 == null || t2 == null) {
                     System.err.println("Error: Cannot resolve diff endpoints.");
                     return 1;
+                }
+                if (noop) {
+                    int changed = countTreeDiff(repo, t1, t2, globs);
+                    System.out.println(Messages.diffDryRunSummary(changed));
+                    return 0;
                 }
                 boolean any = diffTrees(repo, t1, t2, globs);
                 if (!any) {
@@ -187,6 +203,11 @@ public class DiffCommand implements Command {
                     System.err.println("Error: Cannot resolve diff endpoints.");
                     return 1;
                 }
+                if (noop) {
+                    int changed = countTreeDiff(repo, oldTreeId, newTreeId, globs);
+                    System.out.println(Messages.diffDryRunSummary(changed));
+                    return 0;
+                }
                 boolean any = diffTrees(repo, oldTreeId, newTreeId, globs);
                 if (!any) {
                     System.out.println("No differences.");
@@ -199,6 +220,11 @@ public class DiffCommand implements Command {
                 if (oldTreeId == null) {
                     System.err.println("Error: Cannot resolve origin/" + remoteBranch);
                     return 1;
+                }
+                if (noop) {
+                    int changed = countTreeToWorkingDiff(repo, oldTreeId, workingTree, globs);
+                    System.out.println(Messages.diffDryRunSummary(changed));
+                    return 0;
                 }
                 boolean any = diffTreeToWorking(repo, oldTreeId, workingTree, globs);
                 if (!any) {
@@ -214,11 +240,59 @@ public class DiffCommand implements Command {
                 System.err.println("Error: Cannot resolve " + ref);
                 return 1;
             }
+
+            if (noop) {
+                int changed = countTreeToWorkingDiff(repo, oldTreeId, workingTree, globs);
+                System.out.println(Messages.diffDryRunSummary(changed));
+                return 0;
+            }
             boolean any = diffTreeToWorking(repo, oldTreeId, workingTree, globs);
             if (!any) {
                 System.out.println("No differences.");
             }
             return 0;
+        }
+    }
+
+    private static int countTreeDiff(Repository repo, ObjectId oldTreeId, ObjectId newTreeId, List<String> globs) throws Exception {
+        try (ObjectReader reader = repo.newObjectReader()) {
+            CanonicalTreeParser oldTree = new CanonicalTreeParser();
+            oldTree.reset(reader, oldTreeId);
+            CanonicalTreeParser newTree = new CanonicalTreeParser();
+            newTree.reset(reader, newTreeId);
+
+            try (DiffFormatter df = new DiffFormatter(OutputStream.nullOutputStream())) {
+                df.setRepository(repo);
+                df.setDetectRenames(true);
+                List<DiffEntry> diffs = df.scan(oldTree, newTree);
+                int count = 0;
+                for (DiffEntry d : diffs) {
+                    if (matchesAny(d, globs)) {
+                        count++;
+                    }
+                }
+                return count;
+            }
+        }
+    }
+
+    private static int countTreeToWorkingDiff(Repository repo, ObjectId oldTreeId, FileTreeIterator workingTree, List<String> globs) throws Exception {
+        try (ObjectReader reader = repo.newObjectReader()) {
+            CanonicalTreeParser oldTree = new CanonicalTreeParser();
+            oldTree.reset(reader, oldTreeId);
+
+            try (DiffFormatter df = new DiffFormatter(OutputStream.nullOutputStream())) {
+                df.setRepository(repo);
+                df.setDetectRenames(true);
+                List<DiffEntry> diffs = df.scan(oldTree, workingTree);
+                int count = 0;
+                for (DiffEntry d : diffs) {
+                    if (matchesAny(d, globs)) {
+                        count++;
+                    }
+                }
+                return count;
+            }
         }
     }
 
@@ -331,6 +405,29 @@ public class DiffCommand implements Command {
             }
         }
         return any;
+    }
+
+    private static int countWorkingTreeDiffBetweenRoots(Path leftRoot, Path rightRoot, List<String> globs) throws IOException {
+        Map<String, byte[]> left = snapshotFiles(leftRoot, globs);
+        Map<String, byte[]> right = snapshotFiles(rightRoot, globs);
+
+        List<String> allPaths = new ArrayList<>();
+        allPaths.addAll(left.keySet());
+        for (String p : right.keySet()) {
+            if (!left.containsKey(p)) {
+                allPaths.add(p);
+            }
+        }
+
+        int count = 0;
+        for (String rel : allPaths) {
+            byte[] a = left.get(rel);
+            byte[] b = right.get(rel);
+            if (!Arrays.equals(a, b)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static Map<String, byte[]> snapshotFiles(Path root, List<String> globs) throws IOException {

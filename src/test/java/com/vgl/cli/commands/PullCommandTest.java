@@ -62,4 +62,33 @@ class PullCommandTest {
         content = content.replace("\r\n", "\n");
         assertThat(content).isEqualTo("two\n");
     }
+
+    @Test
+    void pull_whenAlreadyUpToDate_reportsNoChangesNoConflicts() throws Exception {
+        Path repoDir = tempDir.resolve("repoUpToDate");
+        Path remoteDir = tempDir.resolve("remoteUpToDate.git");
+
+        RepoTestUtils.createVglRepo(repoDir);
+        RepoTestUtils.initBareRemote(remoteDir);
+        RepoTestUtils.setVglRemote(repoDir, remoteDir, "main");
+
+        // Local: initial commit and push to remote.
+        try (Git local = Git.open(repoDir.toFile())) {
+            PersonIdent ident = new PersonIdent("test", "test@example.com");
+            RepoTestUtils.writeFile(repoDir, "file.txt", "one\n");
+            local.add().addFilepattern("file.txt").call();
+            local.commit().setMessage("one").setAuthor(ident).setCommitter(ident).call();
+
+            local.remoteAdd().setName("origin").setUri(new URIish(remoteDir.toUri().toString())).call();
+            local.push().setRemote("origin").setRefSpecs(new RefSpec("refs/heads/main:refs/heads/main")).call();
+        }
+
+        // Local: pull again (should be up to date).
+        try (UserDirOverride ignored = new UserDirOverride(repoDir);
+            StdIoCapture io = new StdIoCapture()) {
+            assertThat(VglMain.run(new String[] {"pull", "-f"})).isEqualTo(0);
+            assertThat(io.stderr()).isEmpty();
+            assertThat(io.stdout()).isEqualTo(Messages.pullNoChangesNoConflicts());
+        }
+    }
 }
