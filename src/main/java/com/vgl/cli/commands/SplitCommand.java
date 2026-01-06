@@ -27,6 +27,12 @@ public class SplitCommand implements Command {
             return 0;
         }
 
+        // split is local-only (branches in the local repo)
+        if (args.contains("-rr") || args.contains("-rb")) {
+            System.err.println(Messages.splitUsage());
+            return 1;
+        }
+
         boolean into = args.contains("-into");
         boolean from = args.contains("-from");
         if (into == from) {

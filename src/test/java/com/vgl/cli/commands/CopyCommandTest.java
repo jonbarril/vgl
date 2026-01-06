@@ -6,7 +6,6 @@ import com.vgl.cli.VglMain;
 import com.vgl.cli.test.utils.RepoTestUtils;
 import com.vgl.cli.test.utils.StdIoCapture;
 import com.vgl.cli.test.utils.UserDirOverride;
-import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.VglConfig;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,13 +13,13 @@ import java.util.Properties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-class CheckoutCommandTest {
+class CopyCommandTest {
 
     @TempDir
     Path tempDir;
 
     @Test
-    void checkout_clonesRemoteAndWritesVglConfig() throws Exception {
+    void copy_fromRemote_clonesAndCreatesLocalOnlyVglConfig() throws Exception {
         Path remoteDir = tempDir.resolve("remote.git");
         RepoTestUtils.initBareRemoteWithSeedCommit(tempDir, remoteDir, "main");
 
@@ -29,20 +28,18 @@ class CheckoutCommandTest {
 
         try (UserDirOverride ignored = new UserDirOverride(targetDir);
             StdIoCapture io = new StdIoCapture()) {
-            assertThat(VglMain.run(new String[] {"checkout", "-f", "-rr", remoteUrl, "-rb", "main"}))
+            assertThat(VglMain.run(new String[] {"copy", "-from", "-rr", remoteUrl, "-rb", "main"}))
                 .isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains(Messages.checkoutCompleted(targetDir.toAbsolutePath().normalize(), "main"));
-            assertThat(io.stdout()).contains("LOCAL:");
-            assertThat(io.stdout()).contains("REMOTE:");
+            assertThat(io.stdout()).contains("Copied repository.");
         }
 
         assertThat(Files.exists(targetDir.resolve(".git"))).isTrue();
         assertThat(Files.exists(targetDir.resolve(VglConfig.FILENAME))).isTrue();
 
         Properties props = RepoTestUtils.readVglProps(targetDir);
-        assertThat(props.getProperty(VglConfig.KEY_REMOTE_URL)).isEqualTo(remoteUrl);
-        assertThat(props.getProperty(VglConfig.KEY_REMOTE_BRANCH)).isEqualTo("main");
+        assertThat(props.getProperty(VglConfig.KEY_REMOTE_URL)).isEqualTo("");
+        assertThat(props.getProperty(VglConfig.KEY_REMOTE_BRANCH)).isEqualTo("");
         assertThat(props.getProperty(VglConfig.KEY_LOCAL_BRANCH)).isEqualTo("main");
     }
 }

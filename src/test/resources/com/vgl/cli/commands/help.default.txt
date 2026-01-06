@@ -7,9 +7,10 @@ Commands:
   create     Create repo/branch, then switch (prints LOCAL/REMOTE)
   delete     Delete repo/branch
   switch     Switch to repo/branch
-  split      Clone and switch to new branch
+  split      Copy and switch to new branch
   merge      Merge branches, then switch
-  checkout   Clone remote, then switch
+  checkout   Copy remote into CWD, then switch
+  copy       Copy a repo for local use
   checkin    Push and create pull request
 
   track      Add files to version control

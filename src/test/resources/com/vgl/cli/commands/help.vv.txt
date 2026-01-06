@@ -3,7 +3,7 @@ Voodoo Gitless (TEST_VERSION) -- Git for mortals
 Note: See Flags (help -v/-vv) for flag combinations and defaults.
 
 Commands:
-  create [-f]                        Create repo/branch, then switch (prints LOCAL/REMOTE)
+  create [-f]                        Create repo/branch, then switch
     -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
     -bb [BRANCH]                       (same name for local+remote)
     -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
@@ -12,28 +12,29 @@ Commands:
     -bb [BRANCH]                       (same name for local+remote)
     -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
   switch [-f]                        Switch to repo/branch
-    -lb [BRANCH]                       (local repo/branch)
+    -lr [DIR]  -lb [BRANCH]            (local repo/branch)
     -bb [BRANCH]                       (same name for local+remote)
     -rr [URL]  -rb [BRANCH]            (remote repo/branch)
-  split -from|-into                  Clone and switch to new branch
+
+  split -from|-into                  Copy branch, then switch to dest
     -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
-  merge -into|-from                  Merge branches, then switch
+    -bb [BRANCH]                       (same name for from+into)
+  merge -into|-from                  Merge branches, then switch to dest
     -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (remote repo/branch)
-  checkout [-f]                      Clone remote, then switch
-    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for local+remote)
+    -bb [BRANCH]                       (same name for from+into)
+
+  copy -from|-into [-f]              Copy a repo for local use
+    -from: -rr [URL] or -lr [DIR]      (source repo)
+    -into: -lr [DIR]                   (destination directory)
+  checkout [-f]                      Copy remote branch into CWD
     -rr [URL]  -rb [BRANCH]            (remote repo/branch)
   checkin -draft|-final              Push and create pull request
 
   track GLOB...                      Add files to version control
-    -all                               Track all undecided file
+    -all                               Track all undecided files
   untrack GLOB...                    Remove files from version control
   commit "MESSAGE"                   Commit workspace changes
-    -new|-add "MESSAGE"                Ammend last commit message
+    -new|-add "MESSAGE"                Amend last commit message
   restore [-f] [GLOB|*]              Replace working files with:
     -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
     -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit

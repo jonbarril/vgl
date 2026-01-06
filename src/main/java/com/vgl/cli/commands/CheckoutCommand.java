@@ -25,13 +25,16 @@ public class CheckoutCommand implements Command {
             return 0;
         }
 
+        // checkout is remote-only; it copies a remote repo into the current working directory
+        if (args.contains("-lr") || args.contains("-lb") || args.contains("-bb")) {
+            System.err.println(Messages.checkoutUsage());
+            return 1;
+        }
+
         boolean force = ArgsHelper.hasFlag(args, "-f");
 
-        Path targetDir = ArgsHelper.pathAfterFlag(args, "-lr");
-        if (targetDir == null) {
-            targetDir = Path.of(System.getProperty("user.dir"));
-        }
-        targetDir = targetDir.toAbsolutePath().normalize();
+        // Checkout is remote-only; the target directory is always the current working directory.
+        Path targetDir = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
 
         String remoteUrl = ArgsHelper.valueAfterFlag(args, "-rr");
         if (remoteUrl == null || remoteUrl.isBlank()) {
@@ -87,7 +90,7 @@ public class CheckoutCommand implements Command {
         });
 
         System.out.println(Messages.checkoutCompleted(targetDir, remoteBranch));
-        StateChangeOutput.printSwitchStateAndWarnIfNotCurrent(targetDir, true);
+        StateChangeOutput.printSwitchStateAndWarnIfNotCurrent(targetDir, false);
         return 0;
     }
 }

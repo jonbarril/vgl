@@ -50,10 +50,11 @@ public final class Messages {
     private static final String USAGE_RESTORE = "Usage:\n  vgl restore [-f] [GLOB|*]";
     private static final String USAGE_DIFF = "Usage:\n  vgl diff [GLOB|*] [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]";
     private static final String USAGE_LOG = "Usage:\n  vgl log [-v|-vv] [-graph]";
-    private static final String USAGE_MERGE = "Usage:\n  vgl merge -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]";
-    private static final String USAGE_SPLIT = "Usage:\n  vgl split -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]";
-    private static final String USAGE_CHECKOUT = "Usage:\n  vgl checkout [-f] [-lr DIR] [-rr URL] [-rb BRANCH]";
+    private static final String USAGE_MERGE = "Usage:\n  vgl merge -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH]";
+    private static final String USAGE_SPLIT = "Usage:\n  vgl split -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH]";
+    private static final String USAGE_CHECKOUT = "Usage:\n  vgl checkout [-f] -rr URL [-rb BRANCH]";
     private static final String USAGE_CHECKIN = "Usage:\n  vgl checkin -draft|-final [-m MESSAGE] [GLOB|*]";
+    private static final String USAGE_COPY = "Usage:\n  vgl copy -from|-into [-f] [-lr DIR] [-rr URL] [-rb BRANCH]";
 
     public static String nestedRepoPrompt(Path parentRepoRootOrNull) {
         if (parentRepoRootOrNull != null) {
@@ -272,6 +273,10 @@ public final class Messages {
 
     public static String checkinUsage() {
         return USAGE_CHECKIN;
+    }
+
+    public static String copyUsage() {
+        return USAGE_COPY;
     }
 
     public static String pullDryRun() {

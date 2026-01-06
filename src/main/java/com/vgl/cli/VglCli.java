@@ -5,6 +5,7 @@ import com.vgl.cli.commands.CommitCommand;
 import com.vgl.cli.commands.AbortCommand;
 import com.vgl.cli.commands.CheckinCommand;
 import com.vgl.cli.commands.CheckoutCommand;
+import com.vgl.cli.commands.CopyCommand;
 import com.vgl.cli.commands.DeleteCommand;
 import com.vgl.cli.commands.DiffCommand;
 import com.vgl.cli.commands.HelpCommand;
@@ -59,6 +60,7 @@ public final class VglCli {
             Abort.class,
             Checkin.class,
             Checkout.class,
+            Copy.class,
             Commit.class,
             Create.class,
             Delete.class,
@@ -403,6 +405,42 @@ public final class VglCli {
         @Option(names = "-f")
         boolean force;
 
+        @Option(names = "-rr", paramLabel = "URL")
+        String remoteUrl;
+
+        @Option(names = "-rb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
+        String remoteBranch;
+
+        @Override
+        public Integer call() throws Exception {
+            List<String> forwarded = new ArrayList<>();
+            if (force) {
+                forwarded.add("-f");
+            }
+            if (remoteUrl != null) {
+                forwarded.add("-rr");
+                forwarded.add(remoteUrl);
+            }
+            if (remoteBranch != null) {
+                forwarded.add("-rb");
+                forwarded.add(remoteBranch);
+            }
+            return new CheckoutCommand().run(forwarded);
+        }
+    }
+
+    @Command(name = "copy")
+    static class Copy implements Callable<Integer> {
+
+        @Option(names = "-into")
+        boolean into;
+
+        @Option(names = "-from")
+        boolean from;
+
+        @Option(names = "-f")
+        boolean force;
+
         @Option(names = "-lr", paramLabel = "DIR")
         Path localRepoDir;
 
@@ -415,6 +453,12 @@ public final class VglCli {
         @Override
         public Integer call() throws Exception {
             List<String> forwarded = new ArrayList<>();
+            if (into) {
+                forwarded.add("-into");
+            }
+            if (from) {
+                forwarded.add("-from");
+            }
             if (force) {
                 forwarded.add("-f");
             }
@@ -430,7 +474,7 @@ public final class VglCli {
                 forwarded.add("-rb");
                 forwarded.add(remoteBranch);
             }
-            return new CheckoutCommand().run(forwarded);
+            return new CopyCommand().run(forwarded);
         }
     }
 

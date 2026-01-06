@@ -29,6 +29,12 @@ public class MergeCommand implements Command {
             return 0;
         }
 
+        // merge is local-only (branches in the local repo)
+        if (args.contains("-rr") || args.contains("-rb")) {
+            System.err.println(Messages.mergeUsage());
+            return 1;
+        }
+
         boolean into = args.contains("-into");
         boolean from = args.contains("-from") || (!into);
         if (into && args.contains("-from")) {
