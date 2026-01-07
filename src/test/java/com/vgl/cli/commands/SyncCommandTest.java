@@ -19,14 +19,25 @@ class SyncCommandTest {
     @Test
     void sync_noop_printsDryRun() throws Exception {
         Path repoDir = tempDir.resolve("repo");
+        Path remoteDir = tempDir.resolve("remote.git");
+        
         RepoTestUtils.createVglRepo(repoDir);
         RepoTestUtils.seedEmptyCommit(repoDir, "init");
+        RepoTestUtils.initBareRemote(remoteDir);
+        RepoTestUtils.setVglRemote(repoDir, remoteDir, "main");
+
+        // Push initial commit to remote so pull can fetch from it
+        try (org.eclipse.jgit.api.Git git = org.eclipse.jgit.api.Git.open(repoDir.toFile())) {
+            git.remoteAdd().setName("origin").setUri(new org.eclipse.jgit.transport.URIish(remoteDir.toUri().toString())).call();
+            git.push().setRemote("origin").setRefSpecs(new org.eclipse.jgit.transport.RefSpec("refs/heads/main:refs/heads/main")).call();
+        }
 
         try (UserDirOverride ignored = new UserDirOverride(repoDir);
             StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"sync", "-noop"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).isEqualTo(Messages.syncDryRun());
+            // Sync -noop now delegates to pull -noop which reports merge analysis
+            assertThat(io.stdout()).contains("Dry run:");
         }
     }
 

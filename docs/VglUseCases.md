@@ -51,9 +51,17 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - If uncommitted changes and/or unpushed commits exist the user will be warned and asked to proceed or not.
 - If repo deletion is confirmed the user will be asked if the content should also be deleted. If so then the target directory should be deleted using system commands.
 
-**Commits**
+**Workspace commit**
 - Only 'tracked' files can be committed to the local repo.
-- When trying to commit changes the user will first be warned if any files in the repo are undecided, with a hist to use "track -all" to track all undecided files.
+- When trying to commit changes the user will first be warned if any files in the repo are undecided, with a hint/choice to use "track -all" to track all undecided files.
+
+**Workspace merge**
+- When files are merged in the workspace the user is always in control of the process and the actions are observable and consistent. 
+- A merge (e.g. as the result of a pull) occurs in two phases:
+  - The system analyzes and reports potential workspace changes from the merge, including the number of source commits, the number of files affected, and the number of files with conflicts (i.e. cannot be auto-merged), the number of files without conflicts.
+  - The user is prompted to approve the merge, reject the merge, or to see details. If details then the output will be expanded with each summary count as a section followed by the affected files with change letters.
+- Once a merge is complete it is the user's responsibility to commit it to the local repo (i.e. no auto-commit).
+- Commands that involve merging (or any potential to modify workspace files) will have a -noop flag, which performs a "dry run". If -v is included then the output will be the same as the detailed ouput above.
 
 **Status command:**
   - **Overview:** Provides the overall status of workspace, and local and remote repo files. More detail is progressively revealed with the use of verbose flags (-v, -vv). Output also can be filtered using section name flags (e.g. -local). Files in a VGL repo are classified as follows:

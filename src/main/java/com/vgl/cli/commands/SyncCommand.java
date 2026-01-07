@@ -17,15 +17,18 @@ public class SyncCommand implements Command {
             return 0;
         }
 
-        if (ArgsHelper.hasFlag(args, "-noop")) {
-            System.out.println(Messages.syncDryRun());
-            return 0;
-        }
-
+        // For noop, run pull -noop (which now properly analyzes merge)
+        // For non-noop, run pull then push
         int rc = new PullCommand().run(args);
         if (rc != 0) {
             return rc;
         }
+
+        // If noop, don't run push
+        if (ArgsHelper.hasFlag(args, "-noop")) {
+            return 0;
+        }
+
         return new PushCommand().run(args);
     }
 }

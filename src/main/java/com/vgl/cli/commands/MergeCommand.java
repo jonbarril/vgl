@@ -1,6 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
+import com.vgl.cli.commands.helpers.MergeOperations;
 import com.vgl.cli.commands.helpers.StateChangeOutput;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.Messages;
@@ -37,6 +38,8 @@ public class MergeCommand implements Command {
 
         boolean into = args.contains("-into");
         boolean from = args.contains("-from") || (!into);
+        boolean noop = ArgsHelper.hasFlag(args, "-noop");
+        boolean force = ArgsHelper.hasFlag(args, "-f");
         if (into && args.contains("-from")) {
             System.err.println(Messages.mergeUsage());
             return 1;
@@ -73,13 +76,9 @@ public class MergeCommand implements Command {
             }
 
             Status status = git.status().call();
-            boolean dirty = !status.getAdded().isEmpty()
-                || !status.getChanged().isEmpty()
-                || !status.getModified().isEmpty()
-                || !status.getRemoved().isEmpty()
-                || !status.getMissing().isEmpty()
-                ;
-            if (dirty) {
+            
+            // Check for dirty working tree - merge requires clean state
+            if (MergeOperations.isWorkingTreeDirty(status)) {
                 System.err.println("Error: Working tree has uncommitted changes.");
                 return 1;
             }
@@ -140,6 +139,27 @@ public class MergeCommand implements Command {
                 return 1;
             }
 
+            ObjectId headId = repo.resolve("HEAD");
+            if (headId == null) {
+                System.err.println("Error: Cannot determine current HEAD.");
+                return 1;
+            }
+
+            // Check merge and handle noop/preview
+            boolean verbose = ArgsHelper.hasFlag(args, "-v") || ArgsHelper.hasFlag(args, "-vv");
+            MergeOperations.MergeCheckResult check = MergeOperations.checkMerge(
+                git, srcId, headId, status, noop, force, verbose
+            );
+
+            if (check.message != null) {
+                System.out.println(check.message);
+            }
+
+            if (!check.shouldProceed) {
+                return 0;
+            }
+
+            // Perform the merge
             MergeResult r = git.merge().include(srcId).call();
             if (r.getMergeStatus() != null && r.getMergeStatus().isSuccessful()) {
                 System.out.println("Merged " + sourceBranch + " into " + targetBranch + ".");

@@ -55,7 +55,10 @@ class PullCommandTest {
             StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"pull", "-f"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).isEqualTo(Messages.pullCompleted());
+            // Now includes merge preview before completion message
+            assertThat(io.stdout()).contains("commit(s)");
+            assertThat(io.stdout()).contains("file(s) affected");
+            assertThat(io.stdout()).contains(Messages.pullCompleted());
         }
 
         String content = RepoTestUtils.readFile(repoDir, "file.txt");

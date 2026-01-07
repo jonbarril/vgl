@@ -1,10 +1,10 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
+import com.vgl.cli.commands.helpers.MergeOperations;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoResolver;
-import com.vgl.cli.utils.Utils;
 import com.vgl.cli.utils.VglConfig;
 import java.nio.file.Path;
 import java.util.List;
@@ -13,6 +13,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.Status;
+import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
 
 public class PullCommand implements Command {
@@ -40,16 +41,12 @@ public class PullCommand implements Command {
             return 1;
         }
 
-        if (noop) {
-            System.out.println(Messages.pullDryRun());
-            return 0;
-        }
-
         Properties vglProps = VglConfig.readProps(repoRoot);
         String vglRemoteUrl = vglProps.getProperty(VglConfig.KEY_REMOTE_URL, "");
         String remoteBranch = vglProps.getProperty(VglConfig.KEY_REMOTE_BRANCH, "main");
 
         try (Git git = GitUtils.openGit(repoRoot)) {
+            Repository repo = git.getRepository();
             // Ensure origin exists if .vgl has a remote URL.
             StoredConfig cfg = git.getRepository().getConfig();
             String originUrl = cfg.getString("remote", "origin", "url");
@@ -64,39 +61,40 @@ public class PullCommand implements Command {
             }
 
             Status status = git.status().call();
-            boolean dirty = !status.getAdded().isEmpty()
-                || !status.getChanged().isEmpty()
-                || !status.getModified().isEmpty()
-                || !status.getRemoved().isEmpty()
-                || !status.getMissing().isEmpty();
 
-            if (dirty) {
-                System.err.println(Messages.WARN_REPO_DIRTY_OR_AHEAD);
-                if (!force) {
-                    if (!Utils.confirm("Continue? [y/N] ")) {
-                        System.out.println(Messages.pullCancelled());
-                        return 0;
-                    }
-                }
+            // Fetch remote changes to analyze merge
+            git.fetch().setRemote("origin").call();
+            org.eclipse.jgit.lib.ObjectId remoteId = repo.resolve("refs/remotes/origin/" + remoteBranch);
+            org.eclipse.jgit.lib.ObjectId headId = repo.resolve("HEAD");
+
+            if (remoteId == null) {
+                System.err.println("Error: Cannot resolve remote branch: " + remoteBranch);
+                return 1;
             }
 
+            if (headId == null) {
+                System.err.println("Error: Repository has no commits yet.");
+                return 1;
+            }
+
+            // Check merge and handle noop/preview
+            boolean verbose = ArgsHelper.hasFlag(args, "-v") || ArgsHelper.hasFlag(args, "-vv");
+            MergeOperations.MergeCheckResult check = MergeOperations.checkMerge(
+                git, remoteId, headId, status, noop, force, verbose
+            );
+
+            if (check.message != null) {
+                System.out.println(check.message);
+            }
+
+            if (!check.shouldProceed) {
+                return 0;
+            }
+
+            // Perform the pull
             PullResult r = git.pull().setRemote("origin").setRemoteBranchName(remoteBranch).call();
             if (r.isSuccessful()) {
-                boolean upToDate = false;
-                try {
-                    MergeResult mr = r.getMergeResult();
-                    if (mr != null && mr.getMergeStatus() == MergeResult.MergeStatus.ALREADY_UP_TO_DATE) {
-                        upToDate = true;
-                    }
-                } catch (Exception ignored) {
-                    upToDate = false;
-                }
-
-                if (upToDate) {
-                    System.out.println(Messages.pullNoChangesNoConflicts());
-                } else {
-                    System.out.println(Messages.pullCompleted());
-                }
+                System.out.println(Messages.pullCompleted());
                 return 0;
             }
 

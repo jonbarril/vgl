@@ -333,6 +333,12 @@ public final class VglCli {
     @Command(name = "merge")
     static class Merge implements Callable<Integer> {
 
+        @Option(names = "-noop")
+        boolean noop;
+
+        @Option(names = "-f")
+        boolean force;
+
         @Option(names = "-into")
         boolean into;
 
@@ -351,6 +357,12 @@ public final class VglCli {
         @Override
         public Integer call() throws Exception {
             List<String> forwarded = new ArrayList<>();
+            if (noop) {
+                forwarded.add("-noop");
+            }
+            if (force) {
+                forwarded.add("-f");
+            }
             if (into) {
                 forwarded.add("-into");
             }
@@ -379,7 +391,8 @@ public final class VglCli {
 
     @Command(name = "split")
     static class Split implements Callable<Integer> {
-
+        @Option(names = "-noop")
+        boolean noop;
         @Option(names = "-into")
         boolean into;
 
