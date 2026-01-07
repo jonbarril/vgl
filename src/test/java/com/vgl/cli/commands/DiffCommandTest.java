@@ -10,6 +10,8 @@ import com.vgl.cli.utils.Messages;
 import java.nio.file.Path;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.URIish;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -137,6 +139,58 @@ class DiffCommandTest {
             assertThat(VglMain.run(new String[] {"diff", "-noop", "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
             assertThat(io.stdout()).isEqualTo(Messages.diffDryRunSummary(1));
+        }
+    }
+
+    @Test
+    void diff_showsDiffBetweenTwoRemoteRepos() throws Exception {
+        Path remote1 = tempDir.resolve("remote1.git");
+        Path remote2 = tempDir.resolve("remote2.git");
+        RepoTestUtils.initBareRemote(remote1);
+        RepoTestUtils.initBareRemote(remote2);
+
+        // Seed remote1 with file.txt=one
+        Path seed1 = tempDir.resolve("seed1");
+        PersonIdent ident = new PersonIdent("test", "test@example.com");
+        try (Git git = Git.init().setInitialBranch("main").setDirectory(seed1.toFile()).call()) {
+            RepoTestUtils.writeFile(seed1, "file.txt", "one\n");
+            git.add().addFilepattern("file.txt").call();
+            git.commit().setMessage("seed1").setAuthor(ident).setCommitter(ident).call();
+            git.remoteAdd().setName("origin").setUri(new URIish(remote1.toUri().toString())).call();
+            git.push().setRemote("origin").setRefSpecs(new RefSpec("refs/heads/main:refs/heads/main")).call();
+        }
+
+        // Seed remote2 with file.txt=two
+        Path seed2 = tempDir.resolve("seed2");
+        try (Git git = Git.init().setInitialBranch("main").setDirectory(seed2.toFile()).call()) {
+            RepoTestUtils.writeFile(seed2, "file.txt", "two\n");
+            git.add().addFilepattern("file.txt").call();
+            git.commit().setMessage("seed2").setAuthor(ident).setCommitter(ident).call();
+            git.remoteAdd().setName("origin").setUri(new URIish(remote2.toUri().toString())).call();
+            git.push().setRemote("origin").setRefSpecs(new RefSpec("refs/heads/main:refs/heads/main")).call();
+        }
+
+        try (StdIoCapture io = new StdIoCapture()) {
+            assertThat(
+                VglMain.run(
+                    new String[] {
+                        "diff",
+                        "-rr",
+                        remote1.toUri().toString(),
+                        "-rb",
+                        "main",
+                        "-rr",
+                        remote2.toUri().toString(),
+                        "-rb",
+                        "main",
+                        "file.txt"
+                    }
+                )
+            ).isEqualTo(0);
+            assertThat(io.stderr()).isEmpty();
+            assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
+            assertThat(io.stdout()).contains("-one");
+            assertThat(io.stdout()).contains("+two");
         }
     }
 }

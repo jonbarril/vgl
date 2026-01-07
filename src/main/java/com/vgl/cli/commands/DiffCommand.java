@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -28,6 +30,7 @@ import org.eclipse.jgit.diff.RawTextComparator;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectReader;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 
@@ -57,6 +60,44 @@ public class DiffCommand implements Command {
         boolean noop = ArgsHelper.hasFlag(args, "-noop");
 
         List<String> positionals = collectPositionals(args);
+
+        // Remote-to-remote diff: `diff -rr URL0 -rb B0 -rr URL1 -rb B1` compares working trees via temp clones.
+        List<String> remoteUrls = valuesAfterFlagAll(args, "-rr");
+        List<String> remoteBranches = valuesAfterFlagAll(args, "-rb");
+        if (remoteUrls.size() >= 2) {
+            String url1 = remoteUrls.get(0);
+            String url2 = remoteUrls.get(1);
+            String b1 = (remoteBranches.size() >= 1 && remoteBranches.get(0) != null && !remoteBranches.get(0).isBlank())
+                ? remoteBranches.get(0)
+                : "main";
+            String b2 = (remoteBranches.size() >= 2 && remoteBranches.get(1) != null && !remoteBranches.get(1).isBlank())
+                ? remoteBranches.get(1)
+                : "main";
+
+            List<String> globs = positionals.isEmpty() ? List.of("*") : positionals;
+
+            Path leftClone = null;
+            Path rightClone = null;
+            try {
+                leftClone = cloneRemoteToTemp(url1, b1);
+                rightClone = cloneRemoteToTemp(url2, b2);
+
+                if (noop) {
+                    int changed = countWorkingTreeDiffBetweenRoots(leftClone, rightClone, globs);
+                    System.out.println(Messages.diffDryRunSummary(changed));
+                    return 0;
+                }
+
+                boolean any = diffWorkingTrees(leftClone, rightClone, globs);
+                if (!any) {
+                    System.out.println("No differences.");
+                }
+                return 0;
+            } finally {
+                deleteTreeQuietly(leftClone);
+                deleteTreeQuietly(rightClone);
+            }
+        }
 
         // Cross-repo diff: `diff -lr R0 -lr R1` compares working trees.
         List<Path> localRepoDirs = pathsAfterFlagAll(args, "-lr");
@@ -173,6 +214,9 @@ public class DiffCommand implements Command {
 
         Properties vglProps = VglConfig.readProps(repoRoot);
         String vglRemoteUrl = vglProps.getProperty(VglConfig.KEY_REMOTE_URL, "");
+        if (remoteUrls.size() == 1 && remoteUrls.get(0) != null && !remoteUrls.get(0).isBlank()) {
+            vglRemoteUrl = remoteUrls.get(0);
+        }
         if (remoteBranch == null || remoteBranch.isBlank()) {
             remoteBranch = vglProps.getProperty(VglConfig.KEY_REMOTE_BRANCH, "main");
         }
@@ -184,6 +228,11 @@ public class DiffCommand implements Command {
             Repository repo = git.getRepository();
 
             if (hasRemote) {
+                if (vglRemoteUrl == null || vglRemoteUrl.isBlank()) {
+                    System.err.println(Messages.pushNoRemoteConfigured());
+                    return 1;
+                }
+                configureOriginRemote(repo, vglRemoteUrl);
                 // best-effort fetch so origin/* exists for comparisons
                 try {
                     git.fetch().setRemote("origin").call();
@@ -251,6 +300,82 @@ public class DiffCommand implements Command {
                 System.out.println("No differences.");
             }
             return 0;
+        }
+    }
+
+    private static void configureOriginRemote(Repository repo, String remoteUrl) {
+        if (repo == null || remoteUrl == null || remoteUrl.isBlank()) {
+            return;
+        }
+        try {
+            StoredConfig cfg = repo.getConfig();
+            cfg.setString("remote", "origin", "url", remoteUrl);
+            // Ensure a fetch refspec so origin/* is populated.
+            cfg.setString("remote", "origin", "fetch", "+refs/heads/*:refs/remotes/origin/*");
+            cfg.save();
+        } catch (Exception ignored) {
+            // best-effort
+        }
+    }
+
+    private static Path cloneRemoteToTemp(String remoteUrl, String branch) throws Exception {
+        if (remoteUrl == null || remoteUrl.isBlank()) {
+            throw new IllegalArgumentException("remoteUrl is blank");
+        }
+        String b = (branch == null || branch.isBlank()) ? "main" : branch;
+        Path base = tempBaseDir();
+        Path dir = Files.createTempDirectory(base, "vgl-diff-remote-");
+        try (Git ignored = Git.cloneRepository()
+            .setURI(remoteUrl)
+            .setDirectory(dir.toFile())
+            .setBranch("refs/heads/" + b)
+            .call()) {
+            // cloned
+        }
+        return dir;
+    }
+
+    private static Path tempBaseDir() throws IOException {
+        String baseProp = System.getProperty("vgl.test.base");
+        if (baseProp != null && !baseProp.isBlank()) {
+            Path base = Path.of(baseProp).toAbsolutePath().normalize();
+            Files.createDirectories(base);
+            return base;
+        }
+        return Path.of(System.getProperty("java.io.tmpdir")).toAbsolutePath().normalize();
+    }
+
+    private static void deleteTreeQuietly(Path root) {
+        if (root == null) {
+            return;
+        }
+        try {
+            if (!Files.exists(root)) {
+                return;
+            }
+            Files.walkFileTree(root, new SimpleFileVisitor<>() {
+                @Override
+                public java.nio.file.FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                    try {
+                        Files.deleteIfExists(file);
+                    } catch (Exception ignored) {
+                        // best-effort
+                    }
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public java.nio.file.FileVisitResult postVisitDirectory(Path dir, IOException exc) {
+                    try {
+                        Files.deleteIfExists(dir);
+                    } catch (Exception ignored) {
+                        // best-effort
+                    }
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (Exception ignored) {
+            // best-effort
         }
     }
 
