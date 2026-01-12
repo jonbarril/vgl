@@ -753,6 +753,12 @@ public final class VglCli {
         @Option(names = "-bb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
         String bothBranch;
 
+        @Option(names = "-rr", paramLabel = "URL")
+        String remoteUrl;
+
+        @Option(names = "-rb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
+        String remoteBranch;
+
         @Override
         public Integer call() throws Exception {
             List<String> forwarded = new ArrayList<>();
@@ -770,6 +776,16 @@ public final class VglCli {
                     forwarded.add("-lb");
                     forwarded.add(branch);
                 }
+            }
+
+            if (remoteUrl != null && !remoteUrl.isBlank()) {
+                forwarded.add("-rr");
+                forwarded.add(remoteUrl);
+            }
+
+            if (remoteBranch != null) {
+                forwarded.add("-rb");
+                forwarded.add(remoteBranch);
             }
 
             return new SwitchCommand().run(forwarded);

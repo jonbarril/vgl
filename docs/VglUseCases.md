@@ -11,14 +11,14 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 
 **VGL State and Arguments:**
 - **Vgl Concepts:** VGL concepts are loosely based on Gitless. Unlike Git, in Vgl there is no concept of staging. File changes in the working space are immediately eligible for commit to the local repo. As such Vgl files exist in three conceptual locations: workspace, local repo, and remote repo, with remote repo being optional. Users are allowed to operate using Git directly if desired, moving between Vgl and Git as needed. Thus Vgl must tolerate underlying changes to Git state. However, as with Gitless, the intent of Vgl is to divorce the user from the complexities and pitfalls of Git concepts and operation.
-- **VGL state:** VGL application state is maintained in the current repoΓÇÖs `.vgl` file. The current VGL repo is always the one resolved from the userΓÇÖs current working directory (unless a command arg specifies one). 
+- **VGL state:** VGL application state is maintained in the current repo `.vgl` file. The current VGL repo is always the one resolved from the user's current working directory (unless a command arg specifies one). 
 - **Repo context:** Specifies the working local and remote repo state. Also called the "switch state" as it is set and changed using the switch command.
 - Consists of the local repo path and branch name, and the remote repo URL and branch name.
 - By definition, the local repo is that resolved from the user current working directory.
-- **Repo Scope**
-- A given repo's workspace consists of all files in that repo's root directory (i.e. directory containing a .git file) subtree.
+- **Repo Workspace**
+- The workspace of a repo (local or remote) consists of all files in that repo's root directory (i.e. directory containing a .git file) subtree.
 - Files inside nested repositories (directories that contain their own `.git`) are treated as Ignored for parent-level commands (e.g., status, glob expansion).
-- By changing working direcory the user may move up or down nested repo trees, with the current local repo being the closest ancestor repo resolved from the current working directory.
+- By changing local working directory the user may move up or down nested repo trees, with the current local repo being the closest ancestor repo resolved from the current working directory.
 - **Default args:** The default branch (i.e. no branch name specified) for local and remote repo creation is "main". Otherwise, commands that reference a local and/or remote repo/branch default to the current repo context in the VGL state.
 - **File args:** Glob expansion and file listings must be bounded to the repository (do not walk the entire filesystem).
 - **.vgl treatment:** By default, `.vgl` is included in `.gitignore` when a VGL repo is created. As such, it should be treated as Ignored.
@@ -50,6 +50,12 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - If a Vgl or Git repo exist at the target the user will be asked to confirm its deletion (otherwise the user is warned that none exists there).
 - If uncommitted changes and/or unpushed commits exist the user will be warned and asked to proceed or not.
 - If repo deletion is confirmed the user will be asked if the content should also be deleted. If so then the target directory should be deleted using system commands.
+
+**Context switching**
+- The switch command allows the local and/or remote repo and/or branch to be specified, which is called the "switch state".
+- However, since having a command change the CWD is not recommended switch does not support local repo specification. Instead it is always resolved from the CWD.
+- Local branch switching may change the workspace contents, but remote repo or branch switching will not.
+- In general a remote repo is speciified by repo URL. However, if a remote URL context has been established (by .git or by a previous URL spec) then the remote repo need only be named (e.g. instead of "github.com/myname/myrepo" I could simply say "myrepo" if the URL "github/myname" is already established).
 
 **Workspace commit**
 - Only 'tracked' files can be committed to the local repo.
@@ -89,6 +95,112 @@ This document captures concrete user-facing use cases, edge cases, and the expec
   - CHANGES adds subsections for 'Commits to Push' and 'Commits to Pull', with counts matching summary counts.
   - FILES adds subsections for 'Tracked Files', 'Untracked Files' and 'Ignored Files', with counts matching summary counts.
   - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -local, -remote, -changes, -history, -files.
+    - The -local flag can accept an optional path (including "."), in which case all local ancestor and descendant repos and their branches relative to the path are reported.
+    - The -remote flag can accept an optional URL argument, in which case all remote repos and their branches discoverable at the URL are reported.
+
+**Help command**
+-Goal
+  - Rewrite the vgl help output to be user-centric, predictable, and low-cognitive-load, while accurately reflecting vgl’s actual behavior.
+  - The help file is a primary source of truth and must explain intent and invariants, not implementation details.
+
+-Core Principles (must include)
+  - Progressive disclosure
+    - Help default: invariants and intent only
+    - Help -v: command reference and syntax
+    - Help -vv: concepts, workflows, and examples
+    - Avoid duplication across levels
+  - User intent over Git internals
+    - Describe what users do and why
+    - Avoid Git terminology unless unavoidable
+    - Hide Git’s remote/tracking complexity
+  - No surprises
+    - Never imply automatic file changes unless they actually occur
+    - Clearly separate:
+      - observe (status)
+      - select context (switch)
+      - materialize files (checkout)
+      - persist history (commit)
+
+- Mental Model to Convey
+  - Workspace
+    - Files under the repo root determined by CWD
+  - Local repo
+    - Always inferred from CWD (never switchable logically)
+  - Context
+    -0 Current local repo (resolved from CWD)
+    - Current local branch
+    - Current remote repo
+    - Current remote branch
+  - Commands
+    - status → report state and discover information
+    - switch → change context only
+    - checkout → create/copy files
+    - commit → create history
+    - pull → analyze then optionally merge (no auto-commit)
+
+- Command Semantics (must be reflected in help)
+  - status
+    - Reports:
+      - local file state
+      - current local/remote context
+    - Remote discovery lives here
+      - status -remote → show current remote context and branches
+      - status -remote <url> → list repos and branches at that remote scope
+    - No mutation, no prompts
+  - switch
+    - Changes context only
+    - Local repo is always from CWD
+    - Effects:
+      - Flag -lb may change workspace files
+      - Flags -rr, -rb never change files
+    - No discovery, no copying
+  - checkout
+    - Always creates a working copy
+    - Used to materialize a remote repo/branch
+    - May set initial context
+
+- What Default Help Must Contain
+  - One-sentence description of vgl
+  - Key invariants:
+    - workspace definition
+    - commit creates history
+    - collaboration is explicit
+  - List of commands grouped by intent
+  - Pointer to help <command>, -v, -vv
+  - No flags, no examples.
+
+- What -v Must Contain
+  - Command syntax
+  - Brief purpose per command
+  - Mention flags exist but defaults are common
+  - No workflows
+
+- What -vv Must Contain
+  - Explanation of:
+    - workspace
+    - context
+    - local vs remote
+  - Typical workflows:
+    - local-only
+    - collaboration
+
+  - Examples for non-obvious commands only:
+    - switch
+    - checkout
+    - split
+    - merge
+
+- Explicit Non-Goals (do NOT include)
+  - Git refspecs, tracking branches, upstreams
+  - Automatic discovery without explicit scope
+  - Implicit directory changes
+  - Multiple competing mental models
+
+- Success Criteria
+  - The help file should allow:
+    - A novice to complete basic workflows without learning Git
+    - An expert to understand guarantees and boundaries
+    - Zero ambiguity about when files change and when they don’t
 
 **Interactive vs automated modes:**
 - **Interactive detection:** Use `Utils.isInteractive()`; honor `-Dvgl.noninteractive=true` for tests and CI to suppress prompts.

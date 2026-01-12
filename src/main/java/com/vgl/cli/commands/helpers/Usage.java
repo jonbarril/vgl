@@ -109,7 +109,7 @@ public final class Usage {
     public static String switchCmd() {
         return String.join("\n",
             "Usage:",
-            "  vgl switch [-lr DIR] [-lb BRANCH|-bb BRANCH]"
+            "  vgl switch [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]"
         );
     }
 

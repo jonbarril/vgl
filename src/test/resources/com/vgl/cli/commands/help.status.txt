@@ -3,15 +3,24 @@ Voodoo Gitless (TEST_VERSION) -- Git for mortals
 status -- Show workspace/repo/file status
 
 Usage:
-  vgl status [-v|-vv] [-local] [-remote] [-changes] [-history] [-files]
+  vgl status [-v|-vv]
+  vgl status [-v|-vv] [-local] [-remote [URL]] [-changes] [-history] [-files]
 
 Options:
-  -v, -vv     Verbose output (more detail)
-  -local      Show LOCAL section
-  -remote     Show REMOTE section
-  -changes    Show CHANGES section
-  -history    Show HISTORY section
-  -files      Show FILES section
+  -v, -vv         Verbose output (more detail)
+  -local|-lo      Show LOCAL section only
+  -remote|-re     Show REMOTE section from switch state
+  -remote|-re URL Discover and list repos/branches at URL
+  -changes|-ch    Show CHANGES section only
+  -history|-hi    Show HISTORY section only
+  -files|-fi      Show FILES section only
+
+Remote discovery:
+  vgl status -remote https://github.com/org  # List repos
+  vgl status -remote https://github.com/org/repo  # Branches
+  Then: vgl switch -rr URL -rb BRANCH  # Connect to remote
 
 Notes:
-  - If no section flags are specified, all sections are shown.
+  - status never changes files; it only reports
+  - If no section flags specified, all sections shown
+  - -remote URL enables discovery for switch/checkout commands

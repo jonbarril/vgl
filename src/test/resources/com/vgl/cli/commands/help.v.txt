@@ -1,76 +1,54 @@
 Voodoo Gitless (TEST_VERSION) -- Git for mortals
 
-Note: See Flags (help -v/-vv) for flag combinations and defaults.
+Command Reference
 
-Commands:
-  create [-f]                        Create repo/branch, then switch
-    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
-  delete [-f]                        Delete repo/branch
-    -lr [DIR]  -lb [BRANCH]            (local repo/branch)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (TBD: use hosting tools)
-  switch [-f]                        Switch to repo/branch
-    -lr [DIR]  -lb [BRANCH]            (local repo/branch)
-    -bb [BRANCH]                       (same name for local+remote)
-    -rr [URL]  -rb [BRANCH]            (remote repo/branch)
+Context commands:
+  create [-f] [-lr DIR] [-lb BRANCH | -bb BRANCH]
+  delete [-f] [-lr DIR] [-lb BRANCH | -bb BRANCH]
+  switch [-lr DIR] [-lb BRANCH | -bb BRANCH] [-rr URL] [-rb BRANCH]
+  status [-v|-vv] [-local] [-remote [URL]] [-changes] [-history] [-files]
 
-  split -from|-into                  Copy branch, then switch to dest
-    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for from+into)
-  merge -into|-from                  Merge branches, then switch to dest
-    -lr [DIR]  -lb [BRANCH]            (no switch if DIR != CWD)
-    -bb [BRANCH]                       (same name for from+into)
+Local work:
+  track GLOB... | -all
+  untrack GLOB... | -all
+  commit [-f] MESSAGE | -new MESSAGE | -add MESSAGE
+  split [-f] [-noop] [-from [-lr DIR] [-lb BRANCH | -bb BRANCH]]
+                     [-into [-lr DIR] [-lb BRANCH | -bb BRANCH]]
+  merge [-f] [-noop] [-from [-lr DIR] [-lb BRANCH | -bb BRANCH]]
+                     [-into [-lr DIR] [-lb BRANCH | -bb BRANCH]]
+  restore [-f] [GLOB] {-lr DIR [-lb BRANCH] | -rr URL [-rb BRANCH]}
 
-  copy -from|-into [-f]              Copy a repo for local use
-    -from: -rr [URL] or -lr [DIR]      (source repo)
-    -into: -lr [DIR]                   (destination directory)
-  checkout [-f]                      Copy remote branch into CWD
-    -rr [URL]  -rb [BRANCH]            (remote repo/branch)
-  checkin -draft|-final              Push and create pull request
+Remote collaboration:
+  checkout [-f] -rr URL [-rb BRANCH]
+  copy {-from {-lr DIR | -rr URL [-rb BRANCH]} | -into -lr DIR} [-f]
+  checkin {-draft | -final}
+  pull [-f] [-noop]
+  push [-noop]
+  sync [-f] [-noop]
+  abort
 
-  track GLOB...                      Add files to version control
-    -all                               Track all undecided files
-  untrack GLOB...                    Remove files from version control
-  commit "MESSAGE"                   Commit workspace changes
-    -new|-add "MESSAGE"                Amend last commit message
-  restore [-f] [GLOB|*]              Replace working files with:
-    -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
-    -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit
-  pull [-f] [-noop]                  Merge remote changes into local branch
-  push [-noop]                       Replace remote branch from local changes
-  sync [-noop]                       Pull then push
-  abort                              Cancel ongoing merge or pull
+Review:
+  diff [-noop] [GLOB] [-lr DIR]... [-lb BRANCH]... [-rr URL]... [-rb BRANCH]...
+  diff [-noop] COMMIT1 COMMIT2 [GLOB]
+  log [-v|-vv] [-graph] [COMMIT]
 
-  status [-v|-vv]                    Show workspace/repo/file status
-    [-local][-remote][-changes][-history][-files] Show only some sections
-  diff [-noop] [GLOB|*]              Compare files between any two:
-    -lr [DIR] -lb [BRANCH] [COMMIT]    local branch/commit
-    -bb BRANCH                         (same name for local+remote)
-    -rr [URL] -rb [BRANCH] [COMMIT]    remote branch/commit
-  log [-v|-vv] [-graph] [COMMIT]     Show commit history
-  help [-v|-vv] [COMMAND]            Show help (or help for one command)
+Flag reference:
+  -f            Force; bypass confirmation prompts
+  -noop         Dry run; preview changes without applying
+  -v, -vv       Verbose output (increasing detail)
+  -lr DIR       Local repository directory (default: CWD repo)
+  -lb BRANCH    Local branch (default: 'main' or switch state)
+  -rr URL       Remote repository URL (default: switch state)
+  -rb BRANCH    Remote branch (default: 'main' or switch state)
+  -bb BRANCH    Same branch name local+remote (exclusive with -lb/-rb)
 
-Flags:
-  Note: If no repo/branch (-lr, -lb, -rr, -rb) is specified then the corresponding
-        switch state is used. If a switch state is not set or resolved DIR defaults
-        to the current local repo (resolved from the CWD), local and remote BRANCH
-        default to 'main', and URL has no default. Branch flags can accept no name,
-        a BRANCH and/or a COMMIT id in the branch.
+Notes:
+  - Commands use switch state for default repo/branch when omitted
+  - CWD determines local repo; use 'cd' to change context
+  - Flag -bb is mutually exclusive with -lb and -rb
+  - Branch flags accept BRANCH or COMMIT id
+  - Glob patterns: *.ext, file?.txt, **/*.py, *.{a,b}
 
-  CWD           Current workspace directory
-  -lr DIR       Local repository directory
-  -lb BRANCH    Local branch (default: 'main')
-  -rr URL       Remote repository URL
-  -rb BRANCH    Remote branch (default: 'main')
-  -bb BRANCH    Both local and remote branch (default: 'main')
-  -f            Bypass confirmation prompts
-  -noop         Dry run (no changes)
-  -v, -vv       Verbose output (more detail)
-
-Glob Patterns:
-  *.log              All .log files         -> app.log, build.log
-  file?.txt          Single-char wildcard   -> file1.txt, fileA.txt
-  **/*.py            Recursive search       -> main.py, lib/util.py
-  *.{png,jpg}        Multiple extensions    -> cat.png, dog.jpg
+Get more help:
+  vgl help -vv         Show concepts and workflows
+  vgl help <command>   Show detailed help for one command

@@ -27,8 +27,26 @@ public class SwitchCommand implements Command {
 
     @Override
     public int run(List<String> args) throws Exception {
-        String branch = ArgsHelper.branchFromArgsOrNull(args);
-        if (branch == null || branch.isBlank()) {
+        String localBranch = ArgsHelper.branchFromArgsOrNull(args);
+        String remoteUrlArg = ArgsHelper.valueAfterFlag(args, "-rr");
+        String remoteBranchArg = ArgsHelper.valueAfterFlag(args, "-rb");
+
+        boolean hasBb = args.contains("-bb");
+        if (hasBb && args.contains("-lb")) {
+            System.err.println(Usage.switchCmd());
+            return 1;
+        }
+        if (hasBb && args.contains("-rb")) {
+            System.err.println(Usage.switchCmd());
+            return 1;
+        }
+
+        boolean wantsAnyChange =
+            (localBranch != null && !localBranch.isBlank()) ||
+            (remoteUrlArg != null && !remoteUrlArg.isBlank()) ||
+            (args.contains("-rb"));
+
+        if (!wantsAnyChange) {
             System.err.println(Usage.switchCmd());
             return 1;
         }
@@ -45,59 +63,128 @@ public class SwitchCommand implements Command {
         }
 
         Properties priorProps = VglConfig.readProps(repoRoot);
-        boolean knownInVgl = VglConfig.getStringSet(priorProps, VglConfig.KEY_LOCAL_BRANCHES).contains(branch);
 
+        // Resolve remote URL/branch changes.
+        // Rules:
+        // - -rr sets remote URL.
+        // - -rb sets remote branch; if -rr not provided, uses existing remote URL.
+        // - Missing remote branch defaults to existing remote branch, else "main".
+        String remoteUrlToSet = null;
+        if (remoteUrlArg != null && !remoteUrlArg.isBlank()) {
+            remoteUrlToSet = remoteUrlArg.trim();
+        }
+
+        String existingRemoteUrl = priorProps.getProperty(VglConfig.KEY_REMOTE_URL, "").trim();
+        String existingRemoteBranch = priorProps.getProperty(VglConfig.KEY_REMOTE_BRANCH, "").trim();
+        if (existingRemoteBranch.isBlank()) {
+            existingRemoteBranch = "main";
+        }
+
+        String remoteBranchToSet = null;
+        if (args.contains("-rb")) {
+            // If -rb present but no value, treat as default main.
+            if (remoteBranchArg == null || remoteBranchArg.isBlank()) {
+                remoteBranchToSet = "main";
+            } else {
+                remoteBranchToSet = remoteBranchArg.trim();
+            }
+        } else if (hasBb && localBranch != null && !localBranch.isBlank()) {
+            remoteBranchToSet = localBranch;
+        }
+
+        boolean wantsRemoteBranchChange = remoteBranchToSet != null && !remoteBranchToSet.isBlank();
+        boolean wantsRemoteUrlChange = remoteUrlToSet != null && !remoteUrlToSet.isBlank();
+
+        if (wantsRemoteBranchChange && !wantsRemoteUrlChange) {
+            // -rb without -rr requires an existing remote URL.
+            if (existingRemoteUrl.isBlank()) {
+                System.err.println(Messages.pushNoRemoteConfigured());
+                return 1;
+            }
+        }
+
+        // If we are setting -rr but not explicitly setting -rb, preserve existing branch.
+        String resolvedRemoteBranchToSet = remoteBranchToSet;
+        boolean resolvedWantsRemoteBranchChange = wantsRemoteBranchChange;
+        if (wantsRemoteUrlChange && !resolvedWantsRemoteBranchChange) {
+            resolvedRemoteBranchToSet = existingRemoteBranch;
+            resolvedWantsRemoteBranchChange = true;
+        }
+
+        final String finalRemoteUrlToSet = remoteUrlToSet;
+        final boolean finalWantsRemoteUrlChange = wantsRemoteUrlChange;
+        final String finalRemoteBranchToSet = resolvedRemoteBranchToSet;
+        final boolean finalWantsRemoteBranchChange = resolvedWantsRemoteBranchChange;
+
+        boolean changedLocal = false;
         String priorBranch = null;
+        boolean knownInVgl = false;
         boolean existed = false;
         boolean headResolves = false;
 
-        try (Git git = GitUtils.openGit(repoRoot)) {
-            Repository repo = git.getRepository();
+        if (localBranch != null && !localBranch.isBlank()) {
+            knownInVgl = VglConfig.getStringSet(priorProps, VglConfig.KEY_LOCAL_BRANCHES).contains(localBranch);
 
-            try {
-                priorBranch = repo.getBranch();
-            } catch (Exception ignored) {
-                priorBranch = null;
-            }
+            try (Git git = GitUtils.openGit(repoRoot)) {
+                Repository repo = git.getRepository();
 
-            try {
-                headResolves = repo.resolve(Constants.HEAD) != null;
-            } catch (Exception e) {
-                headResolves = false;
-            }
-
-            if (!headResolves) {
-                // Unborn repository: avoid checkout failures by linking HEAD.
-                repo.updateRef(Constants.HEAD).link("refs/heads/" + branch);
-            } else {
-                Ref ref = repo.findRef("refs/heads/" + branch);
-                if (ref == null) {
-                    // Also allow passing a fully qualified ref.
-                    ref = repo.findRef(branch);
+                try {
+                    priorBranch = repo.getBranch();
+                } catch (Exception ignored) {
+                    priorBranch = null;
                 }
-                if (ref == null) {
-                    System.err.println(Messages.branchNotFound(branch));
-                    return 1;
+
+                try {
+                    headResolves = repo.resolve(Constants.HEAD) != null;
+                } catch (Exception e) {
+                    headResolves = false;
                 }
-                existed = true;
-                git.checkout().setName(branch).call();
+
+                if (!headResolves) {
+                    // Unborn repository: avoid checkout failures by linking HEAD.
+                    repo.updateRef(Constants.HEAD).link("refs/heads/" + localBranch);
+                    changedLocal = true;
+                } else {
+                    Ref ref = repo.findRef("refs/heads/" + localBranch);
+                    if (ref == null) {
+                        // Also allow passing a fully qualified ref.
+                        ref = repo.findRef(localBranch);
+                    }
+                    if (ref == null) {
+                        System.err.println(Messages.branchNotFound(localBranch));
+                        return 1;
+                    }
+                    existed = true;
+                    git.checkout().setName(localBranch).call();
+                    changedLocal = true;
+                }
             }
         }
 
         VglConfig.ensureGitignoreHasVgl(repoRoot);
         VglConfig.writeProps(repoRoot, props -> {
-            props.setProperty(VglConfig.KEY_LOCAL_BRANCH, branch);
-            var branches = VglConfig.getStringSet(props, VglConfig.KEY_LOCAL_BRANCHES);
-            branches.add(branch);
-            VglConfig.setStringSet(props, VglConfig.KEY_LOCAL_BRANCHES, branches);
+            if (localBranch != null && !localBranch.isBlank()) {
+                props.setProperty(VglConfig.KEY_LOCAL_BRANCH, localBranch);
+                var branches = VglConfig.getStringSet(props, VglConfig.KEY_LOCAL_BRANCHES);
+                branches.add(localBranch);
+                VglConfig.setStringSet(props, VglConfig.KEY_LOCAL_BRANCHES, branches);
+            }
+            if (finalWantsRemoteUrlChange) {
+                props.setProperty(VglConfig.KEY_REMOTE_URL, finalRemoteUrlToSet);
+            }
+            if (finalWantsRemoteBranchChange) {
+                props.setProperty(VglConfig.KEY_REMOTE_BRANCH, finalRemoteBranchToSet);
+            }
         });
 
-        if (priorBranch != null && priorBranch.equals(branch)) {
-            System.out.println(Messages.alreadyOnBranch(branch));
-        } else if (knownInVgl || (headResolves && existed)) {
-            System.out.println(Messages.switchedToExistingBranch(branch));
-        } else {
-            System.out.println(Messages.switchedBranch(branch));
+        if (changedLocal) {
+            if (priorBranch != null && priorBranch.equals(localBranch)) {
+                System.out.println(Messages.alreadyOnBranch(localBranch));
+            } else if (knownInVgl || (headResolves && existed)) {
+                System.out.println(Messages.switchedToExistingBranch(localBranch));
+            } else {
+                System.out.println(Messages.switchedBranch(localBranch));
+            }
         }
 
         // Always report the (possibly unchanged) switch state for commands that may switch state.
