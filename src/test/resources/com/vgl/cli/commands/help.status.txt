@@ -9,7 +9,7 @@ Usage:
 Options:
   -v, -vv         Verbose output (more detail)
   -context        Show where you are (Local + Remote)
-  -context URL    Show what exists remotely at URL
+  -context URL    Show remote branches at URL
   -changes        Show CHANGES section only
   -history        Show HISTORY section only
   -files          Show FILES section only
@@ -21,4 +21,5 @@ Notes:
   - Undecided files exist in the workspace, but have not yet been explicitly
     tracked, untracked, or ignored.
   - If no section flags specified, all sections shown
-  - -context URL currently supports GitHub URLs
+  - -context URL expects a repository URL (not an org/user page)
+  - -context URL may require credentials for private repos

@@ -10,13 +10,7 @@ import com.vgl.cli.utils.RepoValidation;
 import com.vgl.cli.utils.RepoPreflight;
 import com.vgl.cli.utils.Utils;
 import com.vgl.cli.utils.VglConfig;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -182,236 +176,54 @@ public class StatusCommand implements Command {
             return 1;
         }
 
-        GithubTarget target = GithubTarget.tryParse(userQuery.trim());
-        if (target == null) {
-            System.err.println("Could not discover remotes at: " + userQuery.trim());
-            System.err.println("Reason: only GitHub URLs are supported for -context URL.");
-            System.err.println(
-                "Hint: Use a GitHub org/user URL like https://github.com/org, or a repo URL like https://github.com/org/repo."
-            );
-            return 1;
+        String remote = userQuery.trim();
+        String displayRemote;
+        try {
+            displayRemote = FormatUtils.normalizeRemoteUrlForDisplay(remote);
+        } catch (Exception ignored) {
+            displayRemote = remote;
         }
 
-        String displayRoot = "github.com/" + target.owner + (target.repo != null ? ("/" + target.repo) : "");
-        System.out.println("Remote repos discovered at: " + displayRoot);
+        System.out.println("Remote branches at: " + displayRemote);
 
         try {
-            HttpClient client = HttpClient.newHttpClient();
-            ObjectMapper mapper = new ObjectMapper();
+            Collection<Ref> refs = Git.lsRemoteRepository()
+                .setRemote(remote)
+                .setHeads(true)
+                .setTags(false)
+                .call();
 
-            if (target.repo != null) {
-                List<String> branches = githubListBranches(client, mapper, target.owner, target.repo);
-                System.out.println("  " + target.repo + ":");
-                System.out.println("    Branches:");
-                com.vgl.cli.commands.helpers.StatusVerboseOutput.printWrappedColumns(branches, "      ");
-                System.out.println();
-                System.out.println("Then: vgl switch -rr https://github.com/" + target.owner + "/" + target.repo + " -rb <branch>");
-                return 0;
+            List<String> branches = new ArrayList<>();
+            if (refs != null) {
+                for (Ref ref : refs) {
+                    if (ref == null || ref.getName() == null) {
+                        continue;
+                    }
+                    String name = ref.getName();
+                    if (name.startsWith(Constants.R_HEADS)) {
+                        branches.add(name.substring(Constants.R_HEADS.length()));
+                    }
+                }
             }
+            java.util.Collections.sort(branches);
 
-            List<String> repos = githubListRepos(client, mapper, target.owner);
-            if (repos.isEmpty()) {
+            System.out.println("Branches:");
+            if (branches.isEmpty()) {
                 System.out.println("  (none)");
-                return 0;
-            }
-
-            for (String repo : repos) {
-                if (repo == null || repo.isBlank()) {
-                    continue;
-                }
-                System.out.println("  " + repo + ":");
-                try {
-                    List<String> branches = githubListBranches(client, mapper, target.owner, repo);
-                    System.out.println("    Branches:");
-                    com.vgl.cli.commands.helpers.StatusVerboseOutput.printWrappedColumns(branches, "      ");
-                } catch (Exception e) {
-                    System.out.println("    Branches:");
-                    System.out.println("      (unknown)");
-                }
+            } else {
+                StatusVerboseOutput.printWrappedColumns(branches, "  ");
             }
 
             System.out.println();
-            System.out.println("Then: vgl switch -rr https://github.com/" + target.owner + "/<repo> -rb <branch>");
+            System.out.println("Then: vgl switch -rr " + remote + " -rb <branch>");
             return 0;
         } catch (Exception e) {
-            System.err.println("Could not discover remotes at: " + userQuery.trim());
+            System.err.println("Could not discover remote branches at: " + remote);
             System.err.println("Reason: " + e.getMessage());
-            System.err.println("Hint: If you hit GitHub rate limits, try again later or use a narrower URL (owner/repo)."
+            System.err.println(
+                "Hint: Provide a repository URL (not an org/user page), e.g. https://host/org/repo or git@host:org/repo.git."
             );
             return 1;
-        }
-    }
-
-    private static String formatBranchSummary(List<String> branches) {
-        if (branches == null || branches.isEmpty()) {
-            return "(none)";
-        }
-        List<String> cleaned = new ArrayList<>();
-        for (String b : branches) {
-            if (b != null && !b.isBlank()) {
-                cleaned.add(b.trim());
-            }
-        }
-        if (cleaned.isEmpty()) {
-            return "(none)";
-        }
-        java.util.Collections.sort(cleaned);
-        int max = 6;
-        if (cleaned.size() <= max) {
-            return String.join(" ", cleaned);
-        }
-        return String.join(" ", cleaned.subList(0, max)) + " ...";
-    }
-
-    private static List<String> githubListRepos(HttpClient client, ObjectMapper mapper, String owner) throws Exception {
-        // GitHub supports both users and orgs; try /users first, then /orgs.
-        String[] endpoints = new String[] {
-            "https://api.github.com/users/" + owner + "/repos?per_page=100&type=all",
-            "https://api.github.com/orgs/" + owner + "/repos?per_page=100&type=all"
-        };
-
-        for (String url : endpoints) {
-            HttpResponse<String> response = httpGet(client, url);
-            if (response.statusCode() == 404) {
-                continue;
-            }
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                throw new IOException("GitHub API returned " + response.statusCode());
-            }
-            JsonNode root = mapper.readTree(response.body());
-            List<String> repos = new ArrayList<>();
-            if (root != null && root.isArray()) {
-                for (JsonNode n : root) {
-                    if (n == null) {
-                        continue;
-                    }
-                    JsonNode name = n.get("name");
-                    if (name != null && name.isTextual()) {
-                        repos.add(name.asText());
-                    }
-                }
-            }
-            java.util.Collections.sort(repos);
-            return repos;
-        }
-
-        return List.of();
-    }
-
-    private static List<String> githubListBranches(HttpClient client, ObjectMapper mapper, String owner, String repo) throws Exception {
-        String url = "https://api.github.com/repos/" + owner + "/" + repo + "/branches?per_page=100";
-        HttpResponse<String> response = httpGet(client, url);
-        if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new IOException("GitHub API returned " + response.statusCode());
-        }
-
-        JsonNode root = mapper.readTree(response.body());
-        List<String> branches = new ArrayList<>();
-        if (root != null && root.isArray()) {
-            for (JsonNode n : root) {
-                if (n == null) {
-                    continue;
-                }
-                JsonNode name = n.get("name");
-                if (name != null && name.isTextual()) {
-                    branches.add(name.asText());
-                }
-            }
-        }
-        return branches;
-    }
-
-    private static HttpResponse<String> httpGet(HttpClient client, String url) throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", "vgl")
-            .GET()
-            .build();
-        return client.send(request, HttpResponse.BodyHandlers.ofString());
-    }
-
-    private static final class GithubTarget {
-        final String owner;
-        final String repo;
-
-        private GithubTarget(String owner, String repo) {
-            this.owner = owner;
-            this.repo = repo;
-        }
-
-        static GithubTarget tryParse(String raw) {
-            if (raw == null || raw.isBlank()) {
-                return null;
-            }
-            String s = raw.trim();
-
-            // git@github.com:owner/repo(.git)
-            if (s.startsWith("git@") && s.contains("github.com") && s.contains(":")) {
-                int colon = s.indexOf(':');
-                String path = s.substring(colon + 1);
-                return fromPath(path);
-            }
-
-            String url = s;
-            if (!url.contains("://")) {
-                url = "https://" + url;
-            }
-            URI uri;
-            try {
-                uri = URI.create(url);
-            } catch (Exception e) {
-                return null;
-            }
-            if (uri.getHost() == null || !uri.getHost().equalsIgnoreCase("github.com")) {
-                return null;
-            }
-            String path = uri.getPath();
-            if (path == null) {
-                return null;
-            }
-            return fromPath(path);
-        }
-
-        private static GithubTarget fromPath(String pathRaw) {
-            if (pathRaw == null) {
-                return null;
-            }
-            String path = pathRaw.trim();
-            if (path.startsWith("/")) {
-                path = path.substring(1);
-            }
-            if (path.endsWith("/")) {
-                path = path.substring(0, path.length() - 1);
-            }
-            if (path.isBlank()) {
-                return null;
-            }
-            String[] parts = path.split("/");
-            List<String> segs = new ArrayList<>();
-            for (String p : parts) {
-                if (p != null && !p.isBlank()) {
-                    segs.add(p);
-                }
-            }
-            if (segs.isEmpty()) {
-                return null;
-            }
-            String owner = segs.get(0);
-            if (owner.isBlank()) {
-                return null;
-            }
-            String repo = null;
-            if (segs.size() >= 2) {
-                repo = segs.get(1);
-                if (repo.endsWith(".git")) {
-                    repo = repo.substring(0, repo.length() - 4);
-                }
-                if (repo.isBlank()) {
-                    repo = null;
-                }
-            }
-            return new GithubTarget(owner, repo);
         }
     }
 

@@ -50,7 +50,7 @@ Examples for non-obvious commands:
     vgl switch -bb experiment       # Set local+remote branch
 
   checkout: materializes remote repo
-    vgl checkout -rr https://github.com/user/repo  # Copy repo
+    vgl checkout -rr https://git.example.com/team/repo  # Copy repo
     vgl checkout -rr https://... -rb dev  # Copy branch only
 
   split: branch and switch

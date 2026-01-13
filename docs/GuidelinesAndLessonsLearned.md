@@ -110,7 +110,7 @@ This is not about blocking progress; it is about preventing accidental churn and
 - Breaking CLI changes (removing flags, changing defaults, changing exit codes)
 - Help/output contract changes (golden files, section headings, wording that tests lock)
 - Adding or changing external dependencies (Gradle deps, new libraries, network clients)
-- Adding new network behaviors (HTTP calls, telemetry, GitHub API usage, auth requirements)
+- Adding new network behaviors (HTTP calls, telemetry, hosting-provider APIs, auth requirements)
 - Security-sensitive changes (credentials, tokens, filesystem writes outside repo root)
 - Large refactors (renames/moves or “cleanup” that is not strictly required)
 

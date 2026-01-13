@@ -36,7 +36,7 @@ Confirmation required for:
 - Breaking CLI changes (removing flags, changing defaults, changing exit codes)
 - Help/output contract changes (goldens, headings, wording locked by tests)
 - Adding/changing dependencies
-- Adding network behavior (HTTP calls, GitHub APIs, auth requirements)
+- Adding network behavior (HTTP calls, hosting-provider APIs, auth requirements)
 - Security-sensitive changes (credentials, filesystem writes outside repo root)
 - Large refactors not strictly required by the task
 

@@ -234,7 +234,7 @@ public class HelpCommand implements Command {
             "    vgl switch -bb experiment       # Set local+remote branch",
             "",
             "  checkout: materializes remote repo",
-            "    vgl checkout -rr https://github.com/user/repo  # Copy repo",
+            "    vgl checkout -rr https://git.example.com/team/repo  # Copy repo",
             "    vgl checkout -rr https://... -rb dev  # Copy branch only",
             "",
             "  split: branch and switch",
@@ -278,7 +278,7 @@ public class HelpCommand implements Command {
                 "Options:",
                 "  -v, -vv         Verbose output (more detail)",
                 "  -context        Show where you are (Local + Remote)",
-                "  -context URL    Show what exists remotely at URL",
+                "  -context URL    Show remote branches at URL",
                 "  -changes        Show CHANGES section only",
                 "  -history        Show HISTORY section only",
                 "  -files          Show FILES section only",
@@ -290,7 +290,8 @@ public class HelpCommand implements Command {
                 "  - Undecided files exist in the workspace, but have not yet been explicitly",
                 "    tracked, untracked, or ignored.",
                 "  - If no section flags specified, all sections shown",
-                "  - -context URL currently supports GitHub URLs"
+                "  - -context URL expects a repository URL (not an org/user page)",
+                "  - -context URL may require credentials for private repos"
             );
             case "create" -> String.join("\n",
                 header(),

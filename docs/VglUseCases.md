@@ -55,7 +55,7 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - The switch command allows the local and/or remote repo and/or branch to be specified, which is called the "switch state".
 - However, since having a command change the CWD is not recommended switch does not support local repo specification. Instead it is always resolved from the CWD.
 - Local branch switching may change the workspace contents, but remote repo or branch switching will not.
-- In general a remote repo is speciified by repo URL. However, if a remote URL context has been established (by .git or by a previous URL spec) then the remote repo need only be named (e.g. instead of "github.com/myname/myrepo" I could simply say "myrepo" if the URL "github/myname" is already established).
+- In general a remote repo is speciified by repo URL. However, if a remote URL context has been established (by .git or by a previous URL spec) then the remote repo need only be named (e.g. instead of "git.example.com/myname/myrepo" I could simply say "myrepo" if the URL "git.example.com/myname" is already established).
 
 **Workspace commit**
 - Only 'tracked' files can be committed to the local repo.

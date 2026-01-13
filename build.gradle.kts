@@ -33,7 +33,6 @@ dependencies {
     runtimeOnly("org.slf4j:slf4j-simple:2.0.13")
     implementation("org.eclipse.jgit:org.eclipse.jgit:6.9.0.202403050737-r")
     implementation("info.picocli:picocli:4.7.6")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.17.1")
     testImplementation(platform("org.junit:junit-bom:5.10.2"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
