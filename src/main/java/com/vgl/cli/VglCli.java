@@ -793,6 +793,9 @@ public final class VglCli {
         @Option(names = "-vv")
         boolean veryVerbose;
 
+        @Option(names = "-context")
+        boolean context;
+
         @Option(names = "-local")
         boolean local;
 
@@ -815,6 +818,9 @@ public final class VglCli {
                 forwarded.add("-vv");
             } else if (verbose) {
                 forwarded.add("-v");
+            }
+            if (context) {
+                forwarded.add("-context");
             }
             if (local) {
                 forwarded.add("-local");

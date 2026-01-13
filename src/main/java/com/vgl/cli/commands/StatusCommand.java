@@ -52,11 +52,22 @@ public class StatusCommand implements Command {
             return runRemoteDiscovery(remoteDiscoveryQuery);
         }
 
+        boolean showContext = args.contains("-context");
+
         boolean showLocal = args.contains("-local");
         boolean showRemote = args.contains("-remote");
         boolean showChanges = args.contains("-changes") || args.contains("-commits");
         boolean showHistory = args.contains("-history");
         boolean showFiles = args.contains("-files");
+
+        // Convenience: show just the context (LOCAL + REMOTE), ignoring other section flags.
+        if (showContext) {
+            showLocal = true;
+            showRemote = true;
+            showChanges = false;
+            showHistory = false;
+            showFiles = false;
+        }
         boolean anySectionFlag = showLocal || showRemote || showChanges || showHistory || showFiles;
 
         Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
