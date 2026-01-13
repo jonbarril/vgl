@@ -2,6 +2,7 @@ package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.StateChangeOutput;
+import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoUtils;
@@ -68,12 +69,22 @@ public class CheckoutCommand implements Command {
 
         Files.createDirectories(targetDir);
 
-        try (Git ignored = Git.cloneRepository()
-            .setURI(remoteUrl)
-            .setDirectory(targetDir.toFile())
-            .setBranch("refs/heads/" + remoteBranch)
-            .call()) {
-            // cloned
+        try {
+            try (Git ignored = GitAuth.applyCredentialsIfPresent(Git.cloneRepository()
+                .setURI(remoteUrl)
+                .setDirectory(targetDir.toFile())
+                .setBranch("refs/heads/" + remoteBranch))
+                .call()) {
+                // cloned
+            }
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
+                System.err.println("ERROR: " + remoteUrl + ": Authentication is required but no credentials are configured.");
+                System.err.println(GitAuth.authEnvHint());
+                return 1;
+            }
+            throw e;
         }
 
         final String branchToUse = remoteBranch;

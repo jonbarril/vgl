@@ -2,6 +2,7 @@ package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.MergeOperations;
+import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoResolver;
@@ -63,7 +64,7 @@ public class PullCommand implements Command {
             Status status = git.status().call();
 
             // Fetch remote changes to analyze merge
-            git.fetch().setRemote("origin").call();
+            GitAuth.applyCredentialsIfPresent(git.fetch().setRemote("origin")).call();
             org.eclipse.jgit.lib.ObjectId remoteId = repo.resolve("refs/remotes/origin/" + remoteBranch);
             org.eclipse.jgit.lib.ObjectId headId = repo.resolve("HEAD");
 
@@ -92,7 +93,9 @@ public class PullCommand implements Command {
             }
 
             // Perform the pull
-            PullResult r = git.pull().setRemote("origin").setRemoteBranchName(remoteBranch).call();
+            PullResult r = GitAuth.applyCredentialsIfPresent(
+                git.pull().setRemote("origin").setRemoteBranchName(remoteBranch)
+            ).call();
             if (r.isSuccessful()) {
                 System.out.println(Messages.pullCompleted());
                 return 0;

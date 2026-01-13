@@ -1,6 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
+import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.GlobUtils;
 import com.vgl.cli.utils.Messages;
@@ -325,12 +326,23 @@ public class DiffCommand implements Command {
         String b = (branch == null || branch.isBlank()) ? "main" : branch;
         Path base = tempBaseDir();
         Path dir = Files.createTempDirectory(base, "vgl-diff-remote-");
-        try (Git ignored = Git.cloneRepository()
-            .setURI(remoteUrl)
-            .setDirectory(dir.toFile())
-            .setBranch("refs/heads/" + b)
-            .call()) {
-            // cloned
+        try {
+            try (Git ignored = GitAuth.applyCredentialsIfPresent(Git.cloneRepository()
+                .setURI(remoteUrl)
+                .setDirectory(dir.toFile())
+                .setBranch("refs/heads/" + b))
+                .call()) {
+                // cloned
+            }
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
+                throw new IllegalStateException(
+                    "Authentication is required but no credentials are configured.\n" + GitAuth.authEnvHint(),
+                    e
+                );
+            }
+            throw e;
         }
         return dir;
     }

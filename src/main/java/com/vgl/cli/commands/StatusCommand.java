@@ -2,6 +2,7 @@ package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.StatusFileSummary;
 import com.vgl.cli.commands.helpers.StatusVerboseOutput;
+import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.FormatUtils;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.Messages;
@@ -187,11 +188,23 @@ public class StatusCommand implements Command {
         System.out.println("Remote branches at: " + displayRemote);
 
         try {
-            Collection<Ref> refs = Git.lsRemoteRepository()
-                .setRemote(remote)
-                .setHeads(true)
-                .setTags(false)
-                .call();
+            Collection<Ref> refs;
+            try {
+                refs = GitAuth.applyCredentialsIfPresent(Git.lsRemoteRepository()
+                    .setRemote(remote)
+                    .setHeads(true)
+                    .setTags(false))
+                    .call();
+            } catch (Exception e) {
+                String msg = e.getMessage();
+                if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
+                    System.err.println("Could not discover remote branches at: " + remote);
+                    System.err.println("Reason: Authentication is required but no credentials are configured.");
+                    System.err.println(GitAuth.authEnvHint());
+                    return 1;
+                }
+                throw e;
+            }
 
             List<String> branches = new ArrayList<>();
             if (refs != null) {

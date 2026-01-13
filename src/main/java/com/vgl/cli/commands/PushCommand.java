@@ -1,6 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
+import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoResolver;
@@ -86,9 +87,9 @@ public class PushCommand implements Command {
                 localBranch = vglProps.getProperty(VglConfig.KEY_LOCAL_BRANCH, "main");
             }
 
-            git.push()
+            GitAuth.applyCredentialsIfPresent(git.push()
                 .setRemote("origin")
-                .setRefSpecs(new RefSpec(localBranch + ":" + remoteBranch))
+                .setRefSpecs(new RefSpec(localBranch + ":" + remoteBranch)))
                 .call();
 
             System.out.println(Messages.pushed());

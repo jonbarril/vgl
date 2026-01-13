@@ -2,6 +2,7 @@ package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.StatusVerboseOutput;
+import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.GlobUtils;
 import com.vgl.cli.utils.Messages;
@@ -80,7 +81,7 @@ public class RestoreCommand implements Command {
 
             if (useRemote) {
                 try {
-                    git.fetch().setRemote("origin").call();
+                    GitAuth.applyCredentialsIfPresent(git.fetch().setRemote("origin")).call();
                 } catch (Exception ignored) {
                     // best-effort
                 }

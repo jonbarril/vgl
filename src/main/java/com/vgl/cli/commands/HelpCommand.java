@@ -566,7 +566,11 @@ public class HelpCommand implements Command {
                 "Options:",
                 "  -f          Bypass confirmation prompts",
                 "  -rr URL     Remote repository URL",
-                "  -rb BRANCH  Remote branch (default: 'main')"
+                "  -rb BRANCH  Remote branch (default: 'main')",
+                "",
+                "Notes:",
+                "  - For private HTTPS remotes, set VGL_GIT_USERNAME + VGL_GIT_TOKEN (or VGL_GIT_PASSWORD)",
+                "  - Or use an SSH URL (git@host:org/repo.git) with SSH keys configured"
             );
             case "copy" -> String.join("\n",
                 header(),

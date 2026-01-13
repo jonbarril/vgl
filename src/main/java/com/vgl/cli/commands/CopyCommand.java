@@ -2,6 +2,7 @@ package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.StateChangeOutput;
+import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.utils.Utils;
@@ -97,12 +98,22 @@ public class CopyCommand implements Command {
 
         Files.createDirectories(destDir);
 
-        try (Git ignored = Git.cloneRepository()
-            .setURI(sourceUri)
-            .setDirectory(destDir.toFile())
-            .setBranch("refs/heads/" + remoteBranch)
-            .call()) {
-            // cloned
+        try {
+            try (Git ignored = GitAuth.applyCredentialsIfPresent(Git.cloneRepository()
+                .setURI(sourceUri)
+                .setDirectory(destDir.toFile())
+                .setBranch("refs/heads/" + remoteBranch))
+                .call()) {
+                // cloned
+            }
+        } catch (Exception e) {
+            String msg = e.getMessage();
+            if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
+                System.err.println("ERROR: " + sourceUri + ": Authentication is required but no credentials are configured.");
+                System.err.println(GitAuth.authEnvHint());
+                return 1;
+            }
+            throw e;
         }
 
         // For local use, do not configure a VGL remote.
