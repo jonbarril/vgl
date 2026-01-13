@@ -98,3 +98,30 @@ This file is the running, shared reference for development and testing conventio
 - Unless explicitly requested, **do not preserve old/legacy behavior for compatibility**.
   - Prefer simplifying refactors and aligning to current sources of truth over maintaining historical quirks.
   - If compatibility is required for a specific command/flag/behavior, call it out explicitly in the spec/docs and add tests.
+
+## Best-Practice Guardrail (Ask Before Proceeding)
+
+When a requested change appears to conflict with VGL guidelines, established UX contracts, or general engineering best practices, **stop and ask for clarification + explicit confirmation before implementing**.
+
+This is not about blocking progress; it is about preventing accidental churn and making tradeoffs explicit.
+
+### Confirmation required for
+
+- Breaking CLI changes (removing flags, changing defaults, changing exit codes)
+- Help/output contract changes (golden files, section headings, wording that tests lock)
+- Adding or changing external dependencies (Gradle deps, new libraries, network clients)
+- Adding new network behaviors (HTTP calls, telemetry, GitHub API usage, auth requirements)
+- Security-sensitive changes (credentials, tokens, filesystem writes outside repo root)
+- Large refactors (renames/moves or “cleanup” that is not strictly required)
+
+### How to ask (template)
+
+Before coding, summarize:
+
+- What best practice or VGL guideline this might violate
+- The smallest safe alternative (if any)
+- The blast radius (files/tests/goldens affected)
+
+Then ask one explicit question:
+
+- "Do you want me to proceed with the breaking change, or keep compatibility and adjust the UX another way?"

@@ -9,3 +9,8 @@ tolerant of changes to an underlying Git repository made outside of VGL.
 AI based iterative development should use UseCases.md and HelpCommand.java as the source of truth
 for all development, testing and refactoring. As needed, Gitless documentation and implementation
 should be used for general guidance. 
+
+Guardrail for AI-assisted edits:
+If a user request appears to conflict with VGL guidelines or general engineering best practices,
+ask for clarification and explicit confirmation before proceeding. Provide a safer alternative
+and explain the expected blast radius (behavior changes, tests, and help golden files).
