@@ -5,7 +5,7 @@ Command Reference
 Context commands:
   create [-f] [-lr DIR] [-lb BRANCH | -bb BRANCH]
   delete [-f] [-lr DIR] [-lb BRANCH | -bb BRANCH]
-  switch [-lr DIR] [-lb BRANCH | -bb BRANCH] [-rr URL] [-rb BRANCH]
+  switch [-lb BRANCH | -bb BRANCH] [-rr URL] [-rb BRANCH]
   status [-v|-vv] [-local] [-remote [URL]] [-changes] [-history] [-files]
 
 Local work:

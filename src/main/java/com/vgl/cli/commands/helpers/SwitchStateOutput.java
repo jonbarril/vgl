@@ -27,7 +27,7 @@ public final class SwitchStateOutput {
         String separator = " :: ";
 
         String localDirSafe = (localDir != null) ? localDir : "(unknown)";
-        String remoteUrlSafe = (remoteUrl != null) ? remoteUrl : "";
+        String remoteUrlSafe = (remoteUrl != null) ? com.vgl.cli.utils.FormatUtils.normalizeRemoteUrlForDisplay(remoteUrl) : "";
 
         String displayLocalDir = truncatePaths ? FormatUtils.truncateMiddle(localDirSafe, maxPathLen) : localDirSafe;
 

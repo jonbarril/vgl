@@ -8,6 +8,11 @@ Understanding vgl:
     Files under the repo root (determined by your CWD).
     Changes live in the workspace until you 'commit' them.
 
+  Undecided files
+    • Files not yet explicitly tracked, untracked, or ignored.
+    • Applies to new and existing files.
+    • Once decided, cannot revert to undecided.
+
   Local repo
     The Git repo on your machine, inferred from CWD.
 
@@ -15,14 +20,16 @@ Understanding vgl:
     1) Current local branch
     2) Current remote URL (optional)
     3) Current remote branch
-    Use 'status' to observe context. Use 'switch' to set context.
+    Use 'status' to observe context. Use 'switch' to show or set context.
 
   Command guarantees
-    1) status: observe only (never changes files)
-    2) switch: set context; -lb may change files, -rr/-rb do not
-    3) checkout: materializes a remote repo (creates files)
-    4) commit: creates history (no auto-merge)
-    5) pull: analyzes then optionally merges (no auto-commit)
+    1) status: observe only; never changes workspace files
+    2) switch: sets context; -lb switches files; -rr/-rb never switch files
+    3) commit: saves workspace changes to local history only
+    4) checkout: creates a working copy of a remote repo
+    5) pull: reviews remote changes before applying; never auto-commits
+    6) push/checkin: send local commits to a remote
+    7) split/merge: local history operations only
 
 Typical workflows:
 
@@ -39,8 +46,8 @@ Typical workflows:
 Examples for non-obvious commands:
 
   switch -> changes context, may change workspace
-    vgl switch -lb feature          # Switch branch (changes files)
-    vgl switch -rr https://... -rb dev  # Set remote (no change)
+    vgl switch -lb feature          # Switch branch (switches files)
+    vgl switch -rr https://... -rb dev  # Set remote (no file switch)
     vgl switch -bb staging          # Set local+remote branch
 
   checkout -> materializes remote repo

@@ -34,8 +34,8 @@ public class LogCommand implements Command {
             return 0;
         }
 
-        boolean verbose = args.contains("-v") || args.contains("-vv");
         boolean veryVerbose = args.contains("-vv");
+        boolean verbose = args.contains("-v") || veryVerbose;
         boolean graph = args.contains("-graph");
 
         String commitArg = firstPositionalOrNull(args);
@@ -48,14 +48,15 @@ public class LogCommand implements Command {
 
         try (Git git = GitUtils.openGit(repoRoot)) {
             DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm").withZone(ZoneId.systemDefault());
-            var logCmd = git.log();
+            if (veryVerbose) {
+                return runVeryVerbose(git, fmt, commitArg);
+            }
+
+            int maxCount = verbose ? 50 : 10;
+
+            var logCmd = git.log().setMaxCount(maxCount);
             if (commitArg != null) {
-                ObjectId start = null;
-                try {
-                    start = git.getRepository().resolve(commitArg);
-                } catch (Exception ignored) {
-                    start = null;
-                }
+                ObjectId start = resolveCommitOrNull(git.getRepository(), commitArg);
                 if (start == null) {
                     System.err.println("Error: Cannot resolve commit: " + commitArg);
                     return 1;
@@ -70,41 +71,76 @@ public class LogCommand implements Command {
                 String author = (c.getAuthorIdent() != null) ? c.getAuthorIdent().getName() : "";
                 String msg = oneLine(c.getFullMessage());
 
-                // Default log format matches status -vv style (no truncation).
                 String prefix = graph ? "* " : "";
-                if (!author.isBlank()) {
-                    System.out.println(prefix + id + "  " + date + "  " + author + "  " + msg);
+                if (verbose) {
+                    if (!author.isBlank()) {
+                        System.out.println(prefix + id + "  " + date + "  " + author + "  " + msg);
+                    } else {
+                        System.out.println(prefix + id + "  " + date + "  " + msg);
+                    }
                 } else {
                     System.out.println(prefix + id + "  " + date + "  " + msg);
-                }
-
-                if (veryVerbose) {
-                    printCommitChanges(git.getRepository(), c);
-                } else if (verbose) {
-                    // keep -v compatible with previous behavior (author already included)
                 }
             }
             return 0;
         }
     }
 
-    private static String firstPositionalOrNull(List<String> args) {
-        if (args == null) {
-            return null;
+    private static int runVeryVerbose(Git git, DateTimeFormatter fmt, String commitArg) throws Exception {
+        Repository repo = git.getRepository();
+
+        ObjectId start = (commitArg != null)
+            ? resolveCommitOrNull(repo, commitArg)
+            : resolveCommitOrNull(repo, "HEAD");
+
+        if (start == null) {
+            System.err.println(commitArg != null
+                ? ("Error: Cannot resolve commit: " + commitArg)
+                : "Error: Cannot resolve HEAD");
+            return 1;
         }
-        for (String a : args) {
-            if (a == null) {
-                continue;
-            }
-            if (a.startsWith("-")) {
-                continue;
-            }
-            return a;
+
+        RevCommit target;
+        try (org.eclipse.jgit.revwalk.RevWalk rw = new org.eclipse.jgit.revwalk.RevWalk(repo)) {
+            target = rw.parseCommit(start);
         }
-        return null;
+
+        printCommitHeader(fmt, target);
+        printCommitPatch(repo, target);
+
+        // In -vv mode, also show a short, truncated list of other recent commits (when not filtered).
+        if (commitArg == null) {
+            printTruncatedRecentCommits(git, fmt, 25);
+        }
+
+        System.out.println();
+        System.out.println("Tip: Run 'vgl log <commit> -vv' to show the full patch for a specific commit.");
+        System.out.println("Tip: Run 'vgl log -v' to list more commits.");
+        return 0;
     }
 
-    private static void printCommitChanges(Repository repo, RevCommit commit) {
+    private static void printCommitHeader(DateTimeFormatter fmt, RevCommit c) {
+        String fullId = c.getId().name();
+        String date = fmt.format(Instant.ofEpochSecond(c.getCommitTime()));
+        String authorName = (c.getAuthorIdent() != null) ? c.getAuthorIdent().getName() : "";
+        String authorEmail = (c.getAuthorIdent() != null) ? c.getAuthorIdent().getEmailAddress() : "";
+        String subject = oneLine(c.getShortMessage());
+
+        System.out.println("commit " + fullId);
+        if (!authorName.isBlank()) {
+            if (authorEmail != null && !authorEmail.isBlank()) {
+                System.out.println("Author: " + authorName + " <" + authorEmail + ">");
+            } else {
+                System.out.println("Author: " + authorName);
+            }
+        }
+        System.out.println("Date:   " + date);
+        System.out.println();
+        System.out.println("    " + subject);
+        System.out.println();
+    }
+
+    private static void printCommitPatch(Repository repo, RevCommit commit) {
         if (repo == null || commit == null) {
             return;
         }
@@ -137,58 +173,85 @@ public class LogCommand implements Command {
             CanonicalTreeParser newParser = new CanonicalTreeParser();
             newParser.reset(reader, newTree);
 
-            try (DiffFormatter df = new DiffFormatter(new ByteArrayOutputStream())) {
+            try (DiffFormatter df = new DiffFormatter(System.out)) {
                 df.setRepository(repo);
                 df.setDetectRenames(true);
                 java.util.List<DiffEntry> diffs = df.scan(oldIter, newParser);
                 if (diffs == null || diffs.isEmpty()) {
                     return;
                 }
-
-                java.util.List<String> entries = new java.util.ArrayList<>();
                 for (DiffEntry d : diffs) {
-                    if (d == null || d.getChangeType() == null) {
-                        continue;
-                    }
-                    String letter = switch (d.getChangeType()) {
-                        case ADD -> "A";
-                        case MODIFY -> "M";
-                        case DELETE -> "D";
-                        case RENAME -> "R";
-                        case COPY -> "C";
-                    };
-                    String path = switch (d.getChangeType()) {
-                        case DELETE -> d.getOldPath();
-                        default -> d.getNewPath();
-                    };
-                    if (path == null || path.isBlank()) {
-                        continue;
-                    }
-                    entries.add("  " + letter + " " + path);
+                    df.format(d);
                 }
-
-                if (entries.isEmpty()) {
-                    return;
-                }
-
-                // Match status compact list style: stable sorting by path.
-                entries.sort((a, b) -> {
-                    String ap = (a != null && a.length() > 4) ? a.substring(4) : a;
-                    String bp = (b != null && b.length() > 4) ? b.substring(4) : b;
-                    int c = String.valueOf(ap).compareTo(String.valueOf(bp));
-                    if (c != 0) {
-                        return c;
-                    }
-                    return String.valueOf(a).compareTo(String.valueOf(b));
-                });
-
-                for (String line : entries) {
-                    System.out.println(line);
-                }
+                df.flush();
             }
         } catch (Exception ignored) {
             // best-effort
         }
+    }
+
+    private static void printTruncatedRecentCommits(Git git, DateTimeFormatter fmt, int maxLines) throws Exception {
+        if (git == null) {
+            return;
+        }
+
+        // We already printed the most recent commit in detail.
+        int fetch = 1 + maxLines + 1; // first + up to maxLines + sentinel
+        Iterable<RevCommit> logs = git.log().setMaxCount(fetch).call();
+
+        int i = 0;
+        boolean hasMore = false;
+
+        System.out.println("Recent commits:");
+        for (RevCommit c : logs) {
+            if (i == 0) {
+                i++;
+                continue;
+            }
+
+            int lineIndex = i - 1;
+            if (lineIndex >= maxLines) {
+                hasMore = true;
+                break;
+            }
+
+            String id = c.getId().abbreviate(7).name();
+            String date = fmt.format(Instant.ofEpochSecond(c.getCommitTime()));
+            String msg = oneLine(c.getShortMessage());
+            System.out.println("  " + id + "  " + date + "  " + msg);
+            i++;
+        }
+
+        if (hasMore) {
+            System.out.println("  ...");
+        }
+    }
+
+    private static ObjectId resolveCommitOrNull(Repository repo, String commitish) {
+        if (repo == null || commitish == null || commitish.isBlank()) {
+            return null;
+        }
+        try {
+            return repo.resolve(commitish);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static String firstPositionalOrNull(List<String> args) {
+        if (args == null) {
+            return null;
+        }
+        for (String a : args) {
+            if (a == null) {
+                continue;
+            }
+            if (a.startsWith("-")) {
+                continue;
+            }
+            return a;
+        }
+        return null;
     }
 
     private static String oneLine(String msg) {
@@ -197,6 +260,4 @@ public class LogCommand implements Command {
         }
         return msg.replace('\n', ' ').replace('\r', ' ').replaceAll("\\s+", " ").trim();
     }
-
-    // No truncation helpers: log output is intended to be full fidelity.
 }

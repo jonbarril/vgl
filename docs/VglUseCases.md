@@ -95,7 +95,6 @@ This document captures concrete user-facing use cases, edge cases, and the expec
   - CHANGES adds subsections for 'Commits to Push' and 'Commits to Pull', with counts matching summary counts.
   - FILES adds subsections for 'Tracked Files', 'Untracked Files' and 'Ignored Files', with counts matching summary counts.
   - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -local, -remote, -changes, -history, -files.
-    - The -local flag can accept an optional path (including "."), in which case all local ancestor and descendant repos and their branches relative to the path are reported.
     - The -remote flag can accept an optional URL argument, in which case all remote repos and their branches discoverable at the URL are reported.
 
 **Help command**

@@ -89,7 +89,10 @@ public class SplitCommand implements Command {
                         git.checkout().setCreateBranch(true).setName(branch).call();
                     }
                 } catch (Exception e) {
-                    System.err.println("Error: Cannot create branch '" + branch + "'.");
+                    String reason = (e.getMessage() != null && !e.getMessage().isBlank()) ? e.getMessage() : "(no details)";
+                    System.err.println("Cannot create branch '" + branch + "'.");
+                    System.err.println("Reason: " + reason);
+                    System.err.println("Hint: Choose a different branch name, or ensure the repo is healthy.");
                     return 1;
                 }
 
@@ -106,7 +109,8 @@ public class SplitCommand implements Command {
             }
 
             if (!headResolves) {
-                System.err.println("Error: Repository has no commits yet.");
+                System.err.println("Cannot split from a source branch: repository has no commits yet.");
+                System.err.println("Hint: Make an initial commit, or use 'split -into -lb <branch>' to create a new branch.");
                 return 1;
             }
 
@@ -130,7 +134,10 @@ public class SplitCommand implements Command {
             try {
                 git.checkout().setCreateBranch(true).setName(targetBranch).setStartPoint("refs/heads/" + branch).call();
             } catch (Exception e) {
-                System.err.println("Error: Cannot create branch '" + targetBranch + "' from '" + branch + "'.");
+                String reason = (e.getMessage() != null && !e.getMessage().isBlank()) ? e.getMessage() : "(no details)";
+                System.err.println("Cannot create branch '" + targetBranch + "' from '" + branch + "'.");
+                System.err.println("Reason: " + reason);
+                System.err.println("Hint: Ensure the source branch exists locally and is not corrupted.");
                 return 1;
             }
 

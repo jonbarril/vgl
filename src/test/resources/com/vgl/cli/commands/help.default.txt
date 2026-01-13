@@ -1,36 +1,45 @@
-Voodoo Gitless (TEST_VERSION) -- Git for mortals
+Voodoo Gitless (TEST_VERSION) — Git for mortals
 
-Vgl is Git for mortals. It hides Git's complexity and lets you focus on your work.
+vgl hides Git’s complexity so you can focus on your work.
+
 
 Key concepts:
-  - Your workspace holds files under the repo root (from CWD)
-  - Commit creates history - changes persist only when you commit
-  - Collaboration is explicit - use push/pull to share work
+
+  • A repo is a folder tree tracked by vgl.
+  • Your workspace is the files in that folder tree.
+  • A local repo lives on your computer.
+  • A remote repo lives elsewhere and is optional.
+  • Changes persist only when you commit.
+  • Collaboration is explicit.
+
 
 Common commands:
-  Context:
-    create      Create new repo or branch
-    switch      Change branch or remote
-    status      Report workspace and sync state
 
-  Local work:
-    track       Add files to version control
-    commit      Save changes to history
-    split       Experiment on a new branch
-    merge       Combine branches
+Workspace & context:
+  create      Create a repo or branch
+  switch      Change branch or remote context
+  status      Show workspace and sync state
 
-  Remote collaboration:
-    checkout    Get a remote repo
-    pull        Merge remote changes
-    push        Share local commits
-    sync        Pull then push
+Local work:
+  track       Add files to version control
+  commit      Save workspace changes to history
+  split       Branch and start independent work
+  merge       Combine local branches
 
-  Review:
-    diff        Compare versions
-    log         Show commit history
-    restore     Undo workspace changes
+Remote collaboration:
+  checkout    Get a remote repo to work on
+  pull        Review and merge remote changes
+  push        Send local commits to a remote
+  checkin     Share work for remote review
+  sync        Pull then push
+
+Review & recovery:
+  diff        Compare changes
+  log         Show commit history
+  restore     Undo workspace changes
+
 
 Get help:
-  vgl help -v          Show all commands and flags
-  vgl help -vv         Show concepts and workflows
-  vgl help <command>   Show help for a specific command
+  vgl help -v          Command syntax and options
+  vgl help -vv         Concepts and workflows
+  vgl help <command>   Help for a specific command

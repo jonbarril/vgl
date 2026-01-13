@@ -743,10 +743,6 @@ public final class VglCli {
 
     @Command(name = "switch")
     static class Switch implements Callable<Integer> {
-
-        @Option(names = "-lr", paramLabel = "DIR")
-        Path localRepoDir;
-
         @Option(names = "-lb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
         String localBranch;
 
@@ -762,10 +758,6 @@ public final class VglCli {
         @Override
         public Integer call() throws Exception {
             List<String> forwarded = new ArrayList<>();
-            if (localRepoDir != null) {
-                forwarded.add("-lr");
-                forwarded.add(localRepoDir.toString());
-            }
 
             String branch = (bothBranch != null) ? bothBranch : localBranch;
             if (branch != null) {
@@ -804,8 +796,8 @@ public final class VglCli {
         @Option(names = "-local")
         boolean local;
 
-        @Option(names = "-remote")
-        boolean remote;
+        @Option(names = "-remote", arity = "0..1", paramLabel = "URL", fallbackValue = "")
+        String remote;
 
         @Option(names = {"-changes", "-commits"})
         boolean changes;
@@ -827,8 +819,11 @@ public final class VglCli {
             if (local) {
                 forwarded.add("-local");
             }
-            if (remote) {
+            if (remote != null) {
                 forwarded.add("-remote");
+                if (!remote.isBlank()) {
+                    forwarded.add(remote);
+                }
             }
             if (changes) {
                 forwarded.add("-changes");

@@ -86,11 +86,19 @@ public final class Messages {
     }
 
     public static String deleteRepoChoiceHeader(Path repoRoot) {
-        return "For repo at:\n  " + Utils.formatPath(repoRoot);
+        return "Delete repo\n\nFor repo at:\n  " + Utils.formatPath(repoRoot);
     }
 
     public static String deleteRepoChoicePrompt() {
-        return "Delete: [A]bort / [I]nfo / [M]etadata / [D]irectory: ";
+        return String.join("\n",
+            "Choose an action:",
+            "  [A] Abort (do nothing)",
+            "  [I] Info (show what would be deleted)",
+            "  [M] Delete metadata only (.git, .vgl, .gitignore)",
+            "  [D] Delete entire directory (all files)",
+            "",
+            "Choice [A]: "
+        );
     }
 
     public static String deleteRepoInfo(Path repoRoot) {

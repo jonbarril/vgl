@@ -79,7 +79,8 @@ class LogCommandTest {
             StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"log", "-vv"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains("A a.txt");
+            assertThat(io.stdout()).contains("diff --git a/a.txt b/a.txt");
+            assertThat(io.stdout()).contains("+++ b/a.txt");
         }
     }
 }

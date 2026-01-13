@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -45,6 +46,11 @@ public class StatusCommand implements Command {
     public int run(List<String> args) throws Exception {
         boolean verbose = args.contains("-v");
         boolean veryVerbose = args.contains("-vv");
+
+        String remoteDiscoveryQuery = parseOptionalValue(args, "-remote");
+        if (remoteDiscoveryQuery != null && !remoteDiscoveryQuery.isBlank()) {
+            return runRemoteDiscovery(remoteDiscoveryQuery);
+        }
 
         boolean showLocal = args.contains("-local");
         boolean showRemote = args.contains("-remote");
@@ -97,8 +103,11 @@ public class StatusCommand implements Command {
 
             String localDir = Utils.formatPath(repoRoot);
             String displayLocalDir = (verbose || veryVerbose) ? localDir : FormatUtils.truncateMiddle(localDir, maxPathLen);
-            String displayRemoteUrl = (remoteUrl != null && !remoteUrl.isBlank())
-                ? ((verbose || veryVerbose) ? remoteUrl : FormatUtils.truncateMiddle(remoteUrl, maxPathLen))
+            String remoteUrlDisplaySource = (remoteUrl != null && !remoteUrl.isBlank())
+                ? FormatUtils.normalizeRemoteUrlForDisplay(remoteUrl)
+                : "";
+            String displayRemoteUrl = (remoteUrlDisplaySource != null && !remoteUrlDisplaySource.isBlank())
+                ? ((verbose || veryVerbose) ? remoteUrlDisplaySource : FormatUtils.truncateMiddle(remoteUrlDisplaySource, maxPathLen))
                 : "(none)";
 
             int maxLen = Math.max(displayLocalDir.length(), displayRemoteUrl.length());
@@ -127,7 +136,7 @@ public class StatusCommand implements Command {
                     printLocalSection(git, repoRoot, displayLocalDir, localBranch, vglLocalBranches, verbose, veryVerbose, localLabelPad, separator, maxLen);
                 }
                 if (showRemote) {
-                    printRemoteSection(git, displayRemoteUrl, remoteUrl, remoteBranch, verbose, veryVerbose, remoteLabelPad, separator, maxLen);
+                    printRemoteSection(git, displayRemoteUrl, remoteUrlDisplaySource, remoteBranch, verbose, veryVerbose, remoteLabelPad, separator, maxLen);
                 }
                 if (showChanges) {
                     printChangesSection(changesLabelPad, computed, deltas, verbose, veryVerbose);
@@ -140,7 +149,7 @@ public class StatusCommand implements Command {
                 }
             } else {
                 printLocalSection(git, repoRoot, displayLocalDir, localBranch, vglLocalBranches, verbose, veryVerbose, localLabelPad, separator, maxLen);
-                printRemoteSection(git, displayRemoteUrl, remoteUrl, remoteBranch, verbose, veryVerbose, remoteLabelPad, separator, maxLen);
+                printRemoteSection(git, displayRemoteUrl, remoteUrlDisplaySource, remoteBranch, verbose, veryVerbose, remoteLabelPad, separator, maxLen);
                 printChangesSection(changesLabelPad, computed, deltas, verbose, veryVerbose);
                 printHistorySection(historyLabelPad, deltas, verbose, veryVerbose);
                 printFilesSection(filesLabelPad, computed, verbose, veryVerbose, repoRoot, List.of());
@@ -151,6 +160,249 @@ public class StatusCommand implements Command {
             System.err.println(Messages.malformedRepo(repoRoot, e.getMessage()));
             return 1;
         }
+    }
+
+    private static String parseOptionalValue(List<String> args, String optionName) {
+        if (args == null || args.isEmpty()) {
+            return null;
+        }
+        for (int i = 0; i < args.size(); i++) {
+            if (!optionName.equals(args.get(i))) {
+                continue;
+            }
+            if (i + 1 >= args.size()) {
+                return "";
+            }
+            String next = args.get(i + 1);
+            if (next == null || next.isBlank() || next.startsWith("-")) {
+                return "";
+            }
+            return next;
+        }
+        return null;
+    }
+
+    private static int runRemoteDiscovery(String userQuery) {
+        if (userQuery == null || userQuery.isBlank()) {
+            return 1;
+        }
+
+        Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        RepoResolution resolved;
+        try {
+            resolved = resolveRepoForStatus(cwd);
+        } catch (Exception e) {
+            resolved = null;
+        }
+        Path repoRoot = (resolved != null) ? resolved.repoRoot : null;
+
+        String remoteToQuery;
+        try {
+            remoteToQuery = resolveRemoteDiscoveryUrl(userQuery.trim(), repoRoot);
+        } catch (IllegalArgumentException e) {
+            System.err.println(e.getMessage());
+            return 1;
+        }
+
+        String display = FormatUtils.normalizeRemoteUrlForDisplay(remoteToQuery);
+        System.out.println("Remote branches at: " + (display != null && !display.isBlank() ? display : remoteToQuery));
+
+        try {
+            Collection<Ref> refs = Git.lsRemoteRepository()
+                .setRemote(remoteToQuery)
+                .setHeads(true)
+                .setTags(false)
+                .call();
+
+            java.util.Set<String> branches = new java.util.LinkedHashSet<>();
+            for (Ref ref : refs) {
+                if (ref == null || ref.getName() == null) {
+                    continue;
+                }
+                String shortName = Repository.shortenRefName(ref.getName());
+                if (shortName != null && !shortName.isBlank()) {
+                    branches.add(shortName);
+                }
+            }
+
+            java.util.List<String> sorted = new java.util.ArrayList<>(branches);
+            java.util.Collections.sort(sorted);
+
+            if (sorted.isEmpty()) {
+                System.out.println("  (none)");
+            } else {
+                for (String b : sorted) {
+                    System.out.println("  " + b);
+                }
+            }
+
+            System.out.println();
+            System.out.println("Then: vgl switch -rr " + remoteToQuery + " -rb <branch>");
+            return 0;
+        } catch (Exception e) {
+            System.err.println("Could not query remote: " + userQuery);
+            System.err.println("Reason: " + e.getMessage());
+            System.err.println("Hint: Provide a full repo URL/path (not an org/group URL).");
+            return 1;
+        }
+    }
+
+    private static String resolveRemoteDiscoveryUrl(String userQuery, Path repoRoot) {
+        if (userQuery == null || userQuery.isBlank()) {
+            throw new IllegalArgumentException("No remote specified.");
+        }
+
+        // Full/absolute URLs or scp-like git URLs.
+        if (looksLikeUrl(userQuery) || userQuery.startsWith("git@")) {
+            return userQuery;
+        }
+
+        // Local filesystem path (absolute or relative).
+        if (looksLikeWindowsPath(userQuery) || userQuery.startsWith(".") || userQuery.startsWith("..")) {
+            try {
+                return Path.of(userQuery).toAbsolutePath().normalize().toString();
+            } catch (Exception ignored) {
+                return userQuery;
+            }
+        }
+
+        // Shorthand: resolve relative to current switch remote (must be in a vgl repo).
+        if (repoRoot == null) {
+            throw new IllegalArgumentException(
+                "Cannot resolve remote shorthand '" + userQuery + "' outside a repo. Hint: provide a full URL/path or run inside a repo with a configured remote."
+            );
+        }
+
+        Properties props = readVglProps(repoRoot);
+        String currentRemote = props.getProperty("remote.url", "");
+        if (currentRemote == null || currentRemote.isBlank()) {
+            throw new IllegalArgumentException(
+                "Cannot resolve remote shorthand '" + userQuery + "' without a current remote. Hint: run 'vgl switch -rr <URL>' first, or pass a full URL/path."
+            );
+        }
+
+        return resolveRelativeToCurrentRemote(currentRemote, userQuery);
+    }
+
+    private static boolean looksLikeUrl(String value) {
+        if (value == null) {
+            return false;
+        }
+        // Accept common schemes.
+        return value.startsWith("http://")
+            || value.startsWith("https://")
+            || value.startsWith("ssh://")
+            || value.startsWith("file://")
+            || value.startsWith("git://");
+    }
+
+    private static boolean looksLikeWindowsPath(String value) {
+        if (value == null || value.length() < 3) {
+            return false;
+        }
+        // Drive letter or UNC.
+        if (value.startsWith("\\\\")) {
+            return true;
+        }
+        char c0 = value.charAt(0);
+        return ((c0 >= 'A' && c0 <= 'Z') || (c0 >= 'a' && c0 <= 'z'))
+            && value.charAt(1) == ':'
+            && (value.charAt(2) == '\\' || value.charAt(2) == '/');
+    }
+
+    private static String resolveRelativeToCurrentRemote(String currentRemoteRaw, String userQuery) {
+        String currentRemote = currentRemoteRaw.trim();
+
+        // scp-like: git@host:group/repo(.git)
+        if (currentRemote.startsWith("git@") && currentRemote.contains(":")) {
+            int colon = currentRemote.indexOf(':');
+            String left = currentRemote.substring(0, colon + 1); // keep ':'
+            String path = currentRemote.substring(colon + 1);
+            path = FormatUtils.normalizeRemoteUrlForDisplay(path);
+
+            String base;
+            int lastSlash = path.lastIndexOf('/');
+            if (lastSlash >= 0) {
+                base = path.substring(0, lastSlash);
+            } else {
+                base = path;
+            }
+
+            if (userQuery.contains("/")) {
+                return left + userQuery;
+            }
+            return left + base + "/" + userQuery;
+        }
+
+        // Local path current remote.
+        if (looksLikeWindowsPath(currentRemote) || currentRemote.startsWith("\\\\")) {
+            Path p;
+            try {
+                p = Path.of(FormatUtils.normalizeRemoteUrlForDisplay(currentRemote)).toAbsolutePath().normalize();
+            } catch (Exception e) {
+                throw new IllegalArgumentException(
+                    "Cannot resolve remote shorthand '" + userQuery + "' from current remote. Hint: provide a full URL/path."
+                );
+            }
+            Path base = (p.getParent() != null) ? p.getParent() : p;
+            return base.resolve(userQuery).normalize().toString();
+        }
+
+        // Standard URL.
+        if (looksLikeUrl(currentRemote)) {
+            java.net.URI uri;
+            try {
+                uri = java.net.URI.create(FormatUtils.normalizeRemoteUrlForDisplay(currentRemote));
+            } catch (Exception e) {
+                throw new IllegalArgumentException(
+                    "Cannot resolve remote shorthand '" + userQuery + "' from current remote URL. Hint: pass a full URL/path."
+                );
+            }
+
+            String authority = uri.getRawAuthority();
+            if (authority == null || authority.isBlank()) {
+                throw new IllegalArgumentException(
+                    "Cannot resolve remote shorthand '" + userQuery + "' from current remote URL. Hint: pass a full URL/path."
+                );
+            }
+
+            String scheme = (uri.getScheme() != null) ? uri.getScheme() : "https";
+            String hostRoot = scheme + "://" + authority;
+
+            String path = (uri.getPath() != null) ? uri.getPath() : "";
+            java.util.List<String> segments = new java.util.ArrayList<>();
+            for (String seg : path.split("/")) {
+                if (seg != null && !seg.isBlank()) {
+                    segments.add(seg);
+                }
+            }
+
+            String basePath;
+            if (segments.size() >= 2) {
+                // Assume final segment is repo; base is its parent (org/group).
+                basePath = "/" + String.join("/", segments.subList(0, segments.size() - 1));
+            } else if (segments.size() == 1) {
+                // Already at org/group level.
+                basePath = "/" + segments.get(0);
+            } else {
+                basePath = "";
+            }
+
+            if (userQuery.contains("/")) {
+                // Treat as explicit org/group path on the same host.
+                return hostRoot + "/" + userQuery;
+            }
+            if (basePath.isEmpty()) {
+                throw new IllegalArgumentException(
+                    "Cannot resolve remote shorthand '" + userQuery + "' from current remote URL. Hint: pass a full URL/path."
+                );
+            }
+            return hostRoot + basePath + "/" + userQuery;
+        }
+
+        throw new IllegalArgumentException(
+            "Cannot resolve remote shorthand '" + userQuery + "' from current remote. Hint: pass a full URL/path."
+        );
     }
 
 
@@ -290,7 +542,14 @@ public class StatusCommand implements Command {
         int commitsToPush = (deltas != null) ? deltas.localOnly.size() : 0;
         int commitsToPull = (deltas != null && deltas.hasComparableRemote) ? deltas.remoteOnly.size() : 0;
 
-        System.out.println(changesLabelPad + computed.filesToCommit.size() + " to Commit, " + commitsToPush + " to Push, " + commitsToPull + " to Pull");
+        int filesToCommit = (computed != null && computed.filesToCommit != null) ? computed.filesToCommit.size() : 0;
+
+        System.out.println(
+            changesLabelPad
+                + "Commit " + filesToCommit + " " + pluralize(filesToCommit, "file", "files")
+                + ", Push " + commitsToPush + " " + pluralize(commitsToPush, "commit", "commits")
+                + ", Pull " + commitsToPull + " " + pluralize(commitsToPull, "commit", "commits")
+        );
 
         if (!(verbose || veryVerbose)) {
             return;
@@ -313,7 +572,12 @@ public class StatusCommand implements Command {
         int localCount = (deltas != null) ? deltas.localOnly.size() : 0;
         int remoteCount = (deltas != null && deltas.hasComparableRemote) ? deltas.remoteOnly.size() : 0;
 
-        System.out.println(historyLabelPad + localCount + " Local, " + remoteCount + " Remote");
+        System.out.println(
+            historyLabelPad
+                + localCount + " local " + pluralize(localCount, "commit", "commits")
+                + ", "
+                + remoteCount + " remote " + pluralize(remoteCount, "commit", "commits")
+        );
 
         if (!(verbose || veryVerbose)) {
             return;
@@ -333,6 +597,10 @@ public class StatusCommand implements Command {
         for (RevCommit c : commits) {
             System.out.println("  " + (veryVerbose ? formatCommitLineVeryVerbose(c) : formatCommitLine(c, false)));
         }
+    }
+
+    private static String pluralize(int count, String singular, String plural) {
+        return count == 1 ? singular : plural;
     }
 
     private static String formatCommitLine(RevCommit commit, boolean veryVerbose) {

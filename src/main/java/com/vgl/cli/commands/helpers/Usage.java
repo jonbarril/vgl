@@ -50,7 +50,7 @@ public final class Usage {
     public static String status() {
         return String.join("\n",
             "Usage:",
-            "  vgl status [-v|-vv] [-local] [-remote] [-changes] [-history] [-files]"
+            "  vgl status [-v|-vv] [-local] [-remote [URL]] [-changes] [-history] [-files]"
         );
     }
 
@@ -109,7 +109,8 @@ public final class Usage {
     public static String switchCmd() {
         return String.join("\n",
             "Usage:",
-            "  vgl switch [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]"
+            "  vgl switch",
+            "  vgl switch [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]"
         );
     }
 

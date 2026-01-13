@@ -27,6 +27,22 @@ public class SwitchCommand implements Command {
 
     @Override
     public int run(List<String> args) throws Exception {
+        if (args.contains("-lr")) {
+            System.err.println(Usage.switchCmd());
+            return 1;
+        }
+
+        if (args.isEmpty()) {
+            Path startDir = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+            Path repoRoot = RepoResolver.resolveRepoRootForCommand(startDir);
+            if (repoRoot == null) {
+                return 1;
+            }
+
+            StateChangeOutput.printSwitchStateAndWarnIfNotCurrent(repoRoot, false);
+            return 0;
+        }
+
         String localBranch = ArgsHelper.branchFromArgsOrNull(args);
         String remoteUrlArg = ArgsHelper.valueAfterFlag(args, "-rr");
         String remoteBranchArg = ArgsHelper.valueAfterFlag(args, "-rb");
@@ -51,11 +67,7 @@ public class SwitchCommand implements Command {
             return 1;
         }
 
-        Path explicitTargetDir = ArgsHelper.pathAfterFlag(args, "-lr");
-        boolean hasExplicitTarget = explicitTargetDir != null;
-
-        Path startDir = hasExplicitTarget ? explicitTargetDir : Path.of(System.getProperty("user.dir"));
-        startDir = startDir.toAbsolutePath().normalize();
+        Path startDir = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
 
         Path repoRoot = RepoResolver.resolveRepoRootForCommand(startDir);
         if (repoRoot == null) {
@@ -188,7 +200,7 @@ public class SwitchCommand implements Command {
         }
 
         // Always report the (possibly unchanged) switch state for commands that may switch state.
-        StateChangeOutput.printSwitchStateAndWarnIfNotCurrent(repoRoot, hasExplicitTarget);
+        StateChangeOutput.printSwitchStateAndWarnIfNotCurrent(repoRoot, false);
 
         return 0;
     }
