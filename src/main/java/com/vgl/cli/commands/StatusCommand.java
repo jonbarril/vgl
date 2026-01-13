@@ -60,13 +60,11 @@ public class StatusCommand implements Command {
         boolean showHistory = args.contains("-history");
         boolean showFiles = args.contains("-files");
 
-        // Convenience: show just the context (LOCAL + REMOTE), ignoring other section flags.
+        // Convenience: include context sections (LOCAL + REMOTE).
+        // This behaves like other section flags; it does not suppress other sections.
         if (showContext) {
             showLocal = true;
             showRemote = true;
-            showChanges = false;
-            showHistory = false;
-            showFiles = false;
         }
         boolean anySectionFlag = showLocal || showRemote || showChanges || showHistory || showFiles;
 

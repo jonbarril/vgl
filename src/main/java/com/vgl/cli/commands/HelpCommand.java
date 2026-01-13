@@ -277,7 +277,7 @@ public class HelpCommand implements Command {
                 "",
                 "Options:",
                 "  -v, -vv         Verbose output (more detail)",
-                "  -context        Show LOCAL+REMOTE section only",
+                "  -context        Include LOCAL+REMOTE sections",
                 "  -local          Show LOCAL section only",
                 "  -remote         Show REMOTE section from switch state",
                 "  -remote URL     List remote branches at URL (or shorthand)",
