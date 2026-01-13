@@ -292,7 +292,8 @@ public class HelpCommand implements Command {
                 "",
                 "Notes:",
                 "  - status never changes files; it only reports",
-                "  - Undecided files are files that exist in the workspace but have not yet been explicitly tracked, untracked, or ignored.",
+                "  - Undecided files exist in the workspace, but have not yet been explicitly",
+                "    tracked, untracked, or ignored.",
                 "  - If no section flags specified, all sections shown",
                 "  - -remote URL is best-effort; if ambiguous, provide full URL"
             );
