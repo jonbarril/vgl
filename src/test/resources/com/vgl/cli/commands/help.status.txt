@@ -4,26 +4,21 @@ status -- Show workspace/repo/file status
 
 Usage:
   vgl status [-v|-vv]
-  vgl status [-v|-vv] [-context] [-local] [-remote [URL]] [-changes] [-history] [-files]
+  vgl status [-v|-vv] [-context [URL]] [-changes] [-history] [-files]
 
 Options:
   -v, -vv         Verbose output (more detail)
-  -context        Include LOCAL+REMOTE sections
-  -local          Show LOCAL section only
-  -remote         Show REMOTE section from switch state
-  -remote URL     List remote branches at URL (or shorthand)
+  -context        Show where you are (Local + Remote)
+  -context URL    Show what exists remotely at URL
   -changes        Show CHANGES section only
   -history        Show HISTORY section only
   -files          Show FILES section only
 
-Remote discovery:
-  vgl status -remote https://github.com/org/repo  # List branches
-  vgl status -remote otherRepo                   # Uses current remote base
-  Then: vgl switch -rr URL -rb BRANCH            # Connect to remote
-
 Notes:
+  - status -context shows where you are
+  - status -context URL shows what exists remotely
   - status never changes files; it only reports
   - Undecided files exist in the workspace, but have not yet been explicitly
     tracked, untracked, or ignored.
   - If no section flags specified, all sections shown
-  - -remote URL is best-effort; if ambiguous, provide full URL
+  - -context URL currently supports GitHub URLs

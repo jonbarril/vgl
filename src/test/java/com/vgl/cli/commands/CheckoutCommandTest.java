@@ -33,8 +33,7 @@ class CheckoutCommandTest {
                 .isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
             assertThat(io.stdout()).contains(Messages.checkoutCompleted(targetDir.toAbsolutePath().normalize(), "main"));
-            assertThat(io.stdout()).contains("LOCAL:");
-            assertThat(io.stdout()).contains("REMOTE:");
+            assertThat(io.stdout()).contains("CONTEXT:");
         }
 
         assertThat(Files.exists(targetDir.resolve(".git"))).isTrue();

@@ -162,8 +162,7 @@ class CommitCommandTest {
                 assertThat(VglMain.run(new String[] {"commit", "-new", "two"})).isEqualTo(0);
                 assertThat(io.stderr()).isEmpty();
                 assertThat(io.stdout()).contains("Commit message updated:");
-                assertThat(io.stdout()).doesNotContain("LOCAL:");
-                assertThat(io.stdout()).doesNotContain("REMOTE:");
+                assertThat(io.stdout()).doesNotContain("CONTEXT:");
             }
         } finally {
             if (priorUserDir == null) {

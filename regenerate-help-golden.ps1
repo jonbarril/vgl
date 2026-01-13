@@ -2,6 +2,12 @@
 # PSScriptAnalyzer -SuppressWarnings PSAvoidAssignmentToAutomaticVariable
 $ErrorActionPreference = 'Stop'
 
+# Ensure native process output is captured as UTF-8 (Windows PowerShell defaults can mangle
+# Unicode characters like “—”, “•”, and smart quotes).
+$utf8NoBom = New-Object System.Text.UTF8Encoding $false
+[Console]::OutputEncoding = $utf8NoBom
+$OutputEncoding = $utf8NoBom
+
 # Build the project
 Write-Host "Building project..."
 .\gradlew.bat installDist classes -q
@@ -11,7 +17,7 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# UTF-8 encoding without BOM
+# UTF-8 encoding without BOM (for writing files)
 $utf8NoBom = New-Object System.Text.UTF8Encoding $false
 
 # Helper function to run vgl with java directly (from compiled classes) and save output
@@ -39,6 +45,9 @@ function Save-HelpOutput(
     
     $javaCmdLine = New-Object System.Collections.Generic.List[string]
     $null = $javaCmdLine.Add("-Dvgl.version=TEST_VERSION")
+    $null = $javaCmdLine.Add("-Dfile.encoding=UTF-8")
+    $null = $javaCmdLine.Add("-Dsun.stdout.encoding=UTF-8")
+    $null = $javaCmdLine.Add("-Dsun.stderr.encoding=UTF-8")
     $null = $javaCmdLine.Add("-cp")
     $null = $javaCmdLine.Add($classpath)
     $null = $javaCmdLine.Add("com.vgl.cli.VglMain")

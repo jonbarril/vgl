@@ -6,7 +6,7 @@ Context commands:
   create [-f] [-lr DIR] [-lb BRANCH | -bb BRANCH]
   delete [-f] [-lr DIR] [-lb BRANCH | -bb BRANCH]
   switch [-lb BRANCH | -bb BRANCH] [-rr URL] [-rb BRANCH]
-  status [-v|-vv] [-context] [-local] [-remote [URL]] [-changes] [-history] [-files]
+  status [-v|-vv] [-context [URL]] [-changes] [-history] [-files]
 
 Local work:
   track GLOB... | -all
@@ -44,7 +44,7 @@ Flag reference:
 
 Notes:
   - Commands use switch state for default repo/branch when omitted
-  - CWD determines local repo; use 'cd' to change context
+  - Your current directory determines the local repo; use cd to change context
   - Flag -bb is mutually exclusive with -lb and -rb
   - Branch flags accept BRANCH or COMMIT id
   - Glob patterns: *.ext, file?.txt, **/*.py, *.{a,b}

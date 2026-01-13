@@ -50,7 +50,7 @@ public final class Usage {
     public static String status() {
         return String.join("\n",
             "Usage:",
-            "  vgl status [-v|-vv] [-context] [-local] [-remote [URL]] [-changes] [-history] [-files]"
+            "  vgl status [-v|-vv] [-context [URL]] [-changes] [-history] [-files]"
         );
     }
 

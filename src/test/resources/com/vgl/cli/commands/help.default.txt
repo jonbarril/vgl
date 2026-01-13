@@ -1,21 +1,21 @@
-Voodoo Gitless (TEST_VERSION) — Git for mortals
+Voodoo Gitless (TEST_VERSION) -- Git for mortals
 
-vgl hides Git’s complexity so you can focus on your work.
+vgl hides Git's complexity so you can focus on your work.
 
 
 Key concepts:
 
-  • A repo is a folder tree tracked by vgl.
-  • Your workspace is the files in that folder tree.
-  • A local repo lives on your computer.
-  • A remote repo lives elsewhere and is optional.
-  • Changes persist only when you commit.
-  • Collaboration is explicit.
+  - A repo is a folder tree tracked by vgl.
+  - Your workspace is the files in that folder tree.
+  - A local repo lives on your computer.
+  - A remote repo lives elsewhere and is optional.
+  - Changes persist only when you commit.
+  - Collaboration is explicit.
 
 
 Common commands:
 
-Workspace & context:
+Workspace and context:
   create      Create a repo or branch
   switch      Change branch or remote context
   status      Show workspace and sync state
@@ -33,7 +33,7 @@ Remote collaboration:
   checkin     Share work for remote review
   sync        Pull then push
 
-Review & recovery:
+Review and recovery:
   diff        Compare changes
   log         Show commit history
   restore     Undo workspace changes

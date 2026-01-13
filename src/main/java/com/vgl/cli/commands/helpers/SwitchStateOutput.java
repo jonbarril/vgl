@@ -9,8 +9,7 @@ import java.util.Properties;
 import org.eclipse.jgit.api.Git;
 
 /**
- * Prints the current switch state in the same compact format as `status` default mode
- * (non-verbose LOCAL and REMOTE sections).
+ * Prints the current switch state in the same compact format as `status` CONTEXT section.
  */
 public final class SwitchStateOutput {
     private SwitchStateOutput() {}
@@ -38,18 +37,19 @@ public final class SwitchStateOutput {
 
         int maxLen = Math.max(displayLocalDir.length(), displayRemoteUrl.length());
 
-        String localLabelPad = FormatUtils.padRight("LOCAL:", labelWidth + 1);
-        String remoteLabelPad = FormatUtils.padRight("REMOTE:", labelWidth + 1);
+        int contextLabelWidth = Math.max("Local:".length(), "Remote:".length());
+        String localLabelPad = FormatUtils.padRight("Local:", contextLabelWidth + 1);
+        String remoteLabelPad = FormatUtils.padRight("Remote:", contextLabelWidth + 1);
 
         String localBranchSafe = (localBranch != null && !localBranch.isBlank()) ? localBranch : "(none)";
         String remoteBranchSafe = hasRemote
             ? ((remoteBranch != null && !remoteBranch.isBlank()) ? remoteBranch : "(none)")
             : "(none)";
 
-        String localLine = localLabelPad + FormatUtils.padRight(displayLocalDir, maxLen) + separator + localBranchSafe;
-        String remoteLine = remoteLabelPad + FormatUtils.padRight(displayRemoteUrl, maxLen) + separator + remoteBranchSafe;
+        String localLine = "  " + localLabelPad + FormatUtils.padRight(displayLocalDir, maxLen) + separator + localBranchSafe;
+        String remoteLine = "  " + remoteLabelPad + FormatUtils.padRight(displayRemoteUrl, maxLen) + separator + remoteBranchSafe;
 
-        return java.util.List.of(localLine, remoteLine);
+        return java.util.List.of("CONTEXT:", localLine, remoteLine);
     }
 
     public static void print(Path repoRoot) throws Exception {
@@ -73,7 +73,7 @@ public final class SwitchStateOutput {
             localBranch = (gitBranch != null && !gitBranch.isBlank()) ? gitBranch : vglLocalBranch;
         }
 
-        int labelWidth = Math.max("LOCAL:".length(), "REMOTE:".length());
+        int labelWidth = Math.max("Local:".length(), "Remote:".length());
         for (String line : formatLines(Utils.formatPath(repoRoot), localBranch, remoteUrl, remoteBranch, labelWidth, true)) {
             System.out.println(line);
         }

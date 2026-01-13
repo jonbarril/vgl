@@ -70,7 +70,7 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 - Commands that involve merging (or any potential to modify workspace files) will have a -noop flag, which performs a "dry run". If -v is included then the output will be the same as the detailed ouput above.
 
 **Status command:**
-  - **Overview:** Provides the overall status of workspace, and local and remote repo files. More detail is progressively revealed with the use of verbose flags (-v, -vv). Output also can be filtered using section name flags (e.g. -local). Files in a VGL repo are classified as follows:
+  - **Overview:** Provides the overall status of workspace, and local and remote repo files. More detail is progressively revealed with the use of verbose flags (-v, -vv). Output also can be filtered using section name flags (e.g. -context). Files in a VGL repo are classified as follows:
     - All files in the workspace of a new repo, or added to an existing one, default to 'undecided' unless...
       - Files are 'ignored' by default if they resolve from the glob specs in the repo .gitignore file.
       - Nested repos and their files are also ignored by default (i.e. never in undecided/tracked/untrack lists). Besides being indicated as a directory in the ignored list a repo will be decorated (@ <REPO_ROOT_PATH>/).
@@ -80,13 +80,12 @@ This document captures concrete user-facing use cases, edge cases, and the expec
     - File categories (Added/Modified/Deleted/Renamed/Undecided/Tracked/Untracked/Ignored) and counts are as defined by VGL, not by Git, although there may be overlap.
     - Directories that appear in file lists include a trailing "/" indicating it is a directory and not just a file.
   - **Default:** Default behavior is when neither -v or -vv flags are present. This prints the minimal status. Each section includes a one or two line summary of an aspect of repo status. As needed paths and branch names will be shortened using elipses so that the format remains consistent and column aligned.
-  - LOCAL shows the current local repo and branch (or '(none)' for each).
-  - REMOTE shows the current remote repo and branch (or '(none)' for each).
+  - CONTEXT shows the current local repo/branch and remote repo/branch (or '(none)' for each).
   - CHANGES shows summary counts for: Files to commit, commits to push, commits to pull.
   - HISTORY shows summary counts for Local commits, Remote commits.
   - FILES shows summary file counts for: Undecided, Tracked, Untracked, Ignored.
   - **Verbose:** This is when -v is present but -vv is not. Same as Default mode but paths and file names are indicated in full regardless of column formatting.
-  - LOCAL and REMOTE include branch list subsections, with the current branch (corresponding to that in the summary) decorated (* <BRANCH>).
+  - CONTEXT includes local and remote branch list subsections, with the current branch (corresponding to that in the summary) decorated (* <BRANCH>).
   - CHANGES adds subsections for Files to Commit (with file change letters), with count matching that for files to commit.
   - HISTORY adds subsection for Local-only and Remote-only commits, shown as hash and truncated message on a single line, with counts matching summary counts.
   - FILES adds subsection for 'Undecided Files', with count matching summary count.
@@ -94,8 +93,8 @@ This document captures concrete user-facing use cases, edge cases, and the expec
   - All commit entries show hash, date, author, and full message.
   - CHANGES adds subsections for 'Commits to Push' and 'Commits to Pull', with counts matching summary counts.
   - FILES adds subsections for 'Tracked Files', 'Untracked Files' and 'Ignored Files', with counts matching summary counts.
-  - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -local, -remote, -changes, -history, -files.
-    - The -remote flag can accept an optional URL argument, in which case all remote repos and their branches discoverable at the URL are reported.
+  - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -context, -changes, -history, -files.
+    - The -context flag can accept an optional URL argument; with a URL it runs remote discovery instead of printing the current context.
 
 **Help command**
 -Goal

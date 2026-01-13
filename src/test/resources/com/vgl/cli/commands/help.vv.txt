@@ -5,16 +5,16 @@ Concepts and Workflows
 Understanding vgl:
 
   Workspace
-    - Files under the repo root (determined by your CWD).
-    - Changes live in the workspace until you 'commit' them.
+    - Files under the repo root (determined by your current directory).
+    - Changes live in the workspace until you commit them.
 
   Local repo
-    - The Git repo on your machine, inferred from CWD.
+    - The Git repo on your machine, inferred from your current directory.
 
   Context (switch state)
     - Current local repo directory and branch name.
     - Current remote repo URL and branch name (optional).
-    - Use 'switch' to show or set context.
+    - Use switch to show or set context.
 
   Undecided files
     - Files not yet explicitly tracked, untracked, or ignored.
@@ -27,37 +27,37 @@ Understanding vgl:
     - commit: saves workspace changes to local history only
     - checkout: creates a working copy of a remote repo
     - pull: reviews remote changes before applying; never auto-commits
-    - push/checkin: send local commits to a remote
-    - split/merge: local history operations only
+    - push and checkin: send local commits to a remote
+    - split and merge: local history operations only
 
 Typical workflows:
 
   Working locally:
     - Track files you want under version control.
     - Commit to create history.
-    - Use split/merge to experiment on branches.
+    - Use split and merge to experiment on branches.
 
   Collaborating with a remote:
     - Use checkout to materialize a remote repo.
-    - Use switch -rr/-rb to set remote context.
+    - Use switch -rr and -rb to set remote context.
     - Pull to merge remote changes, then commit, then push.
 
 Examples for non-obvious commands:
 
-  switch -> changes context, may change workspace
+  switch: changes context, may change workspace
     vgl switch -lb feature          # Switch branch (switches files)
     vgl switch -rr https://... -rb dev  # Set remote (no file switch)
     vgl switch -bb experiment       # Set local+remote branch
 
-  checkout -> materializes remote repo
+  checkout: materializes remote repo
     vgl checkout -rr https://github.com/user/repo  # Copy repo
     vgl checkout -rr https://... -rb dev  # Copy branch only
 
-  split -> branch + switch
+  split: branch and switch
     vgl split -into -lb experiment  # Create from current branch
     vgl split -from -lb main        # Create from 'main' branch
 
-  merge -> combine + switch
+  merge: combine and switch
     vgl merge -from -lb feature  # Merge into current branch
     vgl merge -into -lb main     # Merge into 'main' branch
 

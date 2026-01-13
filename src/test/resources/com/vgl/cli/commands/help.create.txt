@@ -1,6 +1,6 @@
 Voodoo Gitless (TEST_VERSION) -- Git for mortals
 
-create -- Create repo/branch, then switch (prints LOCAL/REMOTE)
+create -- Create repo/branch, then switch (prints CONTEXT)
 
 Usage:
   vgl create [-f] [-lr DIR] [-lb BRANCH|-bb BRANCH]

@@ -43,13 +43,13 @@ class SwitchCommandTest {
                 String repoDisplay = FormatUtils.truncateMiddle(repoDir.toAbsolutePath().normalize().toString(), 35);
                 int maxLen = Math.max(repoDisplay.length(), "(none)".length());
 
-                String localLabelPad = FormatUtils.padRight("LOCAL:", 8);
-                String remoteLabelPad = FormatUtils.padRight("REMOTE:", 8);
+                String localLabelPad = "  " + FormatUtils.padRight("Local:", 8);
+                String remoteLabelPad = "  " + FormatUtils.padRight("Remote:", 8);
 
                 String localLine = localLabelPad + FormatUtils.padRight(repoDisplay, maxLen) + " :: branch0";
                 String remoteLine = remoteLabelPad + FormatUtils.padRight("(none)", maxLen) + " :: (none)";
 
-                assertThat(io.stdout()).isEqualTo(Messages.switchedToExistingBranch("branch0") + "\n" + localLine + "\n" + remoteLine);
+                assertThat(io.stdout()).isEqualTo(Messages.switchedToExistingBranch("branch0") + "\n" + "CONTEXT:" + "\n" + localLine + "\n" + remoteLine);
             }
         } finally {
             if (priorUserDir == null) {
@@ -102,13 +102,13 @@ class SwitchCommandTest {
                 String repoDisplay = FormatUtils.truncateMiddle(repoDir.toAbsolutePath().normalize().toString(), 35);
                 int maxLen = Math.max(repoDisplay.length(), "(none)".length());
 
-                String localLabelPad = FormatUtils.padRight("LOCAL:", 8);
-                String remoteLabelPad = FormatUtils.padRight("REMOTE:", 8);
+                String localLabelPad = "  " + FormatUtils.padRight("Local:", 8);
+                String remoteLabelPad = "  " + FormatUtils.padRight("Remote:", 8);
 
                 String localLine = localLabelPad + FormatUtils.padRight(repoDisplay, maxLen) + " :: main";
                 String remoteLine = remoteLabelPad + FormatUtils.padRight("(none)", maxLen) + " :: (none)";
 
-                assertThat(io.stdout()).isEqualTo(localLine + "\n" + remoteLine);
+                assertThat(io.stdout()).isEqualTo("CONTEXT:" + "\n" + localLine + "\n" + remoteLine);
             }
         } finally {
             if (priorUserDir == null) {

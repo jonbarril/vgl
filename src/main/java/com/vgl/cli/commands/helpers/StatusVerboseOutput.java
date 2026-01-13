@@ -60,6 +60,35 @@ public final class StatusVerboseOutput {
         printLsStyleColumnsGroupedByDir(display, DEFAULT_LINE_WIDTH, DEFAULT_MIN_GROUP_SIZE);
     }
 
+    /**
+     * Prints entries as a flat, wrapped list of columns (no directory grouping), using the same
+     * spacing/wrapping rules as other status compact outputs.
+     *
+     * <p>This is intended for non-path lists like branch names.
+     */
+    public static void printWrappedColumns(List<String> entries, String indent) {
+        String safeIndent = (indent != null) ? indent : "";
+        if (entries == null || entries.isEmpty()) {
+            System.out.println(safeIndent + "(none)");
+            return;
+        }
+
+        List<String> display = new ArrayList<>();
+        for (String e : entries) {
+            if (e == null || e.isBlank()) {
+                continue;
+            }
+            display.add(e);
+        }
+
+        if (display.isEmpty()) {
+            System.out.println(safeIndent + "(none)");
+            return;
+        }
+
+        printWrappedEntries(display, DEFAULT_LINE_WIDTH, safeIndent);
+    }
+
     private static boolean matchesAnyFilter(String path, List<String> filters) {
         if (filters == null || filters.isEmpty()) {
             return true;

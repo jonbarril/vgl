@@ -793,14 +793,8 @@ public final class VglCli {
         @Option(names = "-vv")
         boolean veryVerbose;
 
-        @Option(names = "-context")
-        boolean context;
-
-        @Option(names = "-local")
-        boolean local;
-
-        @Option(names = "-remote", arity = "0..1", paramLabel = "URL", fallbackValue = "")
-        String remote;
+        @Option(names = "-context", arity = "0..1", paramLabel = "URL", fallbackValue = "")
+        String context;
 
         @Option(names = {"-changes", "-commits"})
         boolean changes;
@@ -819,16 +813,10 @@ public final class VglCli {
             } else if (verbose) {
                 forwarded.add("-v");
             }
-            if (context) {
+            if (context != null) {
                 forwarded.add("-context");
-            }
-            if (local) {
-                forwarded.add("-local");
-            }
-            if (remote != null) {
-                forwarded.add("-remote");
-                if (!remote.isBlank()) {
-                    forwarded.add(remote);
+                if (!context.isBlank()) {
+                    forwarded.add(context);
                 }
             }
             if (changes) {

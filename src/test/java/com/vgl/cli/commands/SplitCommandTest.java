@@ -28,8 +28,7 @@ class SplitCommandTest {
             assertThat(VglMain.run(new String[] {"split", "-into", "-lb", "feature"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
             assertThat(io.stdout()).startsWith(Messages.createdAndSwitchedBranch("feature") + "\n");
-            assertThat(io.stdout()).contains("LOCAL:");
-            assertThat(io.stdout()).contains("REMOTE:");
+            assertThat(io.stdout()).contains("CONTEXT:");
             assertThat(io.stdout()).contains(":: feature");
         }
 
