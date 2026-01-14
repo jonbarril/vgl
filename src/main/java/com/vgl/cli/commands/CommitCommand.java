@@ -165,7 +165,7 @@ public class CommitCommand implements Command {
                         entries.add(l + " " + path);
                     });
                     entries.sort(commitEntryComparator());
-                    StatusVerboseOutput.printCompactEntries("", entries);
+                    StatusVerboseOutput.printCompactEntriesAlwaysGroupByDir("", entries);
                 }
 
                 String shortId = shortIdOrEmpty(rc);

@@ -26,6 +26,34 @@ public final class StatusVerboseOutput {
     }
 
     /**
+     * Prints a file list subsection using a compact, ls-like layout, always grouping by directory.
+     * This is intended for verbose FILES output where long paths are otherwise cluttered.
+     */
+    public static void printCompactListAlwaysGroupByDir(
+        String header,
+        Set<String> paths,
+        String repoRoot,
+        List<String> filters
+    ) {
+        printList(header, paths, repoRoot, filters, 1);
+    }
+
+    /**
+     * Prints entries (e.g. "A path/to/file") using the same compact wrapping, always grouping by directory.
+     */
+    public static void printCompactEntriesAlwaysGroupByDir(String header, List<String> entries) {
+        printEntries(header, entries, 1);
+    }
+
+    /**
+     * Prints ignored entries using the same compact grouping.
+     * Note: we still do not expand directory entries ending with '/'.
+     */
+    public static void printIgnoredAlwaysGroupByDir(String header, Set<String> paths, String repoRoot) {
+        printIgnored(header, paths, repoRoot, 1);
+    }
+
+    /**
      * Prints a file list subsection using a compact, ls-like layout:
      * - Root-level items shown first in horizontal columns.
      * - Directories with multiple items shown as a directory header followed by leaf names in columns.
@@ -39,6 +67,10 @@ public final class StatusVerboseOutput {
      * Intended for lists that aren't simple file paths (e.g., "A path", "M path").
      */
     public static void printCompactEntries(String header, List<String> entries) {
+        printEntries(header, entries, DEFAULT_MIN_GROUP_SIZE);
+    }
+
+    private static void printEntries(String header, List<String> entries, int minGroupSize) {
         if (header != null && !header.isBlank()) {
             System.out.println(header);
         }
@@ -57,7 +89,7 @@ public final class StatusVerboseOutput {
             System.out.println("  (none)");
             return;
         }
-        printLsStyleColumnsGroupedByDir(display, DEFAULT_LINE_WIDTH, DEFAULT_MIN_GROUP_SIZE);
+        printLsStyleColumnsGroupedByDir(display, DEFAULT_LINE_WIDTH, minGroupSize);
     }
 
     /**
@@ -112,6 +144,16 @@ public final class StatusVerboseOutput {
     }
 
     private static void printList(String header, Set<String> paths, String repoRoot, List<String> filters) {
+        printList(header, paths, repoRoot, filters, DEFAULT_MIN_GROUP_SIZE);
+    }
+
+    private static void printList(
+        String header,
+        Set<String> paths,
+        String repoRoot,
+        List<String> filters,
+        int minGroupSize
+    ) {
         if (header != null && !header.isBlank()) {
             System.out.println(header);
         }
@@ -134,10 +176,14 @@ public final class StatusVerboseOutput {
             return;
         }
 
-        printLsStyleColumnsGroupedByDir(display, DEFAULT_LINE_WIDTH, DEFAULT_MIN_GROUP_SIZE);
+        printLsStyleColumnsGroupedByDir(display, DEFAULT_LINE_WIDTH, minGroupSize);
     }
 
     private static void printIgnored(String header, Set<String> paths, String repoRoot) {
+        printIgnored(header, paths, repoRoot, 0);
+    }
+
+    private static void printIgnored(String header, Set<String> paths, String repoRoot, int minGroupSize) {
         System.out.println(header);
         if (paths == null || paths.isEmpty()) {
             System.out.println("  (none)");
@@ -164,8 +210,13 @@ public final class StatusVerboseOutput {
             return;
         }
 
-        // Ignored stays flat (git-like): do not expand directory contents.
-        printWrappedEntries(display, DEFAULT_LINE_WIDTH, "  ");
+        // If minGroupSize > 0, group by directory for readability; otherwise keep flat (git-like).
+        if (minGroupSize > 0) {
+            printLsStyleColumnsGroupedByDir(display, DEFAULT_LINE_WIDTH, minGroupSize);
+        } else {
+            // Ignored stays flat (git-like): do not expand directory contents.
+            printWrappedEntries(display, DEFAULT_LINE_WIDTH, "  ");
+        }
     }
 
     private static void printLsStyleColumnsGroupedByDir(List<String> entries, int maxWidth, int minGroupSize) {
@@ -295,7 +346,12 @@ public final class StatusVerboseOutput {
             }
 
             boolean repoDecorated = false;
-            if (!s.isEmpty() && s.charAt(0) == '@') {
+            boolean repoDecoratedHasSpace = false;
+            if (s.startsWith(REPO_PREFIX)) {
+                repoDecorated = true;
+                repoDecoratedHasSpace = true;
+                s = s.substring(REPO_PREFIX.length());
+            } else if (!s.isEmpty() && s.charAt(0) == '@') {
                 repoDecorated = true;
                 s = s.substring(1);
             }
@@ -320,6 +376,9 @@ public final class StatusVerboseOutput {
             }
             if (repoDecorated) {
                 leafDisplay.append('@');
+                if (repoDecoratedHasSpace) {
+                    leafDisplay.append(' ');
+                }
             }
             leafDisplay.append(leaf);
 

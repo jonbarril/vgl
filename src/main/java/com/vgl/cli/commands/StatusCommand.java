@@ -640,7 +640,7 @@ public class StatusCommand implements Command {
         );
 
         if (verbose || veryVerbose) {
-            StatusVerboseOutput.printCompactList(
+            StatusVerboseOutput.printCompactListAlwaysGroupByDir(
                 "-- Undecided Files:",
                 computed.undecided,
                 Utils.formatPath(repoRoot),
@@ -649,12 +649,22 @@ public class StatusCommand implements Command {
         }
 
         if (veryVerbose) {
-            StatusVerboseOutput.printVeryVerbose(
+            StatusVerboseOutput.printCompactListAlwaysGroupByDir(
+                "-- Tracked Files:",
                 computed.tracked,
-                computed.untracked,
-                computed.ignored,
                 Utils.formatPath(repoRoot),
                 filters
+            );
+            StatusVerboseOutput.printCompactListAlwaysGroupByDir(
+                "-- Untracked Files:",
+                computed.untracked,
+                Utils.formatPath(repoRoot),
+                filters
+            );
+            StatusVerboseOutput.printIgnoredAlwaysGroupByDir(
+                "-- Ignored Files:",
+                computed.ignored,
+                Utils.formatPath(repoRoot)
             );
         }
     }
@@ -692,7 +702,7 @@ public class StatusCommand implements Command {
             return String.valueOf(a).compareTo(String.valueOf(b));
         });
 
-        StatusVerboseOutput.printCompactEntries("", entries);
+        StatusVerboseOutput.printCompactEntriesAlwaysGroupByDir("", entries);
     }
 
     private static List<String> listBranchesByPrefix(Repository repo, String prefix) {
