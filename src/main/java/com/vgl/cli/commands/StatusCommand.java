@@ -711,6 +711,10 @@ public class StatusCommand implements Command {
                     continue;
                 }
                 String shortName = name.substring(prefix.length());
+                // Hide symbolic ref like refs/remotes/origin/HEAD (default branch pointer, not a real branch).
+                if ("HEAD".equals(shortName)) {
+                    continue;
+                }
                 if (!shortName.isBlank()) {
                     out.add(shortName);
                 }
