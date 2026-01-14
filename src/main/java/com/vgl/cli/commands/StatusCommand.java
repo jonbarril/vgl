@@ -5,6 +5,7 @@ import com.vgl.cli.commands.helpers.StatusVerboseOutput;
 import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.FormatUtils;
 import com.vgl.cli.utils.GitUtils;
+import com.vgl.cli.utils.GitNative;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.utils.RepoValidation;
@@ -188,6 +189,20 @@ public class StatusCommand implements Command {
         System.out.println("Remote branches at: " + displayRemote);
 
         try {
+            // Prefer native git so existing credential helpers work.
+            if (GitNative.isGitAvailable()) {
+                List<String> branches = GitNative.listRemoteHeads(remote);
+                System.out.println("Branches:");
+                if (branches.isEmpty()) {
+                    System.out.println("  (none)");
+                } else {
+                    StatusVerboseOutput.printWrappedColumns(branches, "  ");
+                }
+                System.out.println();
+                System.out.println("Then: vgl switch -rr " + remote + " -rb <branch>");
+                return 0;
+            }
+
             Collection<Ref> refs;
             try {
                 refs = GitAuth.applyCredentialsIfPresent(Git.lsRemoteRepository()
@@ -198,9 +213,10 @@ public class StatusCommand implements Command {
             } catch (Exception e) {
                 String msg = e.getMessage();
                 if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
-                    System.err.println("Could not discover remote branches at: " + remote);
-                    System.err.println("Reason: Authentication is required but no credentials are configured.");
-                    System.err.println(GitAuth.authEnvHint());
+                    System.err.println("ERROR: Authentication required to access:");
+                    System.err.println("  " + remote);
+                    System.err.println("");
+                    System.err.println(GitAuth.authSetupHint(remote));
                     return 1;
                 }
                 throw e;

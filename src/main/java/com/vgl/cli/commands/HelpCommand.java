@@ -569,8 +569,8 @@ public class HelpCommand implements Command {
                 "  -rb BRANCH  Remote branch (default: 'main')",
                 "",
                 "Notes:",
-                "  - For private HTTPS remotes, set VGL_GIT_USERNAME + VGL_GIT_TOKEN (or VGL_GIT_PASSWORD)",
-                "  - Or use an SSH URL (git@host:org/repo.git) with SSH keys configured"
+                "  - Private repositories may require you to sign in first",
+                "  - If prompted, complete sign-in in your browser and retry the command"
             );
             case "copy" -> String.join("\n",
                 header(),

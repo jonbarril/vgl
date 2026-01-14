@@ -4,6 +4,7 @@ import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.StateChangeOutput;
 import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
+import com.vgl.cli.utils.GitNative;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.utils.Utils;
@@ -69,22 +70,42 @@ public class CheckoutCommand implements Command {
 
         Files.createDirectories(targetDir);
 
-        try {
-            try (Git ignored = GitAuth.applyCredentialsIfPresent(Git.cloneRepository()
-                .setURI(remoteUrl)
-                .setDirectory(targetDir.toFile())
-                .setBranch("refs/heads/" + remoteBranch))
-                .call()) {
-                // cloned
+        // Prefer native git so users' existing credential helpers work (novice-friendly).
+        if (GitNative.isGitAvailable()) {
+            try {
+                GitNative.cloneIntoCurrentDir(targetDir, remoteUrl, remoteBranch);
+            } catch (Exception e) {
+                String m = (e.getMessage() == null) ? "" : e.getMessage();
+                if (m.toLowerCase().contains("authentication") || m.toLowerCase().contains("not authorized") || m.toLowerCase().contains("403")) {
+                    System.err.println("ERROR: Authentication required to access:");
+                    System.err.println("  " + remoteUrl);
+                    System.err.println("");
+                    System.err.println(GitAuth.authSetupHint(remoteUrl));
+                    return 1;
+                }
+                throw e;
             }
-        } catch (Exception e) {
-            String msg = e.getMessage();
-            if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
-                System.err.println("ERROR: " + remoteUrl + ": Authentication is required but no credentials are configured.");
-                System.err.println(GitAuth.authEnvHint());
-                return 1;
+        } else {
+            // Fallback: JGit clone (supports env-based credentials for automation).
+            try {
+                try (Git ignored = GitAuth.applyCredentialsIfPresent(Git.cloneRepository()
+                    .setURI(remoteUrl)
+                    .setDirectory(targetDir.toFile())
+                    .setBranch("refs/heads/" + remoteBranch))
+                    .call()) {
+                    // cloned
+                }
+            } catch (Exception e) {
+                String msg = e.getMessage();
+                if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
+                    System.err.println("ERROR: Authentication required to access:");
+                    System.err.println("  " + remoteUrl);
+                    System.err.println("");
+                    System.err.println(GitAuth.authSetupHint(remoteUrl));
+                    return 1;
+                }
+                throw e;
             }
-            throw e;
         }
 
         final String branchToUse = remoteBranch;

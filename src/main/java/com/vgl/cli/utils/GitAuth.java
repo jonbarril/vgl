@@ -47,10 +47,20 @@ public final class GitAuth {
     }
 
     public static String authEnvHint() {
+        // Back-compat method name: keep it, but make the content novice-friendly.
+        return authSetupHint(null);
+    }
+
+    public static String authSetupHint(String remoteUrl) {
         return String.join("\n",
-            "Hint: Set VGL_GIT_USERNAME + VGL_GIT_TOKEN (or VGL_GIT_PASSWORD) and retry.",
-            "      For GitHub, use a Personal Access Token (PAT) as VGL_GIT_TOKEN.",
-            "      Or use an SSH URL (git@host:org/repo.git) with SSH keys configured."
+            "This repository requires you to be signed in.",
+            "",
+            "To continue:",
+            "  1) Open your browser and sign in to the repository host",
+            "     (the site where this repo lives).",
+            "  2) Come back here and run the same command again.",
+            "",
+            "If you are already signed in, retry the command."
         );
     }
 
