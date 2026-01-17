@@ -122,6 +122,19 @@ public final class DiffHelper {
     }
 
     public static boolean diffWorkingTrees(Path leftRoot, Path rightRoot, List<String> globs, Verbosity v) throws IOException {
+        // If globs were provided, expand them to the set of repo-relative files
+        // so we can report what they matched (and fail early if none matched).
+        if (globs != null && !globs.isEmpty() && leftRoot != null) {
+            List<String> resolved = GlobUtils.expandGlobsToFiles(globs, leftRoot);
+            if (resolved.isEmpty()) {
+                System.out.println("No files matched globs: " + String.join(", ", globs));
+                return false;
+            }
+            // Use the explicit file list as the filtering set.
+            globs = resolved;
+            System.out.println("Globs resolved to " + resolved.size() + " file(s)");
+        }
+
         Map<String, byte[]> left = snapshotFiles(leftRoot, globs);
         Map<String, byte[]> right = snapshotFiles(rightRoot, globs);
         if (v == Verbosity.SUMMARY) {
@@ -181,6 +194,24 @@ public final class DiffHelper {
             try (DiffFormatter df = new DiffFormatter(OutputStream.nullOutputStream())) {
                 df.setRepository(repo);
                 df.setDetectRenames(true);
+                // If globs provided, expand them against the repo work tree for clarity.
+                if (globs != null && !globs.isEmpty()) {
+                    try {
+                        Path repoRoot = repo.getWorkTree() == null ? null : repo.getWorkTree().toPath();
+                        if (repoRoot != null) {
+                            List<String> resolved = GlobUtils.expandGlobsToFiles(globs, repoRoot);
+                            if (resolved.isEmpty()) {
+                                System.out.println("No files matched globs: " + String.join(", ", globs));
+                                return false;
+                            }
+                            globs = resolved;
+                            System.out.println("Globs resolved to " + resolved.size() + " file(s)");
+                        }
+                    } catch (IOException ignored) {
+                        // Fall back to pattern matching if expansion fails
+                    }
+                }
+
                 List<DiffEntry> diffs = df.scan(oldTree, newTree);
                 if (v == Verbosity.SUMMARY) {
                     DiffSummary s = new DiffSummary();
@@ -225,6 +256,24 @@ public final class DiffHelper {
             try (DiffFormatter df = new DiffFormatter(OutputStream.nullOutputStream())) {
                 df.setRepository(repo);
                 df.setDetectRenames(true);
+
+                // If globs provided, expand them against the repo work tree for clarity.
+                if (globs != null && !globs.isEmpty()) {
+                    try {
+                        Path repoRoot = repo.getWorkTree() == null ? null : repo.getWorkTree().toPath();
+                        if (repoRoot != null) {
+                            List<String> resolved = GlobUtils.expandGlobsToFiles(globs, repoRoot);
+                            if (resolved.isEmpty()) {
+                                System.out.println("No files matched globs: " + String.join(", ", globs));
+                                return false;
+                            }
+                            globs = resolved;
+                            System.out.println("Globs resolved to " + resolved.size() + " file(s)");
+                        }
+                    } catch (IOException ignored) {
+                        // Fall back to pattern matching if expansion fails
+                    }
+                }
 
                 List<DiffEntry> diffs = df.scan(oldTree, workingTree);
                 if (v == Verbosity.SUMMARY) {
