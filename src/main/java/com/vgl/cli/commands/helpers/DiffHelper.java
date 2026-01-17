@@ -125,14 +125,12 @@ public final class DiffHelper {
         // If globs were provided, expand them to the set of repo-relative files
         // so we can report what they matched (and fail early if none matched).
         if (globs != null && !globs.isEmpty() && leftRoot != null) {
-            List<String> resolved = GlobUtils.expandGlobsToFiles(globs, leftRoot);
+            List<String> resolved = GlobUtils.resolveGlobs(globs, leftRoot, System.out);
             if (resolved.isEmpty()) {
-                System.out.println("No files matched globs: " + String.join(", ", globs));
                 return false;
             }
             // Use the explicit file list as the filtering set.
             globs = resolved;
-            System.out.println("Globs resolved to " + resolved.size() + " file(s)");
         }
 
         Map<String, byte[]> left = snapshotFiles(leftRoot, globs);
@@ -199,13 +197,11 @@ public final class DiffHelper {
                     try {
                         Path repoRoot = repo.getWorkTree() == null ? null : repo.getWorkTree().toPath();
                         if (repoRoot != null) {
-                            List<String> resolved = GlobUtils.expandGlobsToFiles(globs, repoRoot);
+                            List<String> resolved = GlobUtils.resolveGlobs(globs, repoRoot, System.out);
                             if (resolved.isEmpty()) {
-                                System.out.println("No files matched globs: " + String.join(", ", globs));
                                 return false;
                             }
                             globs = resolved;
-                            System.out.println("Globs resolved to " + resolved.size() + " file(s)");
                         }
                     } catch (IOException ignored) {
                         // Fall back to pattern matching if expansion fails
@@ -262,13 +258,11 @@ public final class DiffHelper {
                     try {
                         Path repoRoot = repo.getWorkTree() == null ? null : repo.getWorkTree().toPath();
                         if (repoRoot != null) {
-                            List<String> resolved = GlobUtils.expandGlobsToFiles(globs, repoRoot);
+                            List<String> resolved = GlobUtils.resolveGlobs(globs, repoRoot, System.out);
                             if (resolved.isEmpty()) {
-                                System.out.println("No files matched globs: " + String.join(", ", globs));
                                 return false;
                             }
                             globs = resolved;
-                            System.out.println("Globs resolved to " + resolved.size() + " file(s)");
                         }
                     } catch (IOException ignored) {
                         // Fall back to pattern matching if expansion fails

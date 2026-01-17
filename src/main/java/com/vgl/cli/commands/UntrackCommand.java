@@ -48,7 +48,7 @@ public class UntrackCommand implements Command {
                 return 0;
             }
         } else {
-            requested = GlobUtils.expandGlobsToFiles(args, repoRoot);
+            requested = GlobUtils.resolveGlobs(args, repoRoot, System.out);
             if (requested.isEmpty()) {
                 // Try to give per-arg errors for literal requests.
                 for (String a : args) {

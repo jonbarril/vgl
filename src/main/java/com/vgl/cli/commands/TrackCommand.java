@@ -43,7 +43,7 @@ public class TrackCommand implements Command {
                 return 0;
             }
         } else {
-            candidates = GlobUtils.expandGlobsToFiles(args, repoRoot);
+            candidates = GlobUtils.resolveGlobs(args, repoRoot, System.out);
             if (candidates.isEmpty()) {
                 System.err.println(Messages.trackNoMatches());
                 return 1;

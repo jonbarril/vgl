@@ -51,7 +51,7 @@ public class CheckinCommand implements Command {
                 git.add().addFilepattern(".").call();
                 git.add().addFilepattern(".").setUpdate(true).call();
             } else {
-                List<String> files = GlobUtils.expandGlobsToFiles(globs, repoRoot);
+                    List<String> files = GlobUtils.resolveGlobs(globs, repoRoot, System.out);
                 for (String f : files) {
                     git.add().addFilepattern(f).call();
                 }

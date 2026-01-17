@@ -154,6 +154,24 @@ public final class GlobUtils {
         return sorted;
     }
 
+    /**
+     * Resolve globs against the repo root and print a short report to `out`.
+     * Returns the sorted list of matched repo-relative paths (or an empty list).
+     */
+    public static List<String> resolveGlobs(List<String> globs, Path repoRoot, java.io.PrintStream out) throws IOException {
+        List<String> resolved = expandGlobsToFiles(globs, repoRoot);
+        if (resolved == null || resolved.isEmpty()) {
+            if (out != null) {
+                out.println("No files matched globs: " + String.join(", ", globs == null ? List.of() : globs));
+            }
+            return List.of();
+        }
+        if (out != null) {
+            out.println("Globs resolved to " + resolved.size() + " file(s)");
+        }
+        return resolved;
+    }
+
     private static void collectFilesUnderDir(Set<String> out, Path repoRoot, Path dir, Set<String> nested) throws IOException {
         Files.walkFileTree(dir, new SimpleFileVisitor<>() {
             @Override
