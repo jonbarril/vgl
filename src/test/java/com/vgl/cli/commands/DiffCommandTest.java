@@ -6,8 +6,10 @@ import com.vgl.cli.VglMain;
 import com.vgl.cli.test.utils.RepoTestUtils;
 import com.vgl.cli.test.utils.StdIoCapture;
 import com.vgl.cli.test.utils.UserDirOverride;
+import com.vgl.cli.utils.VglConfig;
 import com.vgl.cli.utils.Messages;
 import java.nio.file.Path;
+import java.util.Properties;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.transport.RefSpec;
@@ -32,6 +34,39 @@ class DiffCommandTest {
             PersonIdent ident = new PersonIdent("test", "test@example.com");
             git.commit().setMessage("init").setAuthor(ident).setCommitter(ident).call();
         }
+
+        RepoTestUtils.writeFile(repoDir, "file.txt", "two\n");
+
+        try (UserDirOverride ignored = new UserDirOverride(repoDir);
+            StdIoCapture io = new StdIoCapture()) {
+            assertThat(VglMain.run(new String[] {"diff", "file.txt"})).isEqualTo(0);
+            assertThat(io.stderr()).isEmpty();
+            assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
+            assertThat(io.stdout()).contains("-one");
+            assertThat(io.stdout()).contains("+two");
+        }
+    }
+
+    @Test
+    void diff_defaultDoesNotUseRemoteJustBecauseConfigured() throws Exception {
+        Path repoDir = tempDir.resolve("repo_remote_configured");
+        RepoTestUtils.createVglRepo(repoDir);
+
+        RepoTestUtils.writeFile(repoDir, "file.txt", "one\n");
+        try (Git git = Git.open(repoDir.toFile())) {
+            git.add().addFilepattern("file.txt").call();
+            PersonIdent ident = new PersonIdent("test", "test@example.com");
+            git.commit().setMessage("init").setAuthor(ident).setCommitter(ident).call();
+        }
+
+        // Configure a remote in .vgl, but make it invalid; default diff must NOT try to use it.
+        Properties props = VglConfig.readProps(repoDir);
+        props.setProperty(VglConfig.KEY_REMOTE_URL, "https://example.invalid/repo.git");
+        props.setProperty(VglConfig.KEY_REMOTE_BRANCH, "main");
+        VglConfig.writeProps(repoDir, p -> {
+            p.setProperty(VglConfig.KEY_REMOTE_URL, props.getProperty(VglConfig.KEY_REMOTE_URL));
+            p.setProperty(VglConfig.KEY_REMOTE_BRANCH, props.getProperty(VglConfig.KEY_REMOTE_BRANCH));
+        });
 
         RepoTestUtils.writeFile(repoDir, "file.txt", "two\n");
 

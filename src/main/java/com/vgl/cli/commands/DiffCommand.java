@@ -63,11 +63,15 @@ public class DiffCommand implements Command {
         List<String> positionals = collectPositionals(args);
 
         // Remote-to-remote diff: `diff -rr URL0 -rb B0 -rr URL1 -rb B1` compares working trees via temp clones.
-        List<String> remoteUrls = valuesAfterFlagAll(args, "-rr");
-        List<String> remoteBranches = valuesAfterFlagAll(args, "-rb");
+        List<String> remoteUrls = valuesAfterFlagAllAllowMissing(args, "-rr");
+        List<String> remoteBranches = valuesAfterFlagAllDefaultMain(args, "-rb");
         if (remoteUrls.size() >= 2) {
             String url1 = remoteUrls.get(0);
             String url2 = remoteUrls.get(1);
+            if (url1 == null || url1.isBlank() || url2 == null || url2.isBlank()) {
+                System.err.println(Messages.diffUsage());
+                return 1;
+            }
             String b1 = (remoteBranches.size() >= 1 && remoteBranches.get(0) != null && !remoteBranches.get(0).isBlank())
                 ? remoteBranches.get(0)
                 : "main";
@@ -154,7 +158,7 @@ public class DiffCommand implements Command {
             }
         }
 
-        List<String> localBranches = valuesAfterFlagAll(args, "-lb");
+        List<String> localBranches = valuesAfterFlagAllDefaultMain(args, "-lb");
         if (localBranches.size() >= 2) {
             String b1 = localBranches.get(0);
             String b2 = localBranches.get(1);
@@ -205,35 +209,59 @@ public class DiffCommand implements Command {
         }
 
         // Fall back to the original single-endpoint modes (working tree vs local/remote reference).
+        // Default behavior: working tree vs local repo/branch from switch state.
         List<String> globs = positionals.isEmpty() ? List.of("*") : positionals;
 
-        String localBranch = ArgsHelper.branchFromArgsOrNull(args);
-        String remoteBranch = ArgsHelper.valueAfterFlag(args, "-rb");
-        if (args.contains("-rb") && (remoteBranch == null || remoteBranch.isBlank())) {
-            remoteBranch = "main";
-        }
-
         Properties vglProps = VglConfig.readProps(repoRoot);
-        String vglRemoteUrl = vglProps.getProperty(VglConfig.KEY_REMOTE_URL, "");
-        if (remoteUrls.size() == 1 && remoteUrls.get(0) != null && !remoteUrls.get(0).isBlank()) {
-            vglRemoteUrl = remoteUrls.get(0);
-        }
-        if (remoteBranch == null || remoteBranch.isBlank()) {
-            remoteBranch = vglProps.getProperty(VglConfig.KEY_REMOTE_BRANCH, "main");
+        String switchLocalBranch = vglProps.getProperty(VglConfig.KEY_LOCAL_BRANCH, "main");
+        if (switchLocalBranch == null || switchLocalBranch.isBlank()) {
+            switchLocalBranch = "main";
         }
 
-        boolean hasRemote = args.contains("-rb") || args.contains("-rr") || (vglRemoteUrl != null && !vglRemoteUrl.isBlank());
+        String localBranch = null;
+        if (args.contains("-bb")) {
+            String v = ArgsHelper.valueAfterFlag(args, "-bb");
+            localBranch = (v == null || v.isBlank()) ? switchLocalBranch : v;
+        } else if (args.contains("-lb")) {
+            String v = ArgsHelper.valueAfterFlag(args, "-lb");
+            localBranch = (v == null || v.isBlank()) ? switchLocalBranch : v;
+        }
+
+        boolean remoteRequested = args.contains("-rb") || args.contains("-rr");
+        String vglRemoteUrl = vglProps.getProperty(VglConfig.KEY_REMOTE_URL, "");
+        String vglRemoteBranch = vglProps.getProperty(VglConfig.KEY_REMOTE_BRANCH, "main");
+        if (vglRemoteBranch == null || vglRemoteBranch.isBlank()) {
+            vglRemoteBranch = "main";
+        }
+
+        // If -rr is present but URL is missing, default to switch state remote URL.
+        String explicitRemoteUrl = null;
+        if (args.contains("-rr")) {
+            String v = ArgsHelper.valueAfterFlag(args, "-rr");
+            explicitRemoteUrl = (v == null || v.isBlank()) ? null : v;
+        }
+        String remoteUrlToUse = (explicitRemoteUrl != null) ? explicitRemoteUrl : vglRemoteUrl;
+
+        // If -rb is present but branch is missing, default to switch state remote branch.
+        String explicitRemoteBranch = null;
+        if (args.contains("-rb")) {
+            String v = ArgsHelper.valueAfterFlag(args, "-rb");
+            explicitRemoteBranch = (v == null || v.isBlank()) ? null : v;
+        }
+        String remoteBranch = (explicitRemoteBranch != null) ? explicitRemoteBranch : vglRemoteBranch;
+
+        boolean hasRemote = remoteRequested;
         boolean hasLocalBranch = localBranch != null && !localBranch.isBlank();
 
         try (Git git = GitUtils.openGit(repoRoot)) {
             Repository repo = git.getRepository();
 
             if (hasRemote) {
-                if (vglRemoteUrl == null || vglRemoteUrl.isBlank()) {
+                if (remoteUrlToUse == null || remoteUrlToUse.isBlank()) {
                     System.err.println(Messages.pushNoRemoteConfigured());
                     return 1;
                 }
-                configureOriginRemote(repo, vglRemoteUrl);
+                configureOriginRemote(repo, remoteUrlToUse);
                 // best-effort fetch so origin/* exists for comparisons
                 try {
                     git.fetch().setRemote("origin").call();
@@ -283,8 +311,8 @@ public class DiffCommand implements Command {
                 return 0;
             }
 
-            // Default: local ref vs working tree
-            String ref = hasLocalBranch ? ("refs/heads/" + localBranch) : "HEAD";
+            // Default: local ref vs working tree (switch state)
+            String ref = hasLocalBranch ? ("refs/heads/" + localBranch) : ("refs/heads/" + switchLocalBranch);
             oldTreeId = resolveTree(repo, ref);
             if (oldTreeId == null) {
                 System.err.println("Error: Cannot resolve " + ref);
@@ -451,7 +479,7 @@ public class DiffCommand implements Command {
         return true;
     }
 
-    private static List<String> valuesAfterFlagAll(List<String> args, String flag) {
+    private static List<String> valuesAfterFlagAllDefaultMain(List<String> args, String flag) {
         List<String> out = new ArrayList<>();
         if (args == null || args.isEmpty()) {
             return out;
@@ -464,6 +492,26 @@ public class DiffCommand implements Command {
             String v = (i + 1 < args.size()) ? args.get(i + 1) : null;
             if (v == null || v.startsWith("-")) {
                 out.add("main");
+            } else {
+                out.add(v);
+            }
+        }
+        return out;
+    }
+
+    private static List<String> valuesAfterFlagAllAllowMissing(List<String> args, String flag) {
+        List<String> out = new ArrayList<>();
+        if (args == null || args.isEmpty()) {
+            return out;
+        }
+        for (int i = 0; i < args.size(); i++) {
+            String token = args.get(i);
+            if (!flag.equals(token)) {
+                continue;
+            }
+            String v = (i + 1 < args.size()) ? args.get(i + 1) : null;
+            if (v == null || v.startsWith("-")) {
+                out.add(null);
             } else {
                 out.add(v);
             }

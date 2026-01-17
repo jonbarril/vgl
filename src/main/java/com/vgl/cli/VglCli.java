@@ -228,7 +228,7 @@ public final class VglCli {
         @Option(names = "-noop")
         boolean noop;
 
-        @Option(names = "-lr", paramLabel = "DIR")
+        @Option(names = "-lr", paramLabel = "DIR", arity = "0..1", fallbackValue = ".")
         List<Path> localRepoDirs;
 
         @Option(names = "-lb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
@@ -237,10 +237,10 @@ public final class VglCli {
         @Option(names = "-bb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
         String bothBranch;
 
-        @Option(names = "-rr", paramLabel = "URL")
+        @Option(names = "-rr", paramLabel = "URL", arity = "0..1", fallbackValue = "")
         List<String> remoteUrls;
 
-        @Option(names = "-rb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "main")
+        @Option(names = "-rb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "")
         List<String> remoteBranches;
 
         @picocli.CommandLine.Parameters(arity = "0..*", paramLabel = "GLOB|*")
@@ -277,11 +277,15 @@ public final class VglCli {
                 }
                 if (remoteUrls != null && i < remoteUrls.size() && remoteUrls.get(i) != null) {
                     forwarded.add("-rr");
-                    forwarded.add(remoteUrls.get(i));
+                    if (!remoteUrls.get(i).isBlank()) {
+                        forwarded.add(remoteUrls.get(i));
+                    }
                 }
                 if (remoteBranches != null && i < remoteBranches.size() && remoteBranches.get(i) != null) {
                     forwarded.add("-rb");
-                    forwarded.add(remoteBranches.get(i));
+                    if (!remoteBranches.get(i).isBlank()) {
+                        forwarded.add(remoteBranches.get(i));
+                    }
                 }
             }
 
