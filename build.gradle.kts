@@ -21,12 +21,18 @@ plugins {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(23)) // Updated to Java 23
+        // Prefer JDK 17 for running and building; we compile with `release=17`
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
 
 repositories {
     mavenCentral()
+}
+
+// Ensure compiled classes target Java 17 bytecode even when using a newer JDK to run Gradle.
+tasks.withType<JavaCompile> {
+    options.release.set(17)
 }
 
 dependencies {
