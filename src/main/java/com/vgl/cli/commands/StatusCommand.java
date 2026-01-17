@@ -12,6 +12,7 @@ import com.vgl.cli.utils.RepoValidation;
 import com.vgl.cli.utils.RepoPreflight;
 import com.vgl.cli.utils.Utils;
 import com.vgl.cli.utils.VglConfig;
+import com.vgl.cli.utils.RepoResolver;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -1175,10 +1176,8 @@ public class StatusCommand implements Command {
                 return null;
             }
             try (Git git = GitUtils.openGit(repoRoot)) {
-                String branch = safeGitBranch(git.getRepository());
-                final String localBranch = (branch == null || branch.isBlank()) ? "main" : branch;
-                ensureGitignoreHasVgl(repoRoot);
-                writeVglProps(repoRoot, props -> props.setProperty("local.branch", localBranch));
+                // Common conversion behavior: write .vgl including remote context.
+                RepoResolver.writeVglStateFromGit(repoRoot, git.getRepository());
             }
             hasVgl = true;
         } else if (!hasGit && hasVgl) {

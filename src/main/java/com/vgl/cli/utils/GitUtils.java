@@ -108,4 +108,25 @@ public final class GitUtils {
 
         return out;
     }
+
+    /**
+     * Retrieves the remote URL from the Git repository.
+     */
+    public static String getRemoteUrl(Repository repo) {
+        if (repo == null) return null;
+        return repo.getConfig().getString("remote", "origin", "url");
+    }
+
+    /**
+     * Retrieves the remote branch from the Git repository.
+     */
+    public static String getRemoteBranch(Repository repo) {
+        if (repo == null) return null;
+        try {
+            String branch = repo.getConfig().getString("branch", repo.getBranch(), "merge");
+            return (branch != null && branch.startsWith("refs/heads/")) ? branch.substring(11) : branch;
+        } catch (IOException e) {
+            return null; // Return null if an exception occurs
+        }
+    }
 }

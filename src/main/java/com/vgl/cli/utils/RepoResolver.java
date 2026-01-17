@@ -15,6 +15,37 @@ import org.eclipse.jgit.lib.Repository;
 public final class RepoResolver {
     private RepoResolver() {}
 
+    /**
+     * Writes initial VGL state from an existing Git repository.
+     *
+     * <p>This is used by any command that offers Git -> VGL conversion.
+     */
+    public static void writeVglStateFromGit(Path repoRoot, Repository repo) throws Exception {
+        String branch = safeGitBranch(repo);
+        final String localBranch = (branch == null || branch.isBlank()) ? "main" : branch;
+
+        String remoteUrl = GitUtils.getRemoteUrl(repo);
+        String remoteBranch = GitUtils.getRemoteBranch(repo);
+        if (remoteBranch == null || remoteBranch.isBlank()) {
+            remoteBranch = localBranch;
+        }
+
+        VglConfig.ensureGitignoreHasVgl(repoRoot);
+        final String finalRemoteUrl = remoteUrl;
+        final String finalRemoteBranch = remoteBranch;
+        VglConfig.writeProps(repoRoot, props -> {
+            props.setProperty(VglConfig.KEY_LOCAL_BRANCH, localBranch);
+            var branches = VglConfig.getStringSet(props, VglConfig.KEY_LOCAL_BRANCHES);
+            branches.add(localBranch);
+            VglConfig.setStringSet(props, VglConfig.KEY_LOCAL_BRANCHES, branches);
+
+            if (finalRemoteUrl != null && !finalRemoteUrl.isBlank()) {
+                props.setProperty(VglConfig.KEY_REMOTE_URL, finalRemoteUrl.trim());
+                props.setProperty(VglConfig.KEY_REMOTE_BRANCH, finalRemoteBranch.trim());
+            }
+        });
+    }
+
     public static Path resolveRepoRootForCommand(Path startDir) throws Exception {
         Path repoRoot = RepoUtils.findNearestRepoRoot(startDir);
         if (repoRoot == null) {
@@ -42,10 +73,7 @@ public final class RepoResolver {
                 return null;
             }
             try (Git git = GitUtils.openGit(repoRoot)) {
-                String branch = safeGitBranch(git.getRepository());
-                final String localBranch = (branch == null || branch.isBlank()) ? "main" : branch;
-                VglConfig.ensureGitignoreHasVgl(repoRoot);
-                VglConfig.writeProps(repoRoot, props -> props.setProperty(VglConfig.KEY_LOCAL_BRANCH, localBranch));
+                writeVglStateFromGit(repoRoot, git.getRepository());
             }
             hasVgl = true;
         } else if (!hasGit && hasVgl) {

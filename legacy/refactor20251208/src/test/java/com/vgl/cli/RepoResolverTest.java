@@ -82,4 +82,25 @@ public class RepoResolverTest {
         assertEquals(RepoResolution.ResolutionKind.FOUND_BOTH, r.getKind());
         assertFalse(r.isCreatedVgl());
     }
+
+    @Test
+    public void gitToVglConversion_switchExecuted(@TempDir Path tmp) throws Exception {
+        System.setProperty("vgl.noninteractive", "true");
+        try (Git git = Git.init().setDirectory(tmp.toFile()).call()) {
+            git.getRepository().getConfig().setString("remote", "origin", "url", "https://example.com/repo.git");
+            git.getRepository().getConfig().save();
+        }
+
+        RepoResolution r = RepoResolver.resolveForCommand(tmp);
+        assertNotNull(r.getGit(), "Git should be found");
+        assertTrue(r.isCreatedVgl(), "VGL should be created");
+
+        // Verify VGL switch logic
+        java.util.Properties props = new java.util.Properties();
+        try (java.io.InputStream in = java.nio.file.Files.newInputStream(tmp.resolve(".vgl"))) {
+            props.load(in);
+        }
+        assertEquals("https://example.com/repo.git", props.getProperty("remote.url"), "Remote URL should be set");
+        assertEquals("main", props.getProperty("remote.branch"), "Remote branch should default to main");
+    }
 }

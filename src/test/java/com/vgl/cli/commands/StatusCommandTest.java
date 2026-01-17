@@ -5,14 +5,19 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.vgl.cli.VglMain;
 import com.vgl.cli.test.utils.StdIoCapture;
 import com.vgl.cli.utils.Messages;
+import com.vgl.cli.utils.VglConfig;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.PersonIdent;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -204,6 +209,75 @@ class StatusCommandTest {
                 System.clearProperty("vgl.test.base");
             } else {
                 System.setProperty("vgl.test.base", priorBase);
+            }
+        }
+    }
+
+    @Test
+    void status_whenGitOnlyAndUserConverts_preservesRemoteInVgl() throws Exception {
+        Path repoDir = tempDir.resolve("repo_git_only");
+        Files.createDirectories(repoDir);
+
+        try (Git git = Git.init().setDirectory(repoDir.toFile()).setInitialBranch("main").call()) {
+            StoredConfig cfg = git.getRepository().getConfig();
+            cfg.setString("remote", "origin", "url", "https://example.com/repo.git");
+            cfg.setString("branch", "main", "remote", "origin");
+            cfg.setString("branch", "main", "merge", "refs/heads/main");
+            cfg.save();
+        }
+
+        String priorUserDir = System.getProperty("user.dir");
+        String priorBase = System.getProperty("vgl.test.base");
+        String priorForceInteractive = System.getProperty("vgl.force.interactive");
+        String priorNonInteractive = System.getProperty("vgl.noninteractive");
+
+        var priorIn = System.in;
+        var priorOut = System.out;
+        var priorErr = System.err;
+
+        try {
+            System.setProperty("user.dir", repoDir.toString());
+            System.setProperty("vgl.test.base", tempDir.toString());
+            System.setProperty("vgl.force.interactive", "true");
+            System.clearProperty("vgl.noninteractive");
+
+            System.setIn(new ByteArrayInputStream("y\n".getBytes(StandardCharsets.UTF_8)));
+            ByteArrayOutputStream outBytes = new ByteArrayOutputStream();
+            ByteArrayOutputStream errBytes = new ByteArrayOutputStream();
+            System.setOut(new PrintStream(outBytes, true, StandardCharsets.UTF_8));
+            System.setErr(new PrintStream(errBytes, true, StandardCharsets.UTF_8));
+
+            int exit = VglMain.run(new String[] {"status"});
+            assertThat(exit).isEqualTo(0);
+
+            // Remote context is persisted into .vgl during conversion.
+            var props = VglConfig.readProps(repoDir);
+            assertThat(props.getProperty(VglConfig.KEY_REMOTE_URL, "")).isEqualTo("https://example.com/repo.git");
+            assertThat(props.getProperty(VglConfig.KEY_REMOTE_BRANCH, "")).isEqualTo("main");
+        } finally {
+            System.setIn(priorIn);
+            System.setOut(priorOut);
+            System.setErr(priorErr);
+
+            if (priorUserDir == null) {
+                System.clearProperty("user.dir");
+            } else {
+                System.setProperty("user.dir", priorUserDir);
+            }
+            if (priorBase == null) {
+                System.clearProperty("vgl.test.base");
+            } else {
+                System.setProperty("vgl.test.base", priorBase);
+            }
+            if (priorForceInteractive == null) {
+                System.clearProperty("vgl.force.interactive");
+            } else {
+                System.setProperty("vgl.force.interactive", priorForceInteractive);
+            }
+            if (priorNonInteractive == null) {
+                System.clearProperty("vgl.noninteractive");
+            } else {
+                System.setProperty("vgl.noninteractive", priorNonInteractive);
             }
         }
     }
