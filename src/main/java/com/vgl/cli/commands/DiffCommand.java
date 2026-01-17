@@ -96,6 +96,11 @@ public class DiffCommand implements Command {
                     return 0;
                 }
 
+                // Print clear source header: remote URL :: branch
+                String leftLabel = (b1 == null ? "(branch: main)" : ("(branch: " + b1 + ")"));
+                String rightLabel = (b2 == null ? "(branch: main)" : ("(branch: " + b2 + ")"));
+                System.out.println("Source: remote :: " + url1 + " :: " + b1 + "  vs  remote :: " + url2 + " :: " + b2);
+
                 boolean any = DiffHelper.diffWorkingTrees(leftClone, rightClone, globs, DiffHelper.computeVerbosity(args));
                 if (!any) {
                     System.out.println("No differences.");
@@ -118,6 +123,9 @@ public class DiffCommand implements Command {
                 System.out.println(Messages.diffDryRunSummary(changed));
                 return 0;
             }
+
+            // Print clear source header: local dir :: (working tree)
+            System.out.println("Source: local :: " + left + "  vs  local :: " + right);
 
             boolean any = DiffHelper.diffWorkingTrees(left, right, globs, DiffHelper.computeVerbosity(args));
             if (!any) {

@@ -74,12 +74,16 @@ public final class GlobUtils {
                 continue;
             }
             String trimmed = g.trim();
-            if (trimmed.equals("*")) {
+            // Treat a single '*' or '.' as a recursive match for everything.
+            if (trimmed.equals("*") || trimmed.equals(".")) {
                 patterns.add("**");
-            } else if (trimmed.equals(".")) {
-                patterns.add("**");
-            } else if (!hasWildcard(trimmed) && !trimmed.contains("/") && !trimmed.contains("\\")) {
-                // Convenience: allow passing just a filename to match anywhere in the repo.
+                continue;
+            }
+
+            // If the pattern contains no path separator, expand it to also match
+            // anywhere in the repo (e.g. `Drivetrain*` -> `Drivetrain*` and `**/Drivetrain*`).
+            boolean hasSep = trimmed.contains("/") || trimmed.contains("\\");
+            if (!hasSep) {
                 patterns.add(trimmed);
                 patterns.add("**/" + trimmed);
             } else {
