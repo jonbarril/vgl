@@ -35,9 +35,9 @@ public final class DiffHelper {
         if (args != null && args.contains("-v")) {
             return Verbosity.HUMAN;
         }
-        // Historically diffs printed full output by default; keep human-readable diffs
-        // as the default behavior unless a summary flag is explicitly requested.
-        return Verbosity.HUMAN;
+        // Default to a concise summary view. Use `-v` for full human-readable diffs
+        // and `-vv` for raw/unmodified diff output.
+        return Verbosity.SUMMARY;
     }
 
     public static Map<String, byte[]> snapshotFiles(Path root, List<String> globs) throws IOException {
@@ -114,10 +114,11 @@ public final class DiffHelper {
         out.println(s.perFileCounts.size() + " file(s) changed — +" + s.totalAdded + "/-" + s.totalRemoved);
         for (Map.Entry<String,int[]> e : s.perFileCounts.entrySet()) {
             int[] ar = e.getValue();
-            out.println("  M " + e.getKey() + " (+" + ar[0] + "/-" + ar[1] + ")");
+            String marker = (ar[0] > 0 && ar[1] > 0) ? "M" : (ar[0] > 0 ? "A" : "D");
+            out.println("  " + marker + " " + e.getKey() + " (+" + ar[0] + "/-" + ar[1] + ")");
         }
         out.println();
-        out.println("Use `vgl diff -v` to see full diffs.");
+        out.println("Use `vgl diff -v` for full diffs, `-vv` for raw output.");
     }
 
     public static boolean diffWorkingTrees(Path leftRoot, Path rightRoot, List<String> globs, Verbosity v) throws IOException {
