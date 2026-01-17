@@ -1,6 +1,7 @@
 package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
+import com.vgl.cli.commands.helpers.DiffHelper;
 import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.GlobUtils;
@@ -62,6 +63,8 @@ public class DiffCommand implements Command {
 
         List<String> positionals = collectPositionals(args);
 
+        int verbosityLevel = args.contains("-vv") ? 2 : (args.contains("-v") ? 1 : 0);
+
         // Remote-to-remote diff: `diff -rr URL0 -rb B0 -rr URL1 -rb B1` compares working trees via temp clones.
         List<String> remoteUrls = valuesAfterFlagAllAllowMissing(args, "-rr");
         List<String> remoteBranches = valuesAfterFlagAllDefaultMain(args, "-rb");
@@ -93,7 +96,7 @@ public class DiffCommand implements Command {
                     return 0;
                 }
 
-                boolean any = diffWorkingTrees(leftClone, rightClone, globs);
+                boolean any = DiffHelper.diffWorkingTrees(leftClone, rightClone, globs, DiffHelper.computeVerbosity(args));
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -116,7 +119,7 @@ public class DiffCommand implements Command {
                 return 0;
             }
 
-            boolean any = diffWorkingTrees(left, right, globs);
+            boolean any = DiffHelper.diffWorkingTrees(left, right, globs, DiffHelper.computeVerbosity(args));
             if (!any) {
                 System.out.println("No differences.");
             }
@@ -150,7 +153,7 @@ public class DiffCommand implements Command {
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = diffTrees(repo, t1, t2, globs);
+                boolean any = DiffHelper.diffTrees(repo, t1, t2, globs, DiffHelper.computeVerbosity(args));
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -176,7 +179,7 @@ public class DiffCommand implements Command {
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = diffTrees(repo, t1, t2, globs);
+                boolean any = DiffHelper.diffTrees(repo, t1, t2, globs, DiffHelper.computeVerbosity(args));
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -200,7 +203,7 @@ public class DiffCommand implements Command {
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = diffTrees(repo, t1, t2, globs);
+                boolean any = DiffHelper.diffTrees(repo, t1, t2, globs, DiffHelper.computeVerbosity(args));
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -274,7 +277,13 @@ public class DiffCommand implements Command {
             ObjectId newTreeId;
             FileTreeIterator workingTree = new FileTreeIterator(repo);
 
+            boolean humanReadable = verbosityLevel < 2;
+            DiffHelper.Verbosity dVerb = DiffHelper.computeVerbosity(args);
+
             if (hasRemote && hasLocalBranch) {
+                if (humanReadable && !noop) {
+                    printCompareSourceHeader(args, /*mode*/"local-vs-remote", localBranch, remoteUrlToUse, remoteBranch);
+                }
                 oldTreeId = resolveTree(repo, "refs/heads/" + localBranch);
                 newTreeId = resolveTree(repo, "refs/remotes/origin/" + remoteBranch);
                 if (oldTreeId == null || newTreeId == null) {
@@ -286,7 +295,7 @@ public class DiffCommand implements Command {
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = diffTrees(repo, oldTreeId, newTreeId, globs);
+                boolean any = DiffHelper.diffTrees(repo, oldTreeId, newTreeId, globs, dVerb);
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -294,6 +303,9 @@ public class DiffCommand implements Command {
             }
 
             if (hasRemote) {
+                if (humanReadable && !noop) {
+                    printCompareSourceHeader(args, /*mode*/"remote-vs-working", localBranch, remoteUrlToUse, remoteBranch);
+                }
                 oldTreeId = resolveTree(repo, "refs/remotes/origin/" + remoteBranch);
                 if (oldTreeId == null) {
                     System.err.println("Error: Cannot resolve origin/" + remoteBranch);
@@ -304,7 +316,7 @@ public class DiffCommand implements Command {
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = diffTreeToWorking(repo, oldTreeId, workingTree, globs);
+                boolean any = DiffHelper.diffTreeToWorking(repo, oldTreeId, workingTree, globs, dVerb);
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -312,6 +324,9 @@ public class DiffCommand implements Command {
             }
 
             // Default: local ref vs working tree (switch state)
+            if (humanReadable && !noop) {
+                printCompareSourceHeader(args, /*mode*/"local-vs-working", localBranch, remoteUrlToUse, remoteBranch);
+            }
             String ref = hasLocalBranch ? ("refs/heads/" + localBranch) : ("refs/heads/" + switchLocalBranch);
             oldTreeId = resolveTree(repo, ref);
             if (oldTreeId == null) {
@@ -324,7 +339,7 @@ public class DiffCommand implements Command {
                 System.out.println(Messages.diffDryRunSummary(changed));
                 return 0;
             }
-            boolean any = diffTreeToWorking(repo, oldTreeId, workingTree, globs);
+            boolean any = DiffHelper.diffTreeToWorking(repo, oldTreeId, workingTree, globs, dVerb);
             if (!any) {
                 System.out.println("No differences.");
             }
@@ -538,7 +553,7 @@ public class DiffCommand implements Command {
         return out;
     }
 
-    private static boolean diffWorkingTrees(Path leftRoot, Path rightRoot, List<String> globs) throws IOException {
+    private static boolean diffWorkingTrees(Path leftRoot, Path rightRoot, List<String> globs, int verbosityLevel) throws IOException {
         Map<String, byte[]> left = snapshotFiles(leftRoot, globs);
         Map<String, byte[]> right = snapshotFiles(rightRoot, globs);
 
@@ -552,6 +567,10 @@ public class DiffCommand implements Command {
         allPaths.sort(String::compareTo);
 
         boolean any = false;
+        int totalAdded = 0;
+        int totalRemoved = 0;
+        Map<String, int[]> perFileCounts = new HashMap<>();
+
         for (String rel : allPaths) {
             byte[] a = left.get(rel);
             byte[] b = right.get(rel);
@@ -559,37 +578,88 @@ public class DiffCommand implements Command {
                 continue;
             }
             any = true;
-            String aName = "a/" + rel;
-            String bName = "b/" + rel;
-            System.out.println("diff --git " + aName + " " + bName);
-            if (a == null) {
-                System.out.println("new file mode 100644");
-                System.out.println("--- /dev/null");
-                System.out.println("+++ " + bName);
-            } else if (b == null) {
-                System.out.println("deleted file mode 100644");
-                System.out.println("--- " + aName);
-                System.out.println("+++ /dev/null");
+
+            if (verbosityLevel >= 1) {
+                String aName = "a/" + rel;
+                String bName = "b/" + rel;
+                System.out.println("diff --git " + aName + " " + bName);
+                if (a == null) {
+                    System.out.println("new file mode 100644");
+                    System.out.println("--- /dev/null");
+                    System.out.println("+++ " + bName);
+                } else if (b == null) {
+                    System.out.println("deleted file mode 100644");
+                    System.out.println("--- " + aName);
+                    System.out.println("+++ /dev/null");
+                } else {
+                    System.out.println("--- " + aName);
+                    System.out.println("+++ " + bName);
+                }
+
+                if (a != null && RawText.isBinary(a) || b != null && RawText.isBinary(b)) {
+                    System.out.println("Binary files differ");
+                    continue;
+                }
+
+                RawText at = new RawText(a != null ? a : new byte[0]);
+                RawText bt = new RawText(b != null ? b : new byte[0]);
+                DiffAlgorithm alg = new HistogramDiff();
+                EditList edits = alg.diff(RawTextComparator.DEFAULT, at, bt);
+                if (verbosityLevel >= 2) {
+                    try (DiffFormatter df = new DiffFormatter(System.out)) {
+                        df.setContext(3);
+                        df.format(edits, at, bt);
+                    }
+                } else {
+                    int added = 0;
+                    int removed = 0;
+                    for (org.eclipse.jgit.diff.Edit e : edits) {
+                        removed += Math.max(0, e.getEndA() - e.getBeginA());
+                        added += Math.max(0, e.getEndB() - e.getBeginB());
+                    }
+                    perFileCounts.put(rel, new int[] {added, removed});
+                    totalAdded += added;
+                    totalRemoved += removed;
+                }
             } else {
-                System.out.println("--- " + aName);
-                System.out.println("+++ " + bName);
-            }
-
-            if (a != null && RawText.isBinary(a) || b != null && RawText.isBinary(b)) {
-                System.out.println("Binary files differ");
-                continue;
-            }
-
-            RawText at = new RawText(a != null ? a : new byte[0]);
-            RawText bt = new RawText(b != null ? b : new byte[0]);
-            DiffAlgorithm alg = new HistogramDiff();
-            EditList edits = alg.diff(RawTextComparator.DEFAULT, at, bt);
-            try (DiffFormatter df = new DiffFormatter(System.out)) {
-                df.setContext(3);
-                df.format(edits, at, bt);
+                // verbosityLevel == 0: collect counts without printing file headers now
+                if (a != null && RawText.isBinary(a) || b != null && RawText.isBinary(b)) {
+                    perFileCounts.put(rel, new int[] {0, 0});
+                    continue;
+                }
+                RawText at = new RawText(a != null ? a : new byte[0]);
+                RawText bt = new RawText(b != null ? b : new byte[0]);
+                DiffAlgorithm alg = new HistogramDiff();
+                EditList edits = alg.diff(RawTextComparator.DEFAULT, at, bt);
+                int added = 0;
+                int removed = 0;
+                for (org.eclipse.jgit.diff.Edit e : edits) {
+                    removed += Math.max(0, e.getEndA() - e.getBeginA());
+                    added += Math.max(0, e.getEndB() - e.getBeginB());
+                }
+                perFileCounts.put(rel, new int[] {added, removed});
+                totalAdded += added;
+                totalRemoved += removed;
             }
         }
+
+        if (verbosityLevel == 0 && any) {
+            System.out.println(totalFileSummary(perFileCounts, totalAdded, totalRemoved));
+            for (String rel : allPaths) {
+                if (!perFileCounts.containsKey(rel)) continue;
+                int[] ar = perFileCounts.get(rel);
+                String kind = (left.get(rel) == null) ? "A" : (right.get(rel) == null) ? "D" : "M";
+                System.out.println("  " + kind + " " + rel + " (+" + ar[0] + "/-" + ar[1] + ")");
+            }
+            System.out.println("\nUse `vgl diff -v` to see full diffs.");
+        }
+
         return any;
+    }
+
+    private static String totalFileSummary(Map<String,int[]> perFileCounts, int totalAdded, int totalRemoved) {
+        int files = perFileCounts.size();
+        return files + " file(s) changed — +" + totalAdded + "/-" + totalRemoved;
     }
 
     private static int countWorkingTreeDiffBetweenRoots(Path leftRoot, Path rightRoot, List<String> globs) throws IOException {
@@ -657,13 +727,16 @@ public class DiffCommand implements Command {
         }
     }
 
-    private static boolean diffTreeToWorking(Repository repo, ObjectId oldTreeId, FileTreeIterator workingTree, List<String> globs) throws Exception {
+    private static boolean diffTreeToWorking(Repository repo, ObjectId oldTreeId, FileTreeIterator workingTree, List<String> globs, int verbosityLevel) throws Exception {
         boolean any = false;
+        int totalAdded = 0;
+        int totalRemoved = 0;
+        Map<String, int[]> perFileCounts = new HashMap<>();
         try (ObjectReader reader = repo.newObjectReader()) {
             CanonicalTreeParser oldTree = new CanonicalTreeParser();
             oldTree.reset(reader, oldTreeId);
 
-            try (DiffFormatter df = new DiffFormatter(System.out)) {
+            try (DiffFormatter df = new DiffFormatter(OutputStream.nullOutputStream())) {
                 df.setRepository(repo);
                 df.setDetectRenames(true);
 
@@ -672,23 +745,88 @@ public class DiffCommand implements Command {
                     if (!matchesAny(d, globs)) {
                         continue;
                     }
-                    df.format(d);
                     any = true;
+                    if (verbosityLevel >= 1) {
+                        try (DiffFormatter dfOut = new DiffFormatter(System.out)) {
+                            dfOut.setRepository(repo);
+                            dfOut.setDetectRenames(true);
+                            dfOut.format(d);
+                        }
+                    } else {
+                        // summary mode - compute edits counts
+                        try (DiffFormatter dfHdr = new DiffFormatter(OutputStream.nullOutputStream())) {
+                            dfHdr.setRepository(repo);
+                            dfHdr.setDetectRenames(true);
+                            var fh = dfHdr.toFileHeader(d);
+                            EditList edits = fh.toEditList();
+                            int added = 0;
+                            int removed = 0;
+                            for (org.eclipse.jgit.diff.Edit e : edits) {
+                                removed += Math.max(0, e.getEndA() - e.getBeginA());
+                                added += Math.max(0, e.getEndB() - e.getBeginB());
+                            }
+                            String path = d.getNewPath();
+                            if (path == null || path.equals("/dev/null")) {
+                                path = d.getOldPath();
+                            }
+                            perFileCounts.put(path, new int[] {added, removed});
+                            totalAdded += added;
+                            totalRemoved += removed;
+                        }
+                    }
                 }
             }
+        }
+
+        if (verbosityLevel == 0 && any) {
+            System.out.println(totalFileSummary(perFileCounts, totalAdded, totalRemoved));
+            for (Map.Entry<String,int[]> e : perFileCounts.entrySet()) {
+                int[] ar = e.getValue();
+                // infer change type: additions where old path is /dev/null not tracked here, keep M/A/D generic
+                System.out.println("  M " + e.getKey() + " (+" + ar[0] + "/-" + ar[1] + ")");
+            }
+            System.out.println("\nUse `vgl diff -v` to see full diffs.");
         }
         return any;
     }
 
-    private static boolean diffTrees(Repository repo, ObjectId oldTreeId, ObjectId newTreeId, List<String> globs) throws Exception {
+    private static void printCompareSourceHeader(List<String> args, String mode, String localBranch, String remoteUrl, String remoteBranch) {
+        // mode: "local-vs-remote", "remote-vs-working", "local-vs-working"
+        switch (mode) {
+            case "local-vs-remote": {
+                String localLabel = (args.contains("-lb") || args.contains("-bb")) ? "local (explicit)" : "local (default)";
+                String remoteLabel = (args.contains("-rr") || args.contains("-rb")) ? "remote (explicit)" : "remote (default)";
+                System.out.println("Source: " + localLabel + " (branch: " + (localBranch == null ? "main" : localBranch) + ") vs "
+                    + remoteLabel + " (url: " + (remoteUrl == null ? "(none)" : remoteUrl) + ", branch: " + (remoteBranch == null ? "main" : remoteBranch) + ")");
+                break;
+            }
+            case "remote-vs-working": {
+                String remoteLabel = (args.contains("-rr") || args.contains("-rb")) ? "remote (explicit)" : "remote (default)";
+                System.out.println("Source: " + remoteLabel + " (url: " + (remoteUrl == null ? "(none)" : remoteUrl) + ", branch: " + (remoteBranch == null ? "main" : remoteBranch) + ")");
+                break;
+            }
+            case "local-vs-working":
+            default: {
+                String localLabel = (args.contains("-lb") || args.contains("-bb")) ? "local (explicit)" : "local (default)";
+                String branch = (localBranch == null || localBranch.isBlank()) ? "main" : localBranch;
+                System.out.println("Source: " + localLabel + " (branch: " + branch + ")");
+                break;
+            }
+        }
+    }
+
+    private static boolean diffTrees(Repository repo, ObjectId oldTreeId, ObjectId newTreeId, List<String> globs, int verbosityLevel) throws Exception {
         boolean any = false;
+        int totalAdded = 0;
+        int totalRemoved = 0;
+        Map<String, int[]> perFileCounts = new HashMap<>();
         try (ObjectReader reader = repo.newObjectReader()) {
             CanonicalTreeParser oldTree = new CanonicalTreeParser();
             oldTree.reset(reader, oldTreeId);
             CanonicalTreeParser newTree = new CanonicalTreeParser();
             newTree.reset(reader, newTreeId);
 
-            try (DiffFormatter df = new DiffFormatter(System.out)) {
+            try (DiffFormatter df = new DiffFormatter(OutputStream.nullOutputStream())) {
                 df.setRepository(repo);
                 df.setDetectRenames(true);
 
@@ -697,10 +835,41 @@ public class DiffCommand implements Command {
                     if (!matchesAny(d, globs)) {
                         continue;
                     }
-                    df.format(d);
                     any = true;
+                    if (verbosityLevel >= 1) {
+                        try (DiffFormatter dfOut = new DiffFormatter(System.out)) {
+                            dfOut.setRepository(repo);
+                            dfOut.setDetectRenames(true);
+                            dfOut.format(d);
+                        }
+                    } else {
+                        var fh = df.toFileHeader(d);
+                        EditList edits = fh.toEditList();
+                        int added = 0;
+                        int removed = 0;
+                        for (org.eclipse.jgit.diff.Edit e : edits) {
+                            removed += Math.max(0, e.getEndA() - e.getBeginA());
+                            added += Math.max(0, e.getEndB() - e.getBeginB());
+                        }
+                        String path = d.getNewPath();
+                        if (path == null || path.equals("/dev/null")) {
+                            path = d.getOldPath();
+                        }
+                        perFileCounts.put(path, new int[] {added, removed});
+                        totalAdded += added;
+                        totalRemoved += removed;
+                    }
                 }
             }
+        }
+
+        if (verbosityLevel == 0 && any) {
+            System.out.println(totalFileSummary(perFileCounts, totalAdded, totalRemoved));
+            for (Map.Entry<String,int[]> e : perFileCounts.entrySet()) {
+                int[] ar = e.getValue();
+                System.out.println("  M " + e.getKey() + " (+" + ar[0] + "/-" + ar[1] + ")");
+            }
+            System.out.println("\nUse `vgl diff -v` to see full diffs.");
         }
         return any;
     }
