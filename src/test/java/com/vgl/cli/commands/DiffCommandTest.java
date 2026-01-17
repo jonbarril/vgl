@@ -48,6 +48,31 @@ class DiffCommandTest {
     }
 
     @Test
+    void diff_bareFilenameMatchesNestedPath() throws Exception {
+        Path repoDir = tempDir.resolve("repo_nested");
+        RepoTestUtils.createVglRepo(repoDir);
+
+        String nested = "src/main/java/vv/subsystems/drivetrain/DrivetrainSubsystem.java";
+        RepoTestUtils.writeFile(repoDir, nested, "one\n");
+        try (Git git = Git.open(repoDir.toFile())) {
+            git.add().addFilepattern(nested).call();
+            PersonIdent ident = new PersonIdent("test", "test@example.com");
+            git.commit().setMessage("init").setAuthor(ident).setCommitter(ident).call();
+        }
+
+        RepoTestUtils.writeFile(repoDir, nested, "two\n");
+
+        try (UserDirOverride ignored = new UserDirOverride(repoDir);
+            StdIoCapture io = new StdIoCapture()) {
+            assertThat(VglMain.run(new String[] {"diff", "DrivetrainSubsystem.java"})).isEqualTo(0);
+            assertThat(io.stderr()).isEmpty();
+            assertThat(io.stdout()).contains("diff --git a/" + nested + " b/" + nested);
+            assertThat(io.stdout()).contains("-one");
+            assertThat(io.stdout()).contains("+two");
+        }
+    }
+
+    @Test
     void diff_defaultDoesNotUseRemoteJustBecauseConfigured() throws Exception {
         Path repoDir = tempDir.resolve("repo_remote_configured");
         RepoTestUtils.createVglRepo(repoDir);

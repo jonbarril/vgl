@@ -37,6 +37,12 @@ public final class GlobUtils {
             // Match literal paths and literal directories.
             if (!hasWildcard(trimmed)) {
                 String lit = trimmed.replace('\\', '/');
+                // Convenience: a bare filename (no path separators) matches any file with that basename.
+                if (!lit.contains("/")) {
+                    if (p.equals(lit) || p.endsWith("/" + lit)) {
+                        return true;
+                    }
+                }
                 if (p.equals(lit) || p.startsWith(lit + "/")) {
                     return true;
                 }
@@ -72,6 +78,10 @@ public final class GlobUtils {
                 patterns.add("**");
             } else if (trimmed.equals(".")) {
                 patterns.add("**");
+            } else if (!hasWildcard(trimmed) && !trimmed.contains("/") && !trimmed.contains("\\")) {
+                // Convenience: allow passing just a filename to match anywhere in the repo.
+                patterns.add(trimmed);
+                patterns.add("**/" + trimmed);
             } else {
                 patterns.add(trimmed);
             }
