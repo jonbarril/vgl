@@ -90,18 +90,20 @@ public class DiffCommand implements Command {
                 leftClone = cloneRemoteToTemp(url1, b1);
                 rightClone = cloneRemoteToTemp(url2, b2);
 
-                if (noop) {
-                    int changed = countWorkingTreeDiffBetweenRoots(leftClone, rightClone, globs);
-                    System.out.println(Messages.diffDryRunSummary(changed));
-                    return 0;
-                }
+                    if (noop) {
+                        int changed = countWorkingTreeDiffBetweenRoots(leftClone, rightClone, globs);
+                        System.out.println(Messages.diffDryRunSummary(changed));
+                        return 0;
+                    }
 
-                // Print clear source header: remote URL :: branch
-                String leftLabel = (b1 == null ? "(branch: main)" : ("(branch: " + b1 + ")"));
-                String rightLabel = (b2 == null ? "(branch: main)" : ("(branch: " + b2 + ")"));
-                System.out.println("Source: remote :: " + url1 + " :: " + b1 + "  vs  remote :: " + url2 + " :: " + b2);
+                    boolean truncate = !(args.contains("-v") || args.contains("-vv"));
+                    String leftDisplay = "remote :: " + (truncate ? FormatUtils.truncateMiddle(FormatUtils.normalizeRemoteUrlForDisplay(url1), 35) : FormatUtils.normalizeRemoteUrlForDisplay(url1)) + " :: " + (b1 == null ? "main" : b1);
+                    String rightDisplay = "remote :: " + (truncate ? FormatUtils.truncateMiddle(FormatUtils.normalizeRemoteUrlForDisplay(url2), 35) : FormatUtils.normalizeRemoteUrlForDisplay(url2)) + " :: " + (b2 == null ? "main" : b2);
+                    System.out.println("Source:");
+                    System.out.println("  A: " + leftDisplay);
+                    System.out.println("  B: " + rightDisplay);
 
-                boolean any = DiffHelper.diffWorkingTrees(leftClone, rightClone, globs, DiffHelper.computeVerbosity(args));
+                    boolean any = DiffHelper.diffWorkingTrees(leftClone, rightClone, globs, DiffHelper.computeVerbosity(args));
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -124,8 +126,12 @@ public class DiffCommand implements Command {
                 return 0;
             }
 
-            // Print clear source header: local dir :: (working tree)
-            System.out.println("Source: local :: " + left + "  vs  local :: " + right);
+            boolean truncate = !(args.contains("-v") || args.contains("-vv"));
+            String leftDisplay = "local :: " + (truncate ? FormatUtils.truncateMiddle(Utils.formatPath(left), 35) : Utils.formatPath(left));
+            String rightDisplay = "local :: " + (truncate ? FormatUtils.truncateMiddle(Utils.formatPath(right), 35) : Utils.formatPath(right));
+            System.out.println("Source:");
+            System.out.println("  A: " + leftDisplay);
+            System.out.println("  B: " + rightDisplay);
 
             boolean any = DiffHelper.diffWorkingTrees(left, right, globs, DiffHelper.computeVerbosity(args));
             if (!any) {
@@ -290,7 +296,7 @@ public class DiffCommand implements Command {
 
             if (hasRemote && hasLocalBranch) {
                 if (humanReadable && !noop) {
-                    printCompareSourceHeader(args, /*mode*/"local-vs-remote", localBranch, remoteUrlToUse, remoteBranch);
+                    printCompareSourceHeader(args, /*mode*/"local-vs-remote", repoRoot, localBranch, remoteUrlToUse, remoteBranch);
                 }
                 oldTreeId = resolveTree(repo, "refs/heads/" + localBranch);
                 newTreeId = resolveTree(repo, "refs/remotes/origin/" + remoteBranch);
@@ -312,8 +318,8 @@ public class DiffCommand implements Command {
 
             if (hasRemote) {
                 if (humanReadable && !noop) {
-                    printCompareSourceHeader(args, /*mode*/"remote-vs-working", localBranch, remoteUrlToUse, remoteBranch);
-                }
+                        printCompareSourceHeader(args, /*mode*/"remote-vs-working", repoRoot, localBranch, remoteUrlToUse, remoteBranch);
+                    }
                 oldTreeId = resolveTree(repo, "refs/remotes/origin/" + remoteBranch);
                 if (oldTreeId == null) {
                     System.err.println("Error: Cannot resolve origin/" + remoteBranch);
@@ -333,7 +339,7 @@ public class DiffCommand implements Command {
 
             // Default: local ref vs working tree (switch state)
             if (humanReadable && !noop) {
-                printCompareSourceHeader(args, /*mode*/"local-vs-working", localBranch, remoteUrlToUse, remoteBranch);
+                printCompareSourceHeader(args, /*mode*/"local-vs-working", repoRoot, localBranch, remoteUrlToUse, remoteBranch);
             }
             String ref = hasLocalBranch ? ("refs/heads/" + localBranch) : ("refs/heads/" + switchLocalBranch);
             oldTreeId = resolveTree(repo, ref);
@@ -798,28 +804,49 @@ public class DiffCommand implements Command {
         return any;
     }
 
-    private static void printCompareSourceHeader(List<String> args, String mode, String localBranch, String remoteUrl, String remoteBranch) {
-        // mode: "local-vs-remote", "remote-vs-working", "local-vs-working"
+    private static void printCompareSourceHeader(List<String> args, String mode, Path repoRoot, String localBranch, String remoteUrl, String remoteBranch) {
+        // Print A/B source lines on separate lines. Truncate paths/URLs in default mode
+        // to match the compact status/switch output; do not truncate when -v or -vv present.
+        boolean truncate = !(args.contains("-v") || args.contains("-vv"));
+
+        String localPath = (repoRoot == null) ? "(unknown)" : Utils.formatPath(repoRoot);
+        String displayLocalPath = truncate ? FormatUtils.truncateMiddle(localPath, 35) : localPath;
+        try {
+            Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
+            if (repoRoot != null && cwd.equals(repoRoot.toAbsolutePath().normalize())) {
+                displayLocalPath = "(workspace)";
+            }
+        } catch (Exception ignored) {
+            // ignore and keep displayLocalPath as-is
+        }
+
+        String displayRemoteUrl = FormatUtils.normalizeRemoteUrlForDisplay(remoteUrl == null ? "" : remoteUrl);
+        displayRemoteUrl = truncate ? FormatUtils.truncateMiddle(displayRemoteUrl, 35) : displayRemoteUrl;
+
         switch (mode) {
             case "local-vs-remote": {
-                String localLabel = (args.contains("-lb") || args.contains("-bb")) ? "local" : "local (default)";
-                String remoteLabel = (args.contains("-rr") || args.contains("-rb")) ? "remote" : "remote (default)";
-                String left = "local :: " + (localBranch == null ? "main" : localBranch);
-                String right = "remote :: " + ((remoteUrl == null) ? "(none)" : remoteUrl) + " :: " + (remoteBranch == null ? "main" : remoteBranch);
-                System.out.println("Source: " + left + "  vs  " + right);
+                String left = "local :: " + displayLocalPath + " :: " + ((localBranch == null || localBranch.isBlank()) ? "main" : localBranch);
+                String right = "remote :: " + (displayRemoteUrl.isBlank() ? "(none)" : displayRemoteUrl) + " :: " + ((remoteBranch == null || remoteBranch.isBlank()) ? "main" : remoteBranch);
+                System.out.println("Source:");
+                System.out.println("  A: " + left);
+                System.out.println("  B: " + right);
                 break;
             }
             case "remote-vs-working": {
-                String left = "remote :: " + ((remoteUrl == null) ? "(none)" : remoteUrl) + " :: " + (remoteBranch == null ? "main" : remoteBranch);
+                String left = "remote :: " + (displayRemoteUrl.isBlank() ? "(none)" : displayRemoteUrl) + " :: " + ((remoteBranch == null || remoteBranch.isBlank()) ? "main" : remoteBranch);
                 String right = "working :: (working tree)";
-                System.out.println("Source: " + left + "  vs  " + right);
+                System.out.println("Source:");
+                System.out.println("  A: " + left);
+                System.out.println("  B: " + right);
                 break;
             }
             case "local-vs-working":
             default: {
-                String left = "local :: " + ((localBranch == null || localBranch.isBlank()) ? "main" : localBranch);
+                String left = "local :: " + displayLocalPath + " :: " + ((localBranch == null || localBranch.isBlank()) ? "main" : localBranch);
                 String right = "working :: (working tree)";
-                System.out.println("Source: " + left + "  vs  " + right);
+                System.out.println("Source:");
+                System.out.println("  A: " + left);
+                System.out.println("  B: " + right);
                 break;
             }
         }
