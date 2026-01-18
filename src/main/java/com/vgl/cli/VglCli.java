@@ -243,6 +243,12 @@ public final class VglCli {
         @Option(names = "-rb", paramLabel = "BRANCH", arity = "0..1", fallbackValue = "")
         List<String> remoteBranches;
 
+        @Option(names = "-v")
+        boolean verbose;
+
+        @Option(names = "-vv")
+        boolean veryVerbose;
+
         @picocli.CommandLine.Parameters(arity = "0..*", paramLabel = "GLOB|*")
         List<String> globs;
 
@@ -295,6 +301,12 @@ public final class VglCli {
             }
             if (globs != null) {
                 forwarded.addAll(globs);
+            }
+
+            if (veryVerbose) {
+                forwarded.add("-vv");
+            } else if (verbose) {
+                forwarded.add("-v");
             }
 
             return new DiffCommand().run(forwarded);

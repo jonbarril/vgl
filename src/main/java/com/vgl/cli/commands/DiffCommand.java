@@ -802,22 +802,24 @@ public class DiffCommand implements Command {
         // mode: "local-vs-remote", "remote-vs-working", "local-vs-working"
         switch (mode) {
             case "local-vs-remote": {
-                String localLabel = (args.contains("-lb") || args.contains("-bb")) ? "local (explicit)" : "local (default)";
-                String remoteLabel = (args.contains("-rr") || args.contains("-rb")) ? "remote (explicit)" : "remote (default)";
-                System.out.println("Source: " + localLabel + " (branch: " + (localBranch == null ? "main" : localBranch) + ") vs "
-                    + remoteLabel + " (url: " + (remoteUrl == null ? "(none)" : remoteUrl) + ", branch: " + (remoteBranch == null ? "main" : remoteBranch) + ")");
+                String localLabel = (args.contains("-lb") || args.contains("-bb")) ? "local" : "local (default)";
+                String remoteLabel = (args.contains("-rr") || args.contains("-rb")) ? "remote" : "remote (default)";
+                String left = "local :: " + (localBranch == null ? "main" : localBranch);
+                String right = "remote :: " + ((remoteUrl == null) ? "(none)" : remoteUrl) + " :: " + (remoteBranch == null ? "main" : remoteBranch);
+                System.out.println("Source: " + left + "  vs  " + right);
                 break;
             }
             case "remote-vs-working": {
-                String remoteLabel = (args.contains("-rr") || args.contains("-rb")) ? "remote (explicit)" : "remote (default)";
-                System.out.println("Source: " + remoteLabel + " (url: " + (remoteUrl == null ? "(none)" : remoteUrl) + ", branch: " + (remoteBranch == null ? "main" : remoteBranch) + ")");
+                String left = "remote :: " + ((remoteUrl == null) ? "(none)" : remoteUrl) + " :: " + (remoteBranch == null ? "main" : remoteBranch);
+                String right = "working :: (working tree)";
+                System.out.println("Source: " + left + "  vs  " + right);
                 break;
             }
             case "local-vs-working":
             default: {
-                String localLabel = (args.contains("-lb") || args.contains("-bb")) ? "local (explicit)" : "local (default)";
-                String branch = (localBranch == null || localBranch.isBlank()) ? "main" : localBranch;
-                System.out.println("Source: " + localLabel + " (branch: " + branch + ")");
+                String left = "local :: " + ((localBranch == null || localBranch.isBlank()) ? "main" : localBranch);
+                String right = "working :: (working tree)";
+                System.out.println("Source: " + left + "  vs  " + right);
                 break;
             }
         }
