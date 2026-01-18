@@ -39,7 +39,7 @@ class DiffCommandTest {
 
         try (UserDirOverride ignored = new UserDirOverride(repoDir);
             StdIoCapture io = new StdIoCapture()) {
-            assertThat(VglMain.run(new String[] {"diff", "file.txt"})).isEqualTo(0);
+            assertThat(VglMain.run(new String[] {"diff", "-v", "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
             assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
             assertThat(io.stdout()).contains("-one");
@@ -64,7 +64,7 @@ class DiffCommandTest {
 
         try (UserDirOverride ignored = new UserDirOverride(repoDir);
             StdIoCapture io = new StdIoCapture()) {
-            assertThat(VglMain.run(new String[] {"diff", "DrivetrainSubsystem.java"})).isEqualTo(0);
+            assertThat(VglMain.run(new String[] {"diff", "-v", "DrivetrainSubsystem.java"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
             assertThat(io.stdout()).contains("diff --git a/" + nested + " b/" + nested);
             assertThat(io.stdout()).contains("-one");
@@ -97,7 +97,7 @@ class DiffCommandTest {
 
         try (UserDirOverride ignored = new UserDirOverride(repoDir);
             StdIoCapture io = new StdIoCapture()) {
-            assertThat(VglMain.run(new String[] {"diff", "file.txt"})).isEqualTo(0);
+            assertThat(VglMain.run(new String[] {"diff", "-v", "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
             assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
             assertThat(io.stdout()).contains("-one");
@@ -125,7 +125,7 @@ class DiffCommandTest {
 
         try (UserDirOverride ignored = new UserDirOverride(repoDir);
             StdIoCapture io = new StdIoCapture()) {
-            assertThat(VglMain.run(new String[] {"diff", c1.getName(), c2.getName(), "file.txt"})).isEqualTo(0);
+            assertThat(VglMain.run(new String[] {"diff", "-v", c1.getName(), c2.getName(), "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
             assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
             assertThat(io.stdout()).contains("-one");
@@ -153,7 +153,7 @@ class DiffCommandTest {
 
         try (UserDirOverride ignored = new UserDirOverride(repoDir);
             StdIoCapture io = new StdIoCapture()) {
-            assertThat(VglMain.run(new String[] {"diff", "-lb", "main", "-lb", "split", "file.txt"})).isEqualTo(0);
+            assertThat(VglMain.run(new String[] {"diff", "-v", "-lb", "main", "-lb", "split", "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
             assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
             assertThat(io.stdout()).contains("-one");
@@ -172,7 +172,7 @@ class DiffCommandTest {
         RepoTestUtils.writeFile(repo2, "file.txt", "two\n");
 
         try (StdIoCapture io = new StdIoCapture()) {
-            assertThat(VglMain.run(new String[] {"diff", "-lr", repo1.toString(), "-lr", repo2.toString(), "file.txt"})).isEqualTo(0);
+            assertThat(VglMain.run(new String[] {"diff", "-v", "-lr", repo1.toString(), "-lr", repo2.toString(), "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
             assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
             assertThat(io.stdout()).contains("-one");
@@ -235,6 +235,7 @@ class DiffCommandTest {
                 VglMain.run(
                     new String[] {
                         "diff",
+                        "-v",
                         "-rr",
                         remote1.toUri().toString(),
                         "-rb",

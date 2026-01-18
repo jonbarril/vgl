@@ -30,7 +30,7 @@ public final class MergeOperations {
     }
 
     /**
-     * Checks if the working tree is dirty (has uncommitted changes).
+     * Checks if the workspace is dirty (has uncommitted changes).
      */
     public static boolean isWorkingTreeDirty(Status status) {
         return !status.getAdded().isEmpty()

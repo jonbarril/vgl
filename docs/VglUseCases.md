@@ -10,13 +10,21 @@ This document captures concrete user-facing use cases, edge cases, and the expec
 
 
 **VGL State and Arguments:**
-- **Vgl Concepts:** VGL concepts are loosely based on Gitless. Unlike Git, in Vgl there is no concept of staging. File changes in the working space are immediately eligible for commit to the local repo. As such Vgl files exist in three conceptual locations: workspace, local repo, and remote repo, with remote repo being optional. Users are allowed to operate using Git directly if desired, moving between Vgl and Git as needed. Thus Vgl must tolerate underlying changes to Git state. However, as with Gitless, the intent of Vgl is to divorce the user from the complexities and pitfalls of Git concepts and operation.
+- **Vgl Concepts:** VGL concepts are loosely based on Gitless. Unlike Git, in Vgl there is no concept of staging. File changes in the workspace are immediately eligible for commit to the local repo. As such Vgl files exist in three conceptual locations: workspace, local repo, and remote repo, with remote repo being optional. Users are allowed to operate using Git directly if desired, moving between Vgl and Git as needed. Thus Vgl must tolerate underlying changes to Git state. However, as with Gitless, the intent of Vgl is to divorce the user from the complexities and pitfalls of Git concepts and operation.
+
+- **Terminology (must be used consistently in messaging):**
+  - **CWD (current working directory):** Where the user runs `vgl`. The CWD may be inside the workspace; it is not necessarily the repo root.
+  - **Local repo:** The Git/VGL repository on the user’s machine. The “current local repo” is the closest ancestor repository resolved from the CWD.
+  - **Workspace:** The user’s working files on disk under the current local repo root (directory containing `.git` and/or `.vgl`), excluding nested repos. The workspace may contain uncommitted changes.
+  - **Local branch / local history:** The committed state (e.g. `HEAD`) inside the local repo. This is the “saved” history; it never includes uncommitted workspace changes.
+  - **Remote repo/branch:** A repository and branch not on the user’s machine. VGL can compare against it and can materialize it via `checkout`, but it is not itself a workspace until it exists on disk.
+
 - **VGL state:** VGL application state is maintained in the current repo `.vgl` file. The current VGL repo is always the one resolved from the user's current working directory (unless a command arg specifies one). 
 - **Repo context:** Specifies the working local and remote repo state. Also called the "switch state" as it is set and changed using the switch command.
 - Consists of the local repo path and branch name, and the remote repo URL and branch name.
-- By definition, the local repo is that resolved from the user current working directory.
-- **Repo Workspace**
-- The workspace of a repo (local or remote) consists of all files in that repo's root directory (i.e. directory containing a .git file) subtree.
+- By definition, the current local repo is that resolved from the user current working directory (CWD).
+- **Workspace scope**
+- The workspace consists of all files in the current local repo's root directory subtree (i.e. directory containing a `.git` and/or `.vgl`), excluding nested repositories.
 - Files inside nested repositories (directories that contain their own `.git`) are treated as Ignored for parent-level commands (e.g., status, glob expansion).
 - By changing local working directory the user may move up or down nested repo trees, with the current local repo being the closest ancestor repo resolved from the current working directory.
 - **Default args:** The default branch (i.e. no branch name specified) for local and remote repo creation is "main". Otherwise, commands that reference a local and/or remote repo/branch default to the current repo context in the VGL state.

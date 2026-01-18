@@ -2,11 +2,13 @@ package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.DiffHelper;
+import com.vgl.cli.utils.FormatUtils;
 import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
 import com.vgl.cli.utils.GlobUtils;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoResolver;
+import com.vgl.cli.utils.Utils;
 import com.vgl.cli.utils.VglConfig;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -37,12 +39,12 @@ import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 
 /**
- * Diff between the working tree and a local/remote reference.
+ * Diff between the workspace and a local/remote reference.
  *
  * <p>Supported modes (matches help text intent):
  * <ul>
- *   <li>Default: working tree vs HEAD</li>
- *   <li>-rb: working tree vs origin/&lt;branch&gt;</li>
+ *   <li>Default: workspace vs HEAD</li>
+ *   <li>-rb: workspace vs origin/&lt;branch&gt;</li>
  *   <li>-lb and -rb: local branch vs origin/&lt;branch&gt;</li>
  * </ul>
  */
@@ -65,7 +67,7 @@ public class DiffCommand implements Command {
 
         int verbosityLevel = args.contains("-vv") ? 2 : (args.contains("-v") ? 1 : 0);
 
-        // Remote-to-remote diff: `diff -rr URL0 -rb B0 -rr URL1 -rb B1` compares working trees via temp clones.
+        // Remote-to-remote diff: `diff -rr URL0 -rb B0 -rr URL1 -rb B1` compares workspaces via temp clones.
         List<String> remoteUrls = valuesAfterFlagAllAllowMissing(args, "-rr");
         List<String> remoteBranches = valuesAfterFlagAllDefaultMain(args, "-rb");
         if (remoteUrls.size() >= 2) {
@@ -114,7 +116,7 @@ public class DiffCommand implements Command {
             }
         }
 
-        // Cross-repo diff: `diff -lr R0 -lr R1` compares working trees.
+        // Cross-repo diff: `diff -lr R0 -lr R1` compares workspaces.
         List<Path> localRepoDirs = pathsAfterFlagAll(args, "-lr");
         if (localRepoDirs.size() >= 2) {
             Path left = localRepoDirs.get(0).toAbsolutePath().normalize();
@@ -225,8 +227,8 @@ public class DiffCommand implements Command {
             }
         }
 
-        // Fall back to the original single-endpoint modes (working tree vs local/remote reference).
-        // Default behavior: working tree vs local repo/branch from switch state.
+        // Fall back to the original single-endpoint modes (workspace vs local/remote reference).
+        // Default behavior: workspace vs local repo/branch from switch state.
         List<String> globs = positionals.isEmpty() ? List.of("*") : positionals;
 
         Properties vglProps = VglConfig.readProps(repoRoot);
@@ -337,7 +339,7 @@ public class DiffCommand implements Command {
                 return 0;
             }
 
-            // Default: local ref vs working tree (switch state)
+            // Default: local ref vs workspace (switch state)
             if (humanReadable && !noop) {
                 printCompareSourceHeader(args, /*mode*/"local-vs-working", repoRoot, localBranch, remoteUrlToUse, remoteBranch);
             }
@@ -811,14 +813,6 @@ public class DiffCommand implements Command {
 
         String localPath = (repoRoot == null) ? "(unknown)" : Utils.formatPath(repoRoot);
         String displayLocalPath = truncate ? FormatUtils.truncateMiddle(localPath, 35) : localPath;
-        try {
-            Path cwd = Path.of(System.getProperty("user.dir")).toAbsolutePath().normalize();
-            if (repoRoot != null && cwd.equals(repoRoot.toAbsolutePath().normalize())) {
-                displayLocalPath = "(workspace)";
-            }
-        } catch (Exception ignored) {
-            // ignore and keep displayLocalPath as-is
-        }
 
         String displayRemoteUrl = FormatUtils.normalizeRemoteUrlForDisplay(remoteUrl == null ? "" : remoteUrl);
         displayRemoteUrl = truncate ? FormatUtils.truncateMiddle(displayRemoteUrl, 35) : displayRemoteUrl;
@@ -834,7 +828,7 @@ public class DiffCommand implements Command {
             }
             case "remote-vs-working": {
                 String left = "remote :: " + (displayRemoteUrl.isBlank() ? "(none)" : displayRemoteUrl) + " :: " + ((remoteBranch == null || remoteBranch.isBlank()) ? "main" : remoteBranch);
-                String right = "working :: (working tree)";
+                String right = "workspace :: (workspace)";
                 System.out.println("Source:");
                 System.out.println("  A: " + left);
                 System.out.println("  B: " + right);
@@ -843,7 +837,7 @@ public class DiffCommand implements Command {
             case "local-vs-working":
             default: {
                 String left = "local :: " + displayLocalPath + " :: " + ((localBranch == null || localBranch.isBlank()) ? "main" : localBranch);
-                String right = "working :: (working tree)";
+                String right = "workspace :: (workspace)";
                 System.out.println("Source:");
                 System.out.println("  A: " + left);
                 System.out.println("  B: " + right);

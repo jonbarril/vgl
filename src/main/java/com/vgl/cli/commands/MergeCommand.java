@@ -77,9 +77,9 @@ public class MergeCommand implements Command {
 
             Status status = git.status().call();
             
-            // Check for dirty working tree - merge requires clean state
+            // Check for dirty workspace - merge requires clean state
             if (MergeOperations.isWorkingTreeDirty(status)) {
-                System.err.println("Error: Working tree has uncommitted changes.");
+                System.err.println("Error: Workspace has uncommitted changes.");
                 return 1;
             }
 
