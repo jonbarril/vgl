@@ -266,6 +266,9 @@ public final class DiffHelper {
             // Use the explicit file list as the filtering set.
             globs = resolved;
             matchedFiles = resolved.size();
+            // Delineate resolved-files from the upcoming changed-files output.
+            System.out.println();
+            System.out.println("Changed files:");
         }
 
         Map<String, byte[]> left = snapshotFiles(leftRoot, globs);
@@ -360,7 +363,7 @@ public final class DiffHelper {
                 }
             } else {
                 printHumanReadableDiff(at, bt, edits);
-                System.out.println();
+                if (edits != null && !edits.isEmpty()) System.out.println();
             }
         }
         return any;
@@ -389,6 +392,9 @@ public final class DiffHelper {
                             }
                             globs = resolved;
                             matchedFiles = resolved.size();
+                            // Delineate resolved-files from the upcoming changed-files output.
+                            System.out.println();
+                            System.out.println("Changed files:");
                         }
                     } catch (IOException ignored) {
                         // Fall back to pattern matching if expansion fails
@@ -520,7 +526,7 @@ public final class DiffHelper {
                             dfOut.format(d);
                         } else {
                             printHumanReadableDiff(at, bt, edits2);
-                            System.out.println();
+                            if (edits2 != null && !edits2.isEmpty()) System.out.println();
                         }
                     }
                 }
@@ -550,6 +556,9 @@ public final class DiffHelper {
                             }
                             globs = resolved;
                             matchedFiles = resolved.size();
+                            // Delineate resolved-files from the upcoming changed-files output.
+                            System.out.println();
+                            System.out.println("Changed files:");
                         }
                     } catch (IOException ignored) {
                         // Fall back to pattern matching if expansion fails
@@ -718,6 +727,9 @@ public final class DiffHelper {
                             }
                             globs = resolved;
                             matchedFiles = resolved.size();
+                            // Delineate resolved-files from the upcoming changed-files output.
+                            System.out.println();
+                            System.out.println("Changed files:");
                         }
                     } catch (IOException ignored) {
                         // Fall back to pattern matching if expansion fails
@@ -856,7 +868,7 @@ public final class DiffHelper {
                         HistogramDiff alg2 = new HistogramDiff();
                         EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                         printHumanReadableDiff(at, bt, edits2);
-                        System.out.println();
+                        if (edits2 != null && !edits2.isEmpty()) System.out.println();
                     }
                 }
             }
@@ -927,7 +939,7 @@ public final class DiffHelper {
             }
         } else {
             printHumanReadableDiff(at, bt, edits);
-            System.out.println();
+            if (edits != null && !edits.isEmpty()) System.out.println();
         }
     }
 
