@@ -104,6 +104,19 @@ This document captures concrete user-facing use cases, edge cases, and the expec
   - **Section Flags** The output can be filtered to show only requested sections by including one or more section flags (in addition to -v and -vv): -context, -changes, -history, -files.
     - The -context flag can accept an optional URL argument; with a URL it runs remote discovery instead of printing the current context.
 
+    
+**Diff command**
+- **Overview:** Compares any two sources with default/-v/-vv exposing greater detail. A source can be the workspace, local repo/branch, remote repo/branch. The scope is all files/dirs, with glob filtering scope to the matching files.
+- **Source Number:** Sources specification can be none, one or two.
+  - If none, source A is the workspace and source B is the local repo/branch.
+  - If one, source A is the workspace.
+  - if two, source A and B are as specified.
+- **Source Spec:** A specified source can be a commit (commit hash) or a combination of local/remote flags and optional args.
+  - A flag with no arg defaults to that in the current switch state.
+  - A branch flag implies a local/remote source (e.g. -lb or -lb <branch> specifies the current or given branch in the current local repo as the source).
+  - -lr and/or -lb specify a local repo and branch as a source.
+  - -rr and/or -rb specify a remote repo and branch as a source.
+
 **Help command**
 -Goal
   - Rewrite the vgl help output to be user-centric, predictable, and low-cognitive-load, while accurately reflecting vgl’s actual behavior.

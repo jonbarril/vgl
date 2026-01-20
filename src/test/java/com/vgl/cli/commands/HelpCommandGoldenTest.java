@@ -77,6 +77,12 @@ class HelpCommandGoldenTest {
         assertThat(normalize(out)).isEqualTo(normalize(loadResourceText("help.create.txt")));
     }
 
+    @Test
+    void help_diffOutput_isStable() throws Exception {
+        new HelpCommand().run(List.of("diff"));
+        assertThat(normalize(out)).isEqualTo(normalize(loadResourceText("help.diff.txt")));
+    }
+
     private static String normalize(ByteArrayOutputStream out) {
         return normalize(out.toString(StandardCharsets.UTF_8));
     }

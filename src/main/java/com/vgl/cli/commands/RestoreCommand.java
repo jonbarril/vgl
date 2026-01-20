@@ -2,8 +2,8 @@ package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.StatusVerboseOutput;
-import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
+import com.vgl.cli.utils.GitRemoteOps;
 import com.vgl.cli.utils.GlobUtils;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoResolver;
@@ -79,16 +79,24 @@ public class RestoreCommand implements Command {
         try (Git git = GitUtils.openGit(repoRoot)) {
             Repository repo = git.getRepository();
 
+            boolean remoteFetchAuthBlocked = false;
+
             if (useRemote) {
                 try {
-                    GitAuth.applyCredentialsIfPresent(git.fetch().setRemote("origin")).call();
-                } catch (Exception ignored) {
-                    // best-effort
+                    String originUrl = GitRemoteOps.ensureOriginConfigured(repo, vglProps.getProperty(VglConfig.KEY_REMOTE_URL, ""));
+                    GitRemoteOps.FetchOutcome outcome = GitRemoteOps.fetchOrigin(repoRoot, git, originUrl, /*required*/false, System.err);
+                    remoteFetchAuthBlocked = outcome == GitRemoteOps.FetchOutcome.AUTH_FAILED;
+                } catch (Exception e) {
+                    // best-effort (but we'll surface a better hint if resolution fails below)
                 }
             }
 
             ObjectId treeId = repo.resolve(treeish + "^{tree}");
             if (treeId == null) {
+                if (useRemote && remoteFetchAuthBlocked) {
+                    // We already printed the auth hint.
+                    return 1;
+                }
                 System.err.println("Error: Cannot resolve " + treeish);
                 return 1;
             }

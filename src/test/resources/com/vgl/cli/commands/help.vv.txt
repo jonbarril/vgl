@@ -16,13 +16,22 @@ Understanding vgl:
     - Current remote repo URL and branch name (optional).
     - Use switch to show or set context.
 
+  Diff (sources)
+    - diff compares source A and source B.
+    - If 0 sources: A is the workspace; B is the local branch (switch state).
+    - If 1 source: A is the workspace; B is the specified source.
+    - If 2 sources: A and B are as specified.
+    - A specified source can be a COMMIT, or local/remote flags (-lr/-lb/-rr/-rb).
+    - A flag with no argument defaults to switch state (or 'main' where applicable).
+    - Globs filter which files are compared.
+
   Undecided files
     - Files not yet explicitly tracked, untracked, or ignored.
     - Applies to new and existing files.
     - Once decided, cannot revert to undecided.
 
   Command guarantees
-    - status: observe only; never changes workspace files
+    - status/diff/log: observe only; never changes workspace files
     - switch: sets context; -lb switches files; -rr/-rb never switch files
     - commit: saves workspace changes to local history only
     - checkout: creates a working copy of a remote repo

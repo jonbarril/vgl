@@ -86,6 +86,40 @@ public final class GitNative {
         return out;
     }
 
+    /**
+     * Fetches updates for an existing repo working tree.
+     */
+    public static void fetch(Path workingDir, String remoteName) throws IOException {
+        if (workingDir == null) {
+            throw new IllegalArgumentException("workingDir is null");
+        }
+        String r = (remoteName == null || remoteName.isBlank()) ? "origin" : remoteName;
+
+        List<String> cmd = List.of("git", "fetch", "--quiet", r);
+        ExecResult result = exec(cmd, workingDir);
+        if (result.exitCode != 0) {
+            throw new IOException(failureMessage("git fetch", result));
+        }
+    }
+
+    /**
+     * Pushes a refspec (localBranch -> remoteBranch).
+     */
+    public static void push(Path workingDir, String remoteName, String localBranch, String remoteBranch) throws IOException {
+        if (workingDir == null) {
+            throw new IllegalArgumentException("workingDir is null");
+        }
+        String r = (remoteName == null || remoteName.isBlank()) ? "origin" : remoteName;
+        String lb = (localBranch == null || localBranch.isBlank()) ? "main" : localBranch;
+        String rb = (remoteBranch == null || remoteBranch.isBlank()) ? lb : remoteBranch;
+
+        List<String> cmd = List.of("git", "push", "--quiet", r, lb + ":" + rb);
+        ExecResult result = exec(cmd, workingDir);
+        if (result.exitCode != 0) {
+            throw new IOException(failureMessage("git push", result));
+        }
+    }
+
     private static String failureMessage(String label, ExecResult r) {
         String stderr = (r.stderr == null) ? "" : r.stderr.trim();
         String stdout = (r.stdout == null) ? "" : r.stdout.trim();

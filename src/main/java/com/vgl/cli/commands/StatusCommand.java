@@ -5,7 +5,7 @@ import com.vgl.cli.commands.helpers.StatusVerboseOutput;
 import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.FormatUtils;
 import com.vgl.cli.utils.GitUtils;
-import com.vgl.cli.utils.GitNative;
+import com.vgl.cli.utils.GitRemoteOps;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.utils.RepoValidation;
@@ -18,7 +18,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -93,6 +92,18 @@ public class StatusCommand implements Command {
         String remoteBranch = vglProps.getProperty("remote.branch", "main");
 
         try (Git git = GitUtils.openGit(repoRoot)) {
+            // Best-effort refresh of origin/* so remote commit deltas are accurate.
+            // Prefer native git when available so users' credential helpers (e.g. Git Credential Manager) work.
+            try {
+                Repository repo = git.getRepository();
+                String originUrl = GitRemoteOps.ensureOriginConfigured(repo, remoteUrl);
+                if (originUrl != null && !originUrl.isBlank()) {
+                    GitRemoteOps.fetchOrigin(repoRoot, git, originUrl, /*required*/false, System.err);
+                }
+            } catch (Exception ignored) {
+                // best-effort
+            }
+
             String gitBranch = safeGitBranch(git.getRepository());
             String localBranch = (gitBranch != null && !gitBranch.isBlank()) ? gitBranch : vglLocalBranch;
 
@@ -191,8 +202,11 @@ public class StatusCommand implements Command {
 
         try {
             // Prefer native git so existing credential helpers work.
-            if (GitNative.isGitAvailable()) {
-                List<String> branches = GitNative.listRemoteHeads(remote);
+            {
+                List<String> branches = GitRemoteOps.listRemoteHeads(remote, System.err);
+                if (branches == null) {
+                    return 1;
+                }
                 System.out.println("Branches:");
                 if (branches.isEmpty()) {
                     System.out.println("  (none)");
@@ -203,50 +217,6 @@ public class StatusCommand implements Command {
                 System.out.println("Then: vgl switch -rr " + remote + " -rb <branch>");
                 return 0;
             }
-
-            Collection<Ref> refs;
-            try {
-                refs = GitAuth.applyCredentialsIfPresent(Git.lsRemoteRepository()
-                    .setRemote(remote)
-                    .setHeads(true)
-                    .setTags(false))
-                    .call();
-            } catch (Exception e) {
-                String msg = e.getMessage();
-                if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
-                    System.err.println("ERROR: Authentication required to access:");
-                    System.err.println("  " + remote);
-                    System.err.println("");
-                    System.err.println(GitAuth.authSetupHint(remote));
-                    return 1;
-                }
-                throw e;
-            }
-
-            List<String> branches = new ArrayList<>();
-            if (refs != null) {
-                for (Ref ref : refs) {
-                    if (ref == null || ref.getName() == null) {
-                        continue;
-                    }
-                    String name = ref.getName();
-                    if (name.startsWith(Constants.R_HEADS)) {
-                        branches.add(name.substring(Constants.R_HEADS.length()));
-                    }
-                }
-            }
-            java.util.Collections.sort(branches);
-
-            System.out.println("Branches:");
-            if (branches.isEmpty()) {
-                System.out.println("  (none)");
-            } else {
-                StatusVerboseOutput.printWrappedColumns(branches, "  ");
-            }
-
-            System.out.println();
-            System.out.println("Then: vgl switch -rr " + remote + " -rb <branch>");
-            return 0;
         } catch (Exception e) {
             System.err.println("Could not discover remote branches at: " + remote);
             System.err.println("Reason: " + e.getMessage());

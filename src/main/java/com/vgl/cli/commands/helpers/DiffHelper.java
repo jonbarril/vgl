@@ -661,6 +661,173 @@ public final class DiffHelper {
         return any;
     }
 
+    public static boolean diffWorkingToTree(Repository repo, FileTreeIterator workingTree, ObjectId newTreeId, List<String> globs, Verbosity v) throws Exception {
+        boolean any = false;
+        try (ObjectReader reader = repo.newObjectReader()) {
+            CanonicalTreeParser newTree = new CanonicalTreeParser();
+            newTree.reset(reader, newTreeId);
+            try (DiffFormatter df = new DiffFormatter(OutputStream.nullOutputStream())) {
+                df.setRepository(repo);
+                df.setDetectRenames(true);
+
+                // If globs provided, expand them against the repo work tree for clarity.
+                int matchedFiles = -1;
+                if (globs != null && !globs.isEmpty()) {
+                    try {
+                        Path repoRoot = repo.getWorkTree() == null ? null : repo.getWorkTree().toPath();
+                        if (repoRoot != null) {
+                            List<String> resolved = GlobUtils.resolveGlobs(globs, repoRoot, System.out);
+                            if (resolved.isEmpty()) {
+                                return false;
+                            }
+                            globs = resolved;
+                            matchedFiles = resolved.size();
+                        }
+                    } catch (IOException ignored) {
+                        // Fall back to pattern matching if expansion fails
+                    }
+                }
+
+                List<DiffEntry> diffs = df.scan(workingTree, newTree);
+                if (v == Verbosity.SUMMARY) {
+                    DiffSummary s = new DiffSummary();
+                    for (DiffEntry d : diffs) {
+                        if (!GlobUtils.matchesAny(d.getOldPath(), globs) && !GlobUtils.matchesAny(d.getNewPath(), globs)) {
+                            continue;
+                        }
+                        any = true;
+
+                        String oldPath = (d.getOldPath() == null) ? "/dev/null" : d.getOldPath();
+                        String newPath = (d.getNewPath() == null) ? "/dev/null" : d.getNewPath();
+
+                        byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readWorkingFileOrNull(repo, oldPath);
+                        byte[] newBytes = "/dev/null".equals(newPath) ? null : readBlobOrNull(repo, d.getNewId().toObjectId());
+
+                        int added = 0;
+                        int removed = 0;
+                        int blocks = 0;
+                        if (oldBytes != null && newBytes != null) {
+                            RawText at = new RawText(oldBytes);
+                            RawText bt = new RawText(newBytes);
+                            HistogramDiff alg2 = new HistogramDiff();
+                            EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
+                            blocks = edits2.size();
+                            for (Edit e : edits2) {
+                                removed += Math.max(0, e.getEndA() - e.getBeginA());
+                                added += Math.max(0, e.getEndB() - e.getBeginB());
+                            }
+                        } else if (oldBytes == null) {
+                            added = countLines(newBytes);
+                            blocks = (added > 0) ? 1 : 0;
+                        } else {
+                            removed = countLines(oldBytes);
+                            blocks = (removed > 0) ? 1 : 0;
+                        }
+
+                        String path = d.getNewPath();
+                        if (path == null || path.equals("/dev/null")) {
+                            path = d.getOldPath();
+                        }
+                        s.perFileCounts.put(path, new int[] {added, removed});
+                        s.perFileBlocks.put(path, blocks);
+                        s.perFileKind.put(path, toKind(d.getChangeType()));
+                        s.totalAdded += added;
+                        s.totalRemoved += removed;
+                    }
+                    if (!any) {
+                        return false;
+                    }
+                    printSummary(System.out, s, matchedFiles);
+                    return true;
+                }
+
+                DiffSummary s = new DiffSummary();
+                List<DiffEntry> matched = new ArrayList<>();
+                for (DiffEntry d : diffs) {
+                    if (!GlobUtils.matchesAny(d.getOldPath(), globs) && !GlobUtils.matchesAny(d.getNewPath(), globs)) {
+                        continue;
+                    }
+                    matched.add(d);
+
+                    String oldPath = (d.getOldPath() == null) ? "/dev/null" : d.getOldPath();
+                    String newPath = (d.getNewPath() == null) ? "/dev/null" : d.getNewPath();
+
+                    byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readWorkingFileOrNull(repo, oldPath);
+                    byte[] newBytes = "/dev/null".equals(newPath) ? null : readBlobOrNull(repo, d.getNewId().toObjectId());
+
+                    int added = 0;
+                    int removed = 0;
+                    int blocks = 0;
+                    if (oldBytes != null && newBytes != null) {
+                        RawText at = new RawText(oldBytes);
+                        RawText bt = new RawText(newBytes);
+                        HistogramDiff alg2 = new HistogramDiff();
+                        EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
+                        blocks = edits2.size();
+                        for (Edit e : edits2) {
+                            removed += Math.max(0, e.getEndA() - e.getBeginA());
+                            added += Math.max(0, e.getEndB() - e.getBeginB());
+                        }
+                    } else if (oldBytes == null) {
+                        added = countLines(newBytes);
+                        blocks = (added > 0) ? 1 : 0;
+                    } else {
+                        removed = countLines(oldBytes);
+                        blocks = (removed > 0) ? 1 : 0;
+                    }
+
+                    String path = d.getNewPath();
+                    if (path == null || path.equals("/dev/null")) path = d.getOldPath();
+                    s.perFileCounts.put(path, new int[] {added, removed});
+                    s.perFileBlocks.put(path, blocks);
+                    s.perFileKind.put(path, toKind(d.getChangeType()));
+                    s.totalAdded += added;
+                    s.totalRemoved += removed;
+                }
+
+                if (matched.isEmpty()) {
+                    return false;
+                }
+
+                for (DiffEntry d : matched) {
+                    any = true;
+                    String path = d.getNewPath();
+                    if (path == null || path.equals("/dev/null")) {
+                        path = d.getOldPath();
+                    }
+
+                    int[] counts = s.perFileCounts.get(path);
+                    int added = (counts == null) ? 0 : counts[0];
+                    int removed = (counts == null) ? 0 : counts[1];
+                    int blocks = s.perFileBlocks.getOrDefault(path, 0);
+                    FileChangeKind kind = toKind(d.getChangeType());
+                    printFileSummary(System.out, kind, path, added, removed, blocks);
+
+                    if (v == Verbosity.RAW) {
+                        try (DiffFormatter dfOut = new DiffFormatter(System.out)) {
+                            dfOut.setRepository(repo);
+                            dfOut.setDetectRenames(true);
+                            dfOut.format(d);
+                        }
+                    } else {
+                        String oldPath = (d.getOldPath() == null) ? "/dev/null" : d.getOldPath();
+                        String newPath = (d.getNewPath() == null) ? "/dev/null" : d.getNewPath();
+                        byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readWorkingFileOrNull(repo, oldPath);
+                        byte[] newBytes = "/dev/null".equals(newPath) ? null : readBlobOrNull(repo, d.getNewId().toObjectId());
+
+                        RawText at = new RawText(oldBytes != null ? oldBytes : new byte[0]);
+                        RawText bt = new RawText(newBytes != null ? newBytes : new byte[0]);
+                        HistogramDiff alg2 = new HistogramDiff();
+                        EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
+                        printHumanReadableDiff(at, bt, edits2);
+                        System.out.println();
+                    }
+                }
+            }
+        }
+        return any;
+    }
+
     private static byte[] readBlobOrNull(Repository repo, ObjectId id) {
         if (repo == null || id == null || ObjectId.zeroId().equals(id)) {
             return null;

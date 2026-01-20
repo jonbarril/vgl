@@ -54,6 +54,12 @@ public class LogCommand implements Command {
 
             int maxCount = verbose ? 50 : 10;
 
+            // If a commit is specified, behave like a commit lookup (single result) rather than
+            // showing the entire history reachable from that commit.
+            if (commitArg != null) {
+                maxCount = 1;
+            }
+
             var logCmd = git.log().setMaxCount(maxCount);
             if (commitArg != null) {
                 ObjectId start = resolveCommitOrNull(git.getRepository(), commitArg);

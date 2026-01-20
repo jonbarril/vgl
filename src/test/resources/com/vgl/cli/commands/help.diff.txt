@@ -1,0 +1,30 @@
+Voodoo Gitless (TEST_VERSION) -- Git for mortals
+
+diff -- Compare files between any two sources
+
+Usage:
+  vgl diff [-v|-vv] [GLOB...]
+  vgl diff [-v|-vv] COMMIT [GLOB...]
+  vgl diff [-v|-vv] COMMIT1 COMMIT2 [GLOB...]
+  vgl diff [-v|-vv] [GLOB...] [-lr DIR]... [-lb BRANCH]... [-rr URL]... [-rb BRANCH]...
+
+How sources work:
+  - 0 sources: A = workspace; B = local branch (switch state)
+  - 1 source:  A = workspace; B = the specified source
+  - 2 sources: A and B are as specified
+
+Sources:
+  - The workspace is always a valid source.
+  - COMMIT is a commit identifier.
+  - Local sources use -lr and/or -lb (default repo/branch come from CWD/switch state).
+  - Remote sources use -rr and/or -rb (default URL/branch come from switch state).
+
+Examples:
+  vgl diff                            Workspace vs HEAD
+  vgl diff COMMIT                      Workspace vs commit
+  vgl diff -lb main -lb feature       Local branch comparison
+  vgl diff -rb dev                    Workspace vs remote 'dev' (remote URL from switch state)
+  vgl diff -rr URL1 -rb main -rr URL2 -rb main  Remote-to-remote
+
+Notes:
+  - diff never changes files; it only reports differences

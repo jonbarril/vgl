@@ -2,7 +2,7 @@ package com.vgl.cli.commands;
 
 import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.StateChangeOutput;
-import com.vgl.cli.utils.GitAuth;
+import com.vgl.cli.utils.GitRemoteOps;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoUtils;
 import com.vgl.cli.utils.Utils;
@@ -10,7 +10,6 @@ import com.vgl.cli.utils.VglConfig;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import org.eclipse.jgit.api.Git;
 
 /**
  * Copy a repository for local use.
@@ -98,22 +97,9 @@ public class CopyCommand implements Command {
 
         Files.createDirectories(destDir);
 
-        try {
-            try (Git ignored = GitAuth.applyCredentialsIfPresent(Git.cloneRepository()
-                .setURI(sourceUri)
-                .setDirectory(destDir.toFile())
-                .setBranch("refs/heads/" + remoteBranch))
-                .call()) {
-                // cloned
-            }
-        } catch (Exception e) {
-            String msg = e.getMessage();
-            if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
-                System.err.println("ERROR: " + sourceUri + ": Authentication is required but no credentials are configured.");
-                System.err.println(GitAuth.authEnvHint());
-                return 1;
-            }
-            throw e;
+        boolean cloned = GitRemoteOps.cloneInto(destDir, sourceUri, remoteBranch, System.err);
+        if (!cloned) {
+            return 1;
         }
 
         // For local use, do not configure a VGL remote.

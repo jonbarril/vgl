@@ -28,8 +28,7 @@ Remote collaboration:
   abort
 
 Review:
-  diff [-noop] [GLOB] [-lr DIR]... [-lb BRANCH]... [-rr URL]... [-rb BRANCH]...
-  diff [-noop] COMMIT1 COMMIT2 [GLOB]
+  diff  [-v|-vv] [SOURCE] [SOURCE] [GLOB...]
   log [-v|-vv] [-graph] [COMMIT]
 
 Flag reference:
@@ -47,7 +46,9 @@ Notes:
   - Your current directory determines the local repo; use cd to change context
   - Flag -bb is mutually exclusive with -lb and -rb
   - Branch flags accept BRANCH or COMMIT id
-  - Glob patterns: *.ext, file?.txt, **/*.py, *.{a,b}
+  - GLOB is a glob pattern: *.ext, file?.txt, **/*.py, *.{a,b}
+  - COMMIT is a hash code, such as that returned by status or log
+  - diff accepts 0, 1, or 2 sources, SOURCE can be local, remote, or a commit
 
 Get more help:
   vgl help -vv         Show concepts and workflows

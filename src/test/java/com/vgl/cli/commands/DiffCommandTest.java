@@ -152,6 +152,36 @@ class DiffCommandTest {
     }
 
     @Test
+    void diff_showsDiffBetweenCommitAndWorkspace() throws Exception {
+        Path repoDir = tempDir.resolve("repo_commit_vs_ws");
+        RepoTestUtils.createVglRepo(repoDir);
+
+        PersonIdent ident = new PersonIdent("test", "test@example.com");
+        RevCommit c1;
+        try (Git git = Git.open(repoDir.toFile())) {
+            RepoTestUtils.writeFile(repoDir, "file.txt", "one\n");
+            git.add().addFilepattern("file.txt").call();
+            c1 = git.commit().setMessage("c1").setAuthor(ident).setCommitter(ident).call();
+        }
+
+        // Modify workspace after commit.
+        RepoTestUtils.writeFile(repoDir, "file.txt", "two\n");
+
+        try (UserDirOverride ignored = new UserDirOverride(repoDir);
+            StdIoCapture io = new StdIoCapture()) {
+            assertThat(VglMain.run(new String[] {"diff", "-v", c1.getName(), "file.txt"})).isEqualTo(0);
+            assertThat(io.stderr()).isEmpty();
+            String out = io.stdout();
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            int pathIndex = out.indexOf("file.txt", countsIndex);
+            assertThat(pathIndex).isGreaterThan(countsIndex);
+            assertThat(out).contains("- two");
+            assertThat(out).contains("+ one");
+        }
+    }
+
+    @Test
     void diff_showsDiffBetweenTwoLocalBranches() throws Exception {
         Path repoDir = tempDir.resolve("repo");
         RepoTestUtils.createVglRepo(repoDir);

@@ -4,6 +4,7 @@ import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.commands.helpers.MergeOperations;
 import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
+import com.vgl.cli.utils.GitRemoteOps;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoResolver;
 import com.vgl.cli.utils.VglConfig;
@@ -11,6 +12,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Properties;
 import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.api.MergeCommand;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.api.PullResult;
 import org.eclipse.jgit.api.Status;
@@ -49,13 +51,7 @@ public class PullCommand implements Command {
         try (Git git = GitUtils.openGit(repoRoot)) {
             Repository repo = git.getRepository();
             // Ensure origin exists if .vgl has a remote URL.
-            StoredConfig cfg = git.getRepository().getConfig();
-            String originUrl = cfg.getString("remote", "origin", "url");
-            if ((originUrl == null || originUrl.isBlank()) && vglRemoteUrl != null && !vglRemoteUrl.isBlank()) {
-                cfg.setString("remote", "origin", "url", vglRemoteUrl);
-                cfg.save();
-                originUrl = vglRemoteUrl;
-            }
+            String originUrl = GitRemoteOps.ensureOriginConfigured(repo, vglRemoteUrl);
             if (originUrl == null || originUrl.isBlank()) {
                 System.err.println(Messages.pushNoRemoteConfigured());
                 return 1;
@@ -64,7 +60,11 @@ public class PullCommand implements Command {
             Status status = git.status().call();
 
             // Fetch remote changes to analyze merge
-            GitAuth.applyCredentialsIfPresent(git.fetch().setRemote("origin")).call();
+            GitRemoteOps.FetchOutcome fetchOutcome = GitRemoteOps.fetchOrigin(repoRoot, git, originUrl, /*required*/true, System.err);
+            if (fetchOutcome == GitRemoteOps.FetchOutcome.AUTH_FAILED) {
+                return 1;
+            }
+            boolean fetchedViaNative = fetchOutcome == GitRemoteOps.FetchOutcome.OK_NATIVE;
             org.eclipse.jgit.lib.ObjectId remoteId = repo.resolve("refs/remotes/origin/" + remoteBranch);
             org.eclipse.jgit.lib.ObjectId headId = repo.resolve("HEAD");
 
@@ -93,9 +93,32 @@ public class PullCommand implements Command {
             }
 
             // Perform the pull
-            PullResult r = GitAuth.applyCredentialsIfPresent(
-                git.pull().setRemote("origin").setRemoteBranchName(remoteBranch)
-            ).call();
+            if (fetchedViaNative) {
+                MergeResult merge = git.merge()
+                    .setFastForward(MergeCommand.FastForwardMode.FF)
+                    .include(remoteId)
+                    .call();
+
+                if (merge != null && merge.getMergeStatus() != null && merge.getMergeStatus().isSuccessful()) {
+                    System.out.println(Messages.pullCompleted());
+                    return 0;
+                }
+
+                System.err.println(Messages.pullHadConflicts());
+                return 1;
+            }
+
+            PullResult r;
+            try {
+                r = GitAuth.applyCredentialsIfPresent(
+                    git.pull().setRemote("origin").setRemoteBranchName(remoteBranch)
+                ).call();
+            } catch (Exception e) {
+                if (GitAuth.handleMissingCredentialsProvider(e, originUrl, System.err)) {
+                    return 1;
+                }
+                throw e;
+            }
             if (r.isSuccessful()) {
                 System.out.println(Messages.pullCompleted());
                 return 0;

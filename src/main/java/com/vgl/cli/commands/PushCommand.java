@@ -3,6 +3,7 @@ package com.vgl.cli.commands;
 import com.vgl.cli.commands.helpers.ArgsHelper;
 import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
+import com.vgl.cli.utils.GitRemoteOps;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoResolver;
 import com.vgl.cli.utils.VglConfig;
@@ -13,8 +14,6 @@ import java.util.Set;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.lib.StoredConfig;
-import org.eclipse.jgit.transport.RefSpec;
 
 public class PushCommand implements Command {
     @Override
@@ -53,13 +52,7 @@ public class PushCommand implements Command {
             Repository repo = git.getRepository();
 
             // Ensure origin exists if .vgl has a remote URL.
-            StoredConfig cfg = repo.getConfig();
-            String originUrl = cfg.getString("remote", "origin", "url");
-            if ((originUrl == null || originUrl.isBlank()) && vglRemoteUrl != null && !vglRemoteUrl.isBlank()) {
-                cfg.setString("remote", "origin", "url", vglRemoteUrl);
-                cfg.save();
-                originUrl = vglRemoteUrl;
-            }
+            String originUrl = GitRemoteOps.ensureOriginConfigured(repo, vglRemoteUrl);
             if (originUrl == null || originUrl.isBlank()) {
                 System.err.println(Messages.pushNoRemoteConfigured());
                 return 1;
@@ -87,10 +80,10 @@ public class PushCommand implements Command {
                 localBranch = vglProps.getProperty(VglConfig.KEY_LOCAL_BRANCH, "main");
             }
 
-            GitAuth.applyCredentialsIfPresent(git.push()
-                .setRemote("origin")
-                .setRefSpecs(new RefSpec(localBranch + ":" + remoteBranch)))
-                .call();
+            boolean pushed = GitRemoteOps.push(repoRoot, git, originUrl, localBranch, remoteBranch, System.err);
+            if (!pushed) {
+                return 1;
+            }
 
             System.out.println(Messages.pushed());
             return 0;

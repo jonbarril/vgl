@@ -5,6 +5,7 @@ import com.vgl.cli.commands.helpers.DiffHelper;
 import com.vgl.cli.utils.FormatUtils;
 import com.vgl.cli.utils.GitAuth;
 import com.vgl.cli.utils.GitUtils;
+import com.vgl.cli.utils.GitRemoteOps;
 import com.vgl.cli.utils.GlobUtils;
 import com.vgl.cli.utils.Messages;
 import com.vgl.cli.utils.RepoResolver;
@@ -89,8 +90,28 @@ public class DiffCommand implements Command {
             Path leftClone = null;
             Path rightClone = null;
             try {
-                leftClone = cloneRemoteToTemp(url1, b1);
-                rightClone = cloneRemoteToTemp(url2, b2);
+                try {
+                    leftClone = cloneRemoteToTemp(url1, b1);
+                } catch (Exception e) {
+                    if (e instanceof IllegalStateException && "auth required".equals(e.getMessage())) {
+                        return 1;
+                    }
+                    if (GitAuth.handleMissingCredentialsProvider(e, url1, System.err)) {
+                        return 1;
+                    }
+                    throw e;
+                }
+                try {
+                    rightClone = cloneRemoteToTemp(url2, b2);
+                } catch (Exception e) {
+                    if (e instanceof IllegalStateException && "auth required".equals(e.getMessage())) {
+                        return 1;
+                    }
+                    if (GitAuth.handleMissingCredentialsProvider(e, url2, System.err)) {
+                        return 1;
+                    }
+                    throw e;
+                }
 
                     if (noop) {
                         int changed = countWorkingTreeDiffBetweenRoots(leftClone, rightClone, globs);
@@ -149,6 +170,48 @@ public class DiffCommand implements Command {
         Path repoRoot = RepoResolver.resolveRepoRootForCommand(startDir);
         if (repoRoot == null) {
             return 1;
+        }
+
+        // Commit-to-workspace diff: `diff COMMIT [GLOB ...]`.
+        if (positionals.size() >= 1 && isCommitish(positionals.get(0))
+            && !(positionals.size() >= 2 && isCommitish(positionals.get(1)))) {
+            String commit = positionals.get(0);
+            List<String> globs = (positionals.size() > 1) ? positionals.subList(1, positionals.size()) : List.of("*");
+            try (Git git = GitUtils.openGit(repoRoot)) {
+                Repository repo = git.getRepository();
+                ObjectId commitTreeId = resolveTree(repo, commit);
+                if (commitTreeId == null) {
+                    System.err.println("Error: Cannot resolve " + commit);
+                    return 1;
+                }
+
+                FileTreeIterator workingTree = new FileTreeIterator(repo);
+
+                boolean humanReadable = verbosityLevel < 2;
+                if (humanReadable && !noop) {
+                    // 1 source => A is workspace, B is the specified source
+                    boolean truncate = !(args.contains("-v") || args.contains("-vv"));
+                    String localPath = Utils.formatPath(repoRoot);
+                    String displayLocalPath = truncate ? FormatUtils.truncateMiddle(localPath, 35) : localPath;
+                    String shortCommit = (commit.length() <= 10) ? commit : commit.substring(0, 10);
+                    System.out.println("Source:");
+                    System.out.println("A: (workspace)");
+                    System.out.println("B: Local: " + displayLocalPath + " :: " + shortCommit);
+                }
+
+                DiffHelper.Verbosity dVerb = DiffHelper.computeVerbosity(args);
+                if (noop) {
+                    int changed = countWorkingToTreeDiff(repo, workingTree, commitTreeId, globs);
+                    System.out.println(Messages.diffDryRunSummary(changed));
+                    return 0;
+                }
+
+                boolean any = DiffHelper.diffWorkingToTree(repo, workingTree, commitTreeId, globs, dVerb);
+                if (!any) {
+                    System.out.println("No differences.");
+                }
+                return 0;
+            }
         }
 
         // Commit-to-commit diff: `diff COMMIT1 COMMIT2`.
@@ -283,7 +346,7 @@ public class DiffCommand implements Command {
                 configureOriginRemote(repo, remoteUrlToUse);
                 // best-effort fetch so origin/* exists for comparisons
                 try {
-                    git.fetch().setRemote("origin").call();
+                    GitRemoteOps.fetchOrigin(repoRoot, git, remoteUrlToUse, /*required*/false, System.err);
                 } catch (Exception ignored) {
                     // best-effort
                 }
@@ -385,23 +448,11 @@ public class DiffCommand implements Command {
         String b = (branch == null || branch.isBlank()) ? "main" : branch;
         Path base = tempBaseDir();
         Path dir = Files.createTempDirectory(base, "vgl-diff-remote-");
-        try {
-            try (Git ignored = GitAuth.applyCredentialsIfPresent(Git.cloneRepository()
-                .setURI(remoteUrl)
-                .setDirectory(dir.toFile())
-                .setBranch("refs/heads/" + b))
-                .call()) {
-                // cloned
-            }
-        } catch (Exception e) {
-            String msg = e.getMessage();
-            if (GitAuth.credentialsProviderFromEnvOrNull() == null && GitAuth.isMissingCredentialsProviderMessage(msg)) {
-                throw new IllegalStateException(
-                    "Authentication is required but no credentials are configured.\n" + GitAuth.authEnvHint(),
-                    e
-                );
-            }
-            throw e;
+        boolean ok = GitRemoteOps.cloneInto(dir, remoteUrl, b, System.err);
+        if (!ok) {
+            deleteTreeQuietly(dir);
+            // Auth was already reported; keep a consistent signal for callers.
+            throw new IllegalStateException("auth required");
         }
         return dir;
     }
@@ -481,6 +532,26 @@ public class DiffCommand implements Command {
                 df.setRepository(repo);
                 df.setDetectRenames(true);
                 List<DiffEntry> diffs = df.scan(oldTree, workingTree);
+                int count = 0;
+                for (DiffEntry d : diffs) {
+                    if (matchesAny(d, globs)) {
+                        count++;
+                    }
+                }
+                return count;
+            }
+        }
+    }
+
+    private static int countWorkingToTreeDiff(Repository repo, FileTreeIterator workingTree, ObjectId newTreeId, List<String> globs) throws Exception {
+        try (ObjectReader reader = repo.newObjectReader()) {
+            CanonicalTreeParser newTree = new CanonicalTreeParser();
+            newTree.reset(reader, newTreeId);
+
+            try (DiffFormatter df = new DiffFormatter(OutputStream.nullOutputStream())) {
+                df.setRepository(repo);
+                df.setDetectRenames(true);
+                List<DiffEntry> diffs = df.scan(workingTree, newTree);
                 int count = 0;
                 for (DiffEntry d : diffs) {
                     if (matchesAny(d, globs)) {
@@ -810,6 +881,18 @@ public class DiffCommand implements Command {
     }
 
     private static void printCompareSourceHeader(List<String> args, String mode, Path repoRoot, String localBranch, String remoteUrl, String remoteBranch) {
+        printCompareSourceHeader(args, mode, repoRoot, localBranch, remoteUrl, remoteBranch, null);
+    }
+
+    private static void printCompareSourceHeader(
+        List<String> args,
+        String mode,
+        Path repoRoot,
+        String localBranch,
+        String remoteUrl,
+        String remoteBranch,
+        String commit
+    ) {
         // Print A/B source lines on separate lines. Truncate paths/URLs in default mode
         // to match the compact status/switch output; do not truncate when -v or -vv present.
         boolean truncate = !(args.contains("-v") || args.contains("-vv"));
@@ -831,6 +914,15 @@ public class DiffCommand implements Command {
             }
             case "remote-vs-working": {
                 String left = "Remote: " + (displayRemoteUrl.isBlank() ? "(none)" : displayRemoteUrl) + " :: " + ((remoteBranch == null || remoteBranch.isBlank()) ? "main" : remoteBranch);
+                String right = "(workspace)";
+                System.out.println("Source:");
+                System.out.println("A: " + left);
+                System.out.println("B: " + right);
+                break;
+            }
+            case "commit-vs-working": {
+                String shortCommit = (commit == null) ? "(unknown)" : (commit.length() <= 10 ? commit : commit.substring(0, 10));
+                String left = "Local: " + displayLocalPath + " :: " + shortCommit;
                 String right = "(workspace)";
                 System.out.println("Source:");
                 System.out.println("A: " + left);
