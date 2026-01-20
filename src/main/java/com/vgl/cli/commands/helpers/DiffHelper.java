@@ -35,6 +35,36 @@ public final class DiffHelper {
         SUMMARY, HUMAN, RAW
     }
 
+    private static byte[] normalizeNewlines(byte[] in) {
+        if (in == null || in.length == 0) return in;
+        // Fast path: if no CR present, return original
+        boolean hasCR = false;
+        for (byte b : in) if (b == '\r') { hasCR = true; break; }
+        if (!hasCR) return in;
+
+        // Convert \r\n and lone \r to \n
+        byte[] out = new byte[in.length];
+        int wi = 0;
+        for (int i = 0; i < in.length; i++) {
+            byte b = in[i];
+            if (b == '\r') {
+                // If followed by \n, emit single \n and skip
+                if (i + 1 < in.length && in[i + 1] == '\n') {
+                    out[wi++] = (byte) '\n';
+                    i++; // skip \n
+                } else {
+                    out[wi++] = (byte) '\n';
+                }
+            } else {
+                out[wi++] = b;
+            }
+        }
+        if (wi == out.length) return out; // no shrink
+        byte[] shrunk = new byte[wi];
+        System.arraycopy(out, 0, shrunk, 0, wi);
+        return shrunk;
+    }
+
     public static Verbosity computeVerbosity(List<String> args) {
         if (args != null && args.contains("-vv")) {
             return Verbosity.RAW;
@@ -87,7 +117,13 @@ public final class DiffHelper {
             byte[] av = a == null ? null : a.get(rel);
             byte[] bv = b == null ? null : b.get(rel);
             if (av == null && bv == null) continue;
-            if (av != null && bv != null && java.util.Arrays.equals(av, bv)) continue;
+            // If both present, compare after normalizing newlines so CRLF/LF-only
+            // differences don't produce spurious change entries.
+            if (av != null && bv != null) {
+                byte[] an = normalizeNewlines(av);
+                byte[] bn = normalizeNewlines(bv);
+                if (java.util.Arrays.equals(an, bn)) continue;
+            } else if (av != null && bv != null && java.util.Arrays.equals(av, bv)) continue;
 
             FileChangeKind kind = (av == null) ? FileChangeKind.ADDED : (bv == null ? FileChangeKind.DELETED : FileChangeKind.MODIFIED);
 
@@ -95,8 +131,8 @@ public final class DiffHelper {
             int removed = 0;
             int blocks = 0;
             if (av != null && bv != null) {
-                RawText at = new RawText(av != null ? av : new byte[0]);
-                RawText bt = new RawText(bv != null ? bv : new byte[0]);
+                RawText at = new RawText(normalizeNewlines(av != null ? av : new byte[0]));
+                RawText bt = new RawText(normalizeNewlines(bv != null ? bv : new byte[0]));
                 HistogramDiff alg = new HistogramDiff();
                 EditList edits = alg.diff(RawTextComparator.DEFAULT, at, bt);
                 blocks = edits.size();
@@ -314,8 +350,8 @@ public final class DiffHelper {
                 System.out.println();
                 continue;
             }
-            RawText at = new RawText(a != null ? a : new byte[0]);
-            RawText bt = new RawText(b != null ? b : new byte[0]);
+            RawText at = new RawText(normalizeNewlines(a != null ? a : new byte[0]));
+            RawText bt = new RawText(normalizeNewlines(b != null ? b : new byte[0]));
             HistogramDiff alg = new HistogramDiff();
             EditList edits = alg.diff(RawTextComparator.DEFAULT, at, bt);
             if (v == Verbosity.RAW) {
@@ -372,8 +408,8 @@ public final class DiffHelper {
                         int removed = 0;
                         int blocks = 0;
                         if (oldBytes != null && newBytes != null) {
-                            RawText at = new RawText(oldBytes != null ? oldBytes : new byte[0]);
-                            RawText bt = new RawText(newBytes != null ? newBytes : new byte[0]);
+                            RawText at = new RawText(normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]));
+                            RawText bt = new RawText(normalizeNewlines(newBytes != null ? newBytes : new byte[0]));
                             HistogramDiff alg2 = new HistogramDiff();
                             EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                             blocks = edits2.size();
@@ -416,8 +452,8 @@ public final class DiffHelper {
                     int removed = 0;
                     int blocks = 0;
                     if (oldBytes != null && newBytes != null) {
-                        RawText at = new RawText(oldBytes != null ? oldBytes : new byte[0]);
-                        RawText bt = new RawText(newBytes != null ? newBytes : new byte[0]);
+                        RawText at = new RawText(normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]));
+                        RawText bt = new RawText(normalizeNewlines(newBytes != null ? newBytes : new byte[0]));
                         HistogramDiff alg2 = new HistogramDiff();
                         EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                         blocks = edits2.size();
@@ -476,8 +512,8 @@ public final class DiffHelper {
                         FileChangeKind kind = toKind(d.getChangeType());
                         printFileSummary(System.out, kind, path, added, removed, blocks);
 
-                        RawText at = new RawText(oldBytes != null ? oldBytes : new byte[0]);
-                        RawText bt = new RawText(newBytes != null ? newBytes : new byte[0]);
+                        RawText at = new RawText(normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]));
+                        RawText bt = new RawText(normalizeNewlines(newBytes != null ? newBytes : new byte[0]));
                         HistogramDiff alg2 = new HistogramDiff();
                         EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                         if (v == Verbosity.RAW) {
@@ -538,8 +574,8 @@ public final class DiffHelper {
                         int removed = 0;
                         int blocks = 0;
                         if (oldBytes != null && newBytes != null) {
-                            RawText at = new RawText(oldBytes != null ? oldBytes : new byte[0]);
-                            RawText bt = new RawText(newBytes != null ? newBytes : new byte[0]);
+                            RawText at = new RawText(normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]));
+                            RawText bt = new RawText(normalizeNewlines(newBytes != null ? newBytes : new byte[0]));
                             HistogramDiff alg2 = new HistogramDiff();
                             EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                             blocks = edits2.size();
@@ -589,8 +625,8 @@ public final class DiffHelper {
                     int removed = 0;
                     int blocks = 0;
                     if (oldBytes != null && newBytes != null) {
-                        RawText at = new RawText(oldBytes != null ? oldBytes : new byte[0]);
-                        RawText bt = new RawText(newBytes != null ? newBytes : new byte[0]);
+                        RawText at = new RawText(normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]));
+                        RawText bt = new RawText(normalizeNewlines(newBytes != null ? newBytes : new byte[0]));
                         HistogramDiff alg2 = new HistogramDiff();
                         EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                         blocks = edits2.size();
@@ -707,8 +743,8 @@ public final class DiffHelper {
                         int removed = 0;
                         int blocks = 0;
                         if (oldBytes != null && newBytes != null) {
-                            RawText at = new RawText(oldBytes);
-                            RawText bt = new RawText(newBytes);
+                            RawText at = new RawText(normalizeNewlines(oldBytes));
+                            RawText bt = new RawText(normalizeNewlines(newBytes));
                             HistogramDiff alg2 = new HistogramDiff();
                             EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                             blocks = edits2.size();
@@ -759,8 +795,8 @@ public final class DiffHelper {
                     int removed = 0;
                     int blocks = 0;
                     if (oldBytes != null && newBytes != null) {
-                        RawText at = new RawText(oldBytes);
-                        RawText bt = new RawText(newBytes);
+                        RawText at = new RawText(normalizeNewlines(oldBytes));
+                        RawText bt = new RawText(normalizeNewlines(newBytes));
                         HistogramDiff alg2 = new HistogramDiff();
                         EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                         blocks = edits2.size();
@@ -815,8 +851,8 @@ public final class DiffHelper {
                         byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readWorkingFileOrNull(repo, oldPath);
                         byte[] newBytes = "/dev/null".equals(newPath) ? null : readBlobOrNull(repo, d.getNewId().toObjectId());
 
-                        RawText at = new RawText(oldBytes != null ? oldBytes : new byte[0]);
-                        RawText bt = new RawText(newBytes != null ? newBytes : new byte[0]);
+                        RawText at = new RawText(normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]));
+                        RawText bt = new RawText(normalizeNewlines(newBytes != null ? newBytes : new byte[0]));
                         HistogramDiff alg2 = new HistogramDiff();
                         EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                         printHumanReadableDiff(at, bt, edits2);
