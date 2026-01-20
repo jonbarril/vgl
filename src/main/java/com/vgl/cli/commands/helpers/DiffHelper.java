@@ -298,8 +298,10 @@ public final class DiffHelper {
             for (String rel : all) {
                 byte[] a = left.get(rel);
                 byte[] b = right.get(rel);
-                if (a != null && b != null && java.util.Arrays.equals(a, b)) {
-                    continue;
+                if (a != null && b != null) {
+                    byte[] an = normalizeNewlines(a);
+                    byte[] bn = normalizeNewlines(b);
+                    if (java.util.Arrays.equals(an, bn)) continue;
                 }
                 if (a == null && b == null) {
                     continue;
@@ -414,15 +416,21 @@ public final class DiffHelper {
                         int removed = 0;
                         int blocks = 0;
                         if (oldBytes != null && newBytes != null) {
-                            RawText at = new RawText(normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]));
-                            RawText bt = new RawText(normalizeNewlines(newBytes != null ? newBytes : new byte[0]));
-                            HistogramDiff alg2 = new HistogramDiff();
-                            EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
-                            blocks = edits2.size();
-                            for (org.eclipse.jgit.diff.Edit e : edits2) {
-                                removed += Math.max(0, e.getEndA() - e.getBeginA());
-                                added += Math.max(0, e.getEndB() - e.getBeginB());
-                            }
+                                byte[] an = normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]);
+                                byte[] bn = normalizeNewlines(newBytes != null ? newBytes : new byte[0]);
+                                if (java.util.Arrays.equals(an, bn)) {
+                                    // Normalized-equal: treat as no-op change
+                                    continue;
+                                }
+                                RawText at = new RawText(an);
+                                RawText bt = new RawText(bn);
+                                HistogramDiff alg2 = new HistogramDiff();
+                                EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
+                                blocks = edits2.size();
+                                for (org.eclipse.jgit.diff.Edit e : edits2) {
+                                    removed += Math.max(0, e.getEndA() - e.getBeginA());
+                                    added += Math.max(0, e.getEndB() - e.getBeginB());
+                                }
                         } else if (oldBytes == null) {
                             added = countLines(newBytes);
                             blocks = (added > 0) ? 1 : 0;
@@ -458,8 +466,14 @@ public final class DiffHelper {
                     int removed = 0;
                     int blocks = 0;
                     if (oldBytes != null && newBytes != null) {
-                        RawText at = new RawText(normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]));
-                        RawText bt = new RawText(normalizeNewlines(newBytes != null ? newBytes : new byte[0]));
+                        byte[] an = normalizeNewlines(oldBytes != null ? oldBytes : new byte[0]);
+                        byte[] bn = normalizeNewlines(newBytes != null ? newBytes : new byte[0]);
+                        if (java.util.Arrays.equals(an, bn)) {
+                            // Normalized-equal: skip adding this file to summary
+                            continue;
+                        }
+                        RawText at = new RawText(an);
+                        RawText bt = new RawText(bn);
                         HistogramDiff alg2 = new HistogramDiff();
                         EditList edits2 = alg2.diff(RawTextComparator.DEFAULT, at, bt);
                         blocks = edits2.size();
@@ -507,8 +521,12 @@ public final class DiffHelper {
                         }
                         byte[] oldBytes = (d.getOldId() == null || d.getOldId().toObjectId() == null) ? null : readBlobOrNull(repo, d.getOldId().toObjectId());
                         byte[] newBytes = (d.getNewId() == null || d.getNewId().toObjectId() == null) ? null : readBlobOrNull(repo, d.getNewId().toObjectId());
-                        if (oldBytes != null && newBytes != null && java.util.Arrays.equals(oldBytes, newBytes)) {
-                            continue;
+                        if (oldBytes != null && newBytes != null) {
+                            byte[] an = normalizeNewlines(oldBytes);
+                            byte[] bn = normalizeNewlines(newBytes);
+                            if (java.util.Arrays.equals(an, bn)) {
+                                continue;
+                            }
                         }
 
                         int[] counts = s.perFileCounts.get(path);
