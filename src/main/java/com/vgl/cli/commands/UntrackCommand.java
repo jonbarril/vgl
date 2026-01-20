@@ -89,14 +89,46 @@ public class UntrackCommand implements Command {
         List<String> actuallyUntracked = new ArrayList<>();
         List<String> notTracked = new ArrayList<>();
 
-        for (String p : filtered) {
-            if (!tracked.contains(p)) {
-                notTracked.add(p);
-                continue;
+        try (Git git = GitUtils.openGit(repoRoot)) {
+            var status = git.status().call();
+            for (String p : filtered) {
+                if (!tracked.contains(p)) {
+                    // If Git itself has the file tracked (present in HEAD or not listed as untracked),
+                    // allow untracking to proceed. This handles repos where files were committed
+                    // prior to adopting VGL's tracked/untracked config.
+                    boolean gitSeemsTracked = true;
+                    try {
+                        if (status != null) {
+                            // status.getUntracked() contains files Git considers untracked.
+                            if (status.getUntracked() != null && status.getUntracked().contains(p)) {
+                                gitSeemsTracked = false;
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // best-effort: if status check fails, conservatively treat as tracked
+                        gitSeemsTracked = true;
+                    }
+
+                    if (!gitSeemsTracked) {
+                        notTracked.add(p);
+                        continue;
+                    }
+                }
+                tracked.remove(p);
+                decidedUntracked.add(p);
+                actuallyUntracked.add(p);
             }
-            tracked.remove(p);
-            decidedUntracked.add(p);
-            actuallyUntracked.add(p);
+        } catch (Exception e) {
+            // If we cannot open Git, fall back to original behavior.
+            for (String p : filtered) {
+                if (!tracked.contains(p)) {
+                    notTracked.add(p);
+                    continue;
+                }
+                tracked.remove(p);
+                decidedUntracked.add(p);
+                actuallyUntracked.add(p);
+            }
         }
 
         // Remove from Git index without deleting the working file.
@@ -105,6 +137,24 @@ public class UntrackCommand implements Command {
                 for (String p : actuallyUntracked) {
                     try {
                         git.rm().addFilepattern(p).setCached(true).call();
+
+                        // Verify the index no longer contains the path. If it does,
+                        // attempt a native git fallback to force-remove the index entry.
+                        var repo = git.getRepository();
+                        if (GitUtils.indexContains(repo, p)) {
+                            try {
+                                ProcessBuilder pb = new ProcessBuilder("git", "update-index", "--force-remove", "--", p);
+                                pb.directory(repoRoot.toFile());
+                                var proc = pb.start();
+                                int rc = proc.waitFor();
+                                if (rc != 0) {
+                                    String err = new String(proc.getErrorStream().readAllBytes());
+                                    System.err.println(Messages.untrackIndexFailed(p, err.trim()));
+                                }
+                            } catch (Exception ex) {
+                                System.err.println(Messages.untrackIndexFailed(p, ex.getMessage()));
+                            }
+                        }
                     } catch (Exception e) {
                         // best-effort; still record config update
                         System.err.println(Messages.untrackIndexFailed(p, e.getMessage()));

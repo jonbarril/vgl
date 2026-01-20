@@ -90,4 +90,51 @@ class TrackUntrackCommandTest {
             }
         }
     }
+
+    @Test
+    void untrack_trackedByGit_butNotInVglConfig_stillUntracks() throws Exception {
+        Path repoDir = tempDir.resolve("repo2");
+        try (StdIoCapture ignored = new StdIoCapture()) {
+            assertThat(new CreateCommand().run(java.util.List.of("-lr", repoDir.toString(), "-lb", "main", "-f"))).isEqualTo(0);
+        }
+
+        // Seed a commit so index operations are stable and add .gitignore as a tracked file.
+        Files.writeString(repoDir.resolve(".gitignore"), "# ignore\n", StandardCharsets.UTF_8);
+        try (Git git = Git.open(repoDir.toFile())) {
+            git.add().addFilepattern(".gitignore").call();
+            PersonIdent ident = new PersonIdent("test", "test@example.com");
+            git.commit().setMessage("add gitignore").setAuthor(ident).setCommitter(ident).call();
+        }
+
+        // Ensure VGL config does NOT list .gitignore as tracked.
+        String priorUserDir = System.getProperty("user.dir");
+        String priorBase = System.getProperty("vgl.test.base");
+        try {
+            System.setProperty("user.dir", repoDir.toString());
+            System.setProperty("vgl.test.base", tempDir.toString());
+
+            // Run untrack directly without a prior `vgl track` call.
+            try (StdIoCapture io = new StdIoCapture()) {
+                assertThat(VglMain.run(new String[] {"untrack", ".gitignore"})).isEqualTo(0);
+                assertThat(io.stderr()).isEmpty();
+                assertThat(io.stdout()).contains("Untracked:");
+            }
+
+            try (Git git = Git.open(repoDir.toFile())) {
+                // Now .gitignore should appear as untracked in Git.
+                assertThat(git.status().call().getUntracked()).contains(".gitignore");
+            }
+        } finally {
+            if (priorUserDir == null) {
+                System.clearProperty("user.dir");
+            } else {
+                System.setProperty("user.dir", priorUserDir);
+            }
+            if (priorBase == null) {
+                System.clearProperty("vgl.test.base");
+            } else {
+                System.setProperty("vgl.test.base", priorBase);
+            }
+        }
+    }
 }

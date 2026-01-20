@@ -15,6 +15,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
 import org.eclipse.jgit.treewalk.WorkingTreeIterator;
+import org.eclipse.jgit.dircache.DirCache;
 
 public final class GitUtils {
     private GitUtils() {}
@@ -155,6 +156,20 @@ public final class GitUtils {
         });
 
         return out;
+    }
+
+    /**
+     * Returns true if the given repo's index (DirCache) contains an entry for the provided
+     * repo-relative path. Path should use '/' separators.
+     */
+    public static boolean indexContains(Repository repo, String repoRelativePath) {
+        if (repo == null || repoRelativePath == null || repoRelativePath.isBlank()) return false;
+        try {
+            DirCache dc = DirCache.read(repo);
+            return dc.getEntry(repoRelativePath) != null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     /**
