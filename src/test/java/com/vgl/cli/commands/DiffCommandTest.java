@@ -41,9 +41,14 @@ class DiffCommandTest {
             StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"diff", "-v", "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
-            assertThat(io.stdout()).contains("-one");
-            assertThat(io.stdout()).contains("+two");
+            String out = io.stdout();
+            System.err.println("---DEBUG STDOUT START---\n" + out + "\n---DEBUG STDOUT END---");
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            int pathIndex = out.indexOf("file.txt", countsIndex);
+            assertThat(pathIndex).isGreaterThan(countsIndex);
+            assertThat(io.stdout()).contains("- one");
+            assertThat(io.stdout()).contains("+ two");
         }
     }
 
@@ -66,9 +71,14 @@ class DiffCommandTest {
             StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"diff", "-v", "DrivetrainSubsystem.java"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains("diff --git a/" + nested + " b/" + nested);
-            assertThat(io.stdout()).contains("-one");
-            assertThat(io.stdout()).contains("+two");
+            String out = io.stdout();
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            // The nested path can wrap across lines; squash whitespace to make it searchable.
+            String squashed = out.replaceAll("\\s+", "");
+            assertThat(squashed).contains(nested);
+            assertThat(io.stdout()).contains("- one");
+            assertThat(io.stdout()).contains("+ two");
         }
     }
 
@@ -99,9 +109,13 @@ class DiffCommandTest {
             StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"diff", "-v", "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
-            assertThat(io.stdout()).contains("-one");
-            assertThat(io.stdout()).contains("+two");
+            String out = io.stdout();
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            int pathIndex = out.indexOf("file.txt", countsIndex);
+            assertThat(pathIndex).isGreaterThan(countsIndex);
+            assertThat(io.stdout()).contains("- one");
+            assertThat(io.stdout()).contains("+ two");
         }
     }
 
@@ -127,9 +141,13 @@ class DiffCommandTest {
             StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"diff", "-v", c1.getName(), c2.getName(), "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
-            assertThat(io.stdout()).contains("-one");
-            assertThat(io.stdout()).contains("+two");
+            String out = io.stdout();
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            int pathIndex = out.indexOf("file.txt", countsIndex);
+            assertThat(pathIndex).isGreaterThan(countsIndex);
+            assertThat(io.stdout()).contains("- one");
+            assertThat(io.stdout()).contains("+ two");
         }
     }
 
@@ -155,9 +173,13 @@ class DiffCommandTest {
             StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"diff", "-v", "-lb", "main", "-lb", "split", "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
-            assertThat(io.stdout()).contains("-one");
-            assertThat(io.stdout()).contains("+two");
+            String out = io.stdout();
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            int pathIndex = out.indexOf("file.txt", countsIndex);
+            assertThat(pathIndex).isGreaterThan(countsIndex);
+            assertThat(io.stdout()).contains("- one");
+            assertThat(io.stdout()).contains("+ two");
         }
     }
 
@@ -174,9 +196,13 @@ class DiffCommandTest {
         try (StdIoCapture io = new StdIoCapture()) {
             assertThat(VglMain.run(new String[] {"diff", "-v", "-lr", repo1.toString(), "-lr", repo2.toString(), "file.txt"})).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
-            assertThat(io.stdout()).contains("-one");
-            assertThat(io.stdout()).contains("+two");
+            String out = io.stdout();
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            int pathIndex = out.indexOf("file.txt", countsIndex);
+            assertThat(pathIndex).isGreaterThan(countsIndex);
+            assertThat(io.stdout()).contains("- one");
+            assertThat(io.stdout()).contains("+ two");
         }
     }
 
@@ -249,9 +275,13 @@ class DiffCommandTest {
                 )
             ).isEqualTo(0);
             assertThat(io.stderr()).isEmpty();
-            assertThat(io.stdout()).contains("diff --git a/file.txt b/file.txt");
-            assertThat(io.stdout()).contains("-one");
-            assertThat(io.stdout()).contains("+two");
+            String out = io.stdout();
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            int pathIndex = out.indexOf("file.txt", countsIndex);
+            assertThat(pathIndex).isGreaterThan(countsIndex);
+            assertThat(io.stdout()).contains("- one");
+            assertThat(io.stdout()).contains("+ two");
         }
     }
 }

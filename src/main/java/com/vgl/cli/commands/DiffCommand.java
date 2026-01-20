@@ -99,11 +99,11 @@ public class DiffCommand implements Command {
                     }
 
                     boolean truncate = !(args.contains("-v") || args.contains("-vv"));
-                    String leftDisplay = "remote :: " + (truncate ? FormatUtils.truncateMiddle(FormatUtils.normalizeRemoteUrlForDisplay(url1), 35) : FormatUtils.normalizeRemoteUrlForDisplay(url1)) + " :: " + (b1 == null ? "main" : b1);
-                    String rightDisplay = "remote :: " + (truncate ? FormatUtils.truncateMiddle(FormatUtils.normalizeRemoteUrlForDisplay(url2), 35) : FormatUtils.normalizeRemoteUrlForDisplay(url2)) + " :: " + (b2 == null ? "main" : b2);
+                    String leftDisplay = "Remote: " + (truncate ? FormatUtils.truncateMiddle(FormatUtils.normalizeRemoteUrlForDisplay(url1), 35) : FormatUtils.normalizeRemoteUrlForDisplay(url1)) + " :: " + (b1 == null ? "main" : b1);
+                    String rightDisplay = "Remote: " + (truncate ? FormatUtils.truncateMiddle(FormatUtils.normalizeRemoteUrlForDisplay(url2), 35) : FormatUtils.normalizeRemoteUrlForDisplay(url2)) + " :: " + (b2 == null ? "main" : b2);
                     System.out.println("Source:");
-                    System.out.println("  A: " + leftDisplay);
-                    System.out.println("  B: " + rightDisplay);
+                    System.out.println("A: " + leftDisplay);
+                    System.out.println("B: " + rightDisplay);
 
                     boolean any = DiffHelper.diffWorkingTrees(leftClone, rightClone, globs, DiffHelper.computeVerbosity(args));
                 if (!any) {
@@ -129,11 +129,11 @@ public class DiffCommand implements Command {
             }
 
             boolean truncate = !(args.contains("-v") || args.contains("-vv"));
-            String leftDisplay = "local :: " + (truncate ? FormatUtils.truncateMiddle(Utils.formatPath(left), 35) : Utils.formatPath(left));
-            String rightDisplay = "local :: " + (truncate ? FormatUtils.truncateMiddle(Utils.formatPath(right), 35) : Utils.formatPath(right));
+            String leftDisplay = "Local: " + (truncate ? FormatUtils.truncateMiddle(Utils.formatPath(left), 35) : Utils.formatPath(left));
+            String rightDisplay = "Local: " + (truncate ? FormatUtils.truncateMiddle(Utils.formatPath(right), 35) : Utils.formatPath(right));
             System.out.println("Source:");
-            System.out.println("  A: " + leftDisplay);
-            System.out.println("  B: " + rightDisplay);
+            System.out.println("A: " + leftDisplay);
+            System.out.println("B: " + rightDisplay);
 
             boolean any = DiffHelper.diffWorkingTrees(left, right, globs, DiffHelper.computeVerbosity(args));
             if (!any) {
@@ -675,7 +675,10 @@ public class DiffCommand implements Command {
 
     private static String totalFileSummary(Map<String,int[]> perFileCounts, int totalAdded, int totalRemoved) {
         int files = perFileCounts.size();
-        return files + " file(s) changed — +" + totalAdded + "/-" + totalRemoved;
+        if (files == 1) {
+            return "1 file(s) changed";
+        }
+        return files + " file(s) changed - +" + totalAdded + "/-" + totalRemoved;
     }
 
     private static int countWorkingTreeDiffBetweenRoots(Path leftRoot, Path rightRoot, List<String> globs) throws IOException {
@@ -819,28 +822,28 @@ public class DiffCommand implements Command {
 
         switch (mode) {
             case "local-vs-remote": {
-                String left = "local :: " + displayLocalPath + " :: " + ((localBranch == null || localBranch.isBlank()) ? "main" : localBranch);
-                String right = "remote :: " + (displayRemoteUrl.isBlank() ? "(none)" : displayRemoteUrl) + " :: " + ((remoteBranch == null || remoteBranch.isBlank()) ? "main" : remoteBranch);
+                String left = "Local: " + displayLocalPath + " :: " + ((localBranch == null || localBranch.isBlank()) ? "main" : localBranch);
+                String right = "Remote: " + (displayRemoteUrl.isBlank() ? "(none)" : displayRemoteUrl) + " :: " + ((remoteBranch == null || remoteBranch.isBlank()) ? "main" : remoteBranch);
                 System.out.println("Source:");
-                System.out.println("  A: " + left);
-                System.out.println("  B: " + right);
+                System.out.println("A: " + left);
+                System.out.println("B: " + right);
                 break;
             }
             case "remote-vs-working": {
-                String left = "remote :: " + (displayRemoteUrl.isBlank() ? "(none)" : displayRemoteUrl) + " :: " + ((remoteBranch == null || remoteBranch.isBlank()) ? "main" : remoteBranch);
-                String right = "workspace :: (workspace)";
+                String left = "Remote: " + (displayRemoteUrl.isBlank() ? "(none)" : displayRemoteUrl) + " :: " + ((remoteBranch == null || remoteBranch.isBlank()) ? "main" : remoteBranch);
+                String right = "(workspace)";
                 System.out.println("Source:");
-                System.out.println("  A: " + left);
-                System.out.println("  B: " + right);
+                System.out.println("A: " + left);
+                System.out.println("B: " + right);
                 break;
             }
             case "local-vs-working":
             default: {
-                String left = "local :: " + displayLocalPath + " :: " + ((localBranch == null || localBranch.isBlank()) ? "main" : localBranch);
-                String right = "workspace :: (workspace)";
+                String left = "Local: " + displayLocalPath + " :: " + ((localBranch == null || localBranch.isBlank()) ? "main" : localBranch);
+                String right = "(workspace)";
                 System.out.println("Source:");
-                System.out.println("  A: " + left);
-                System.out.println("  B: " + right);
+                System.out.println("A: " + left);
+                System.out.println("B: " + right);
                 break;
             }
         }

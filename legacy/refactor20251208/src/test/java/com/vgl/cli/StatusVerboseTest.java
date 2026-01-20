@@ -35,7 +35,11 @@ public class StatusVerboseTest {
             
             String output = VglTestHarness.runVglCommand(repo.getPath(), "status", "-vv");
             assertThat(output).contains("-- Files to Commit:");
-            assertThat(output).contains("  M test.txt");
+            String out = output;
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            int pathIndex = out.indexOf("test.txt", countsIndex);
+            assertThat(pathIndex).isGreaterThan(countsIndex);
             assertThat(output).contains("-- Files to Push:");
             assertThat(output).contains("-- Files to Merge:");
         }
@@ -219,7 +223,11 @@ public class StatusVerboseTest {
             assertThat(output).contains("-- Files to Push:");
             assertThat(output).contains("-- Files to Merge:");
             assertThat(output).contains("A file2.txt");  // Committed but not pushed
-            assertThat(output).contains("  M file1.txt");  // Modified but not committed, no arrow
+            String out = output;
+            int countsIndex = out.indexOf("  M (");
+            assertThat(countsIndex).isGreaterThanOrEqualTo(0);
+            int pathIndex = out.indexOf("file1.txt", countsIndex);
+            assertThat(pathIndex).isGreaterThan(countsIndex);  // Modified but not committed, no arrow
         }
     }
 }

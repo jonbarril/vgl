@@ -189,6 +189,13 @@ public final class StatusVerboseOutput {
             System.out.println("  (none)");
             return;
         }
+        // Resolve nested repo list so we can reliably decorate nested repo directories
+        java.util.Set<String> nestedRepos = java.util.Collections.emptySet();
+        try {
+            nestedRepos = com.vgl.cli.utils.GitUtils.listNestedRepos(java.nio.file.Path.of(repoRoot));
+        } catch (Exception ignored) {
+            // best-effort: fall back to filesystem detection below
+        }
 
         List<String> sorted = new ArrayList<>(paths);
         Collections.sort(sorted);
@@ -196,12 +203,30 @@ public final class StatusVerboseOutput {
         for (String p : sorted) {
             File file = new File(repoRoot, p);
 
-            boolean isNestedRepo = file.isDirectory() && !".git".equals(p) && new File(file, ".git").exists();
-            String normalized = ensureTrailingSlash(p, repoRoot);
+            boolean isNestedRepo = false;
+            // Prefer the nested repo discovery result when available.
+            if (nestedRepos != null && nestedRepos.contains(p)) {
+                isNestedRepo = true;
+            } else {
+                try {
+                    isNestedRepo = file.isDirectory() && !".git".equals(p) && new File(file, ".git").exists();
+                } catch (Exception ignored) {
+                    isNestedRepo = false;
+                }
+            }
+
             if (isNestedRepo) {
+                String normalized = ensureTrailingSlash(p, repoRoot);
                 display.add(REPO_PREFIX + normalized);
             } else {
-                display.add(normalized);
+                // Keep existing output stable for common ignored metadata directories.
+                // (These are always present for VGL repos and users expect to see them
+                // without a trailing slash.)
+                if (".git".equals(p) || ".vgl".equals(p)) {
+                    display.add(p);
+                } else {
+                    display.add(p);
+                }
             }
         }
 

@@ -644,7 +644,7 @@ public class StatusCommand implements Command {
             StatusVerboseOutput.printCompactListAlwaysGroupByDir(
                 "-- Undecided Files:",
                 computed.undecided,
-                Utils.formatPath(repoRoot),
+                repoRoot.toString(),
                 filters
             );
         }
@@ -653,19 +653,19 @@ public class StatusCommand implements Command {
             StatusVerboseOutput.printCompactListAlwaysGroupByDir(
                 "-- Tracked Files:",
                 computed.tracked,
-                Utils.formatPath(repoRoot),
+                repoRoot.toString(),
                 filters
             );
             StatusVerboseOutput.printCompactListAlwaysGroupByDir(
                 "-- Untracked Files:",
                 computed.untracked,
-                Utils.formatPath(repoRoot),
+                repoRoot.toString(),
                 filters
             );
             StatusVerboseOutput.printIgnoredAlwaysGroupByDir(
                 "-- Ignored Files:",
                 computed.ignored,
-                Utils.formatPath(repoRoot)
+                repoRoot.toString()
             );
         }
     }

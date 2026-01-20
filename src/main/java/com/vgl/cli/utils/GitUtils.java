@@ -12,7 +12,9 @@ import java.util.Set;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.treewalk.FileTreeIterator;
 import org.eclipse.jgit.treewalk.TreeWalk;
+import org.eclipse.jgit.treewalk.WorkingTreeIterator;
 
 public final class GitUtils {
     private GitUtils() {}
@@ -68,6 +70,52 @@ public final class GitUtils {
                 out.add(walk.getPathString());
             }
         }
+        return out;
+    }
+
+    /**
+     * Returns repo-root-relative file paths (with '/' separators) for the working tree,
+     * excluding files ignored by Git ignore rules (.gitignore, info/exclude, etc.).
+     */
+    public static Set<String> listNonIgnoredFiles(Path repoRoot, Repository repo) {
+        Set<String> out = new LinkedHashSet<>();
+        if (repo == null || repoRoot == null) {
+            return out;
+        }
+
+        try {
+            FileTreeIterator workingTreeIt = new FileTreeIterator(repo);
+            try (TreeWalk walk = new TreeWalk(repo)) {
+                walk.addTree(workingTreeIt);
+                walk.setRecursive(true);
+
+                while (walk.next()) {
+                    WorkingTreeIterator wti = walk.getTree(0, WorkingTreeIterator.class);
+                    if (wti == null) {
+                        continue;
+                    }
+
+                    boolean ignored;
+                    try {
+                        ignored = wti.isEntryIgnored();
+                    } catch (Exception e) {
+                        ignored = false;
+                    }
+                    if (ignored) {
+                        continue;
+                    }
+
+                    String path = walk.getPathString();
+                    if (path == null || path.isBlank()) {
+                        continue;
+                    }
+                    out.add(path.replace('\\', '/'));
+                }
+            }
+        } catch (Exception ignored) {
+            // best-effort
+        }
+
         return out;
     }
 

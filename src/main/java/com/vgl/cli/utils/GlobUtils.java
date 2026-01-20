@@ -11,6 +11,8 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import org.eclipse.jgit.api.Git;
+import org.eclipse.jgit.lib.Repository;
 
 public final class GlobUtils {
     private GlobUtils() {}
@@ -58,7 +60,7 @@ public final class GlobUtils {
 
     /**
      * Expands glob-ish patterns into repo-root-relative file paths (with '/' separators).
-     * Expansion is bounded to {@code repoRoot} and excludes nested git repositories.
+     * Expansion is bounded to {@code repoRoot}, honors ignore rules when possible, and excludes nested git repositories.
      */
     public static List<String> expandGlobsToFiles(List<String> globs, Path repoRoot) throws IOException {
         if (repoRoot == null) {
@@ -97,19 +99,17 @@ public final class GlobUtils {
         Path root = repoRoot.toAbsolutePath().normalize();
         Set<String> nested = GitUtils.listNestedRepos(root);
 
-        Set<String> out = new LinkedHashSet<>();
-        for (String pattern : patterns) {
-            // If the pattern is a literal directory, expand recursively.
-            if (!hasWildcard(pattern)) {
-                Path abs = root.resolve(pattern).normalize();
-                if (Files.isDirectory(abs) && abs.startsWith(root)) {
-                    collectFilesUnderDir(out, root, abs, nested);
-                    continue;
-                }
-            }
-
-            String regex = globToRegex(pattern);
-            // Walk the repo and match.
+        // Prefer JGit working-tree iteration so we honor ignore rules. If that fails,
+        // fall back to a filesystem walk.
+        Set<String> candidates = null;
+        try (Git git = GitUtils.openGit(root)) {
+            Repository repo = git.getRepository();
+            candidates = GitUtils.listNonIgnoredFiles(root, repo);
+        } catch (Exception ignored) {
+            candidates = null;
+        }
+        if (candidates == null) {
+            final Set<String> fsCandidates = new LinkedHashSet<>();
             Files.walkFileTree(root, new SimpleFileVisitor<>() {
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
@@ -121,7 +121,6 @@ public final class GlobUtils {
                     if (".git".equals(relStr) || relStr.endsWith("/.git")) {
                         return FileVisitResult.SKIP_SUBTREE;
                     }
-                    // Skip nested repo subtrees.
                     for (String n : nested) {
                         if (relStr.equals(n) || relStr.startsWith(n + "/")) {
                             return FileVisitResult.SKIP_SUBTREE;
@@ -140,9 +139,7 @@ public final class GlobUtils {
                     if (relStr.equals(".vgl") || relStr.equals(".gitignore")) {
                         return FileVisitResult.CONTINUE;
                     }
-                    if (relStr.matches(regex)) {
-                        out.add(relStr);
-                    }
+                    fsCandidates.add(relStr);
                     return FileVisitResult.CONTINUE;
                 }
 
@@ -151,6 +148,75 @@ public final class GlobUtils {
                     return FileVisitResult.CONTINUE;
                 }
             });
+            candidates = fsCandidates;
+        }
+
+        // Always exclude nested repo files and VGL admin files from candidates.
+        Set<String> filteredCandidates = new LinkedHashSet<>();
+        for (String f : candidates) {
+            if (f == null || f.isBlank()) {
+                continue;
+            }
+            String relStr = f.replace('\\', '/');
+            if (relStr.equals(".vgl") || relStr.equals(".gitignore")) {
+                continue;
+            }
+            boolean underNested = false;
+            for (String n : nested) {
+                if (relStr.equals(n) || relStr.startsWith(n + "/")) {
+                    underNested = true;
+                    break;
+                }
+            }
+            if (underNested) {
+                continue;
+            }
+            filteredCandidates.add(relStr);
+        }
+
+        Set<String> out = new LinkedHashSet<>();
+        for (String pattern : patterns) {
+            if (pattern == null || pattern.isBlank()) {
+                continue;
+            }
+
+            if (!hasWildcard(pattern)) {
+                String lit = pattern.replace('\\', '/');
+                Path abs = root.resolve(pattern).normalize();
+                if (Files.isDirectory(abs) && abs.startsWith(root)) {
+                    String prefix = lit;
+                    if (!prefix.endsWith("/")) {
+                        prefix = prefix + "/";
+                    }
+                    for (String f : filteredCandidates) {
+                        if (f.startsWith(prefix)) {
+                            out.add(f);
+                        }
+                    }
+                    continue;
+                }
+
+                // Literal file path, or bare filename convenience.
+                if (!lit.contains("/")) {
+                    for (String f : filteredCandidates) {
+                        if (f.equals(lit) || f.endsWith("/" + lit)) {
+                            out.add(f);
+                        }
+                    }
+                } else {
+                    if (filteredCandidates.contains(lit)) {
+                        out.add(lit);
+                    }
+                }
+                continue;
+            }
+
+            String regex = globToRegex(pattern);
+            for (String f : filteredCandidates) {
+                if (f.matches(regex)) {
+                    out.add(f);
+                }
+            }
         }
 
         List<String> sorted = new ArrayList<>(out);
@@ -172,6 +238,23 @@ public final class GlobUtils {
         }
         if (out != null) {
             out.println("Globs resolved to " + resolved.size() + " file(s)");
+            out.println("Resolved files:");
+            final int maxListed = 200;
+            int listed = 0;
+            for (String p : resolved) {
+                if (p == null || p.isBlank()) {
+                    continue;
+                }
+                if (listed >= maxListed) {
+                    break;
+                }
+                out.println("  " + p);
+                listed++;
+            }
+            int remaining = resolved.size() - listed;
+            if (remaining > 0) {
+                out.println("  ... (" + remaining + " more)");
+            }
         }
         return resolved;
     }

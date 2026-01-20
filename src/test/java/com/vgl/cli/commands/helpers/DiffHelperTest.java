@@ -34,9 +34,13 @@ class DiffHelperTest {
         assertThat(s.totalAdded).isGreaterThanOrEqualTo(1);
 
         try (StdIoCapture io = new StdIoCapture()) {
-            DiffHelper.printSummary(System.out, s);
+            java.util.Set<String> keys = new java.util.HashSet<>();
+            keys.addAll(lmap.keySet());
+            keys.addAll(rmap.keySet());
+            DiffHelper.printSummary(System.out, s, keys.size());
             String out = io.stdout();
-            assertThat(out).contains("file(s) changed");
+            assertThat(out).contains("Matched files:");
+            assertThat(out).contains("Changed files:");
             assertThat(out).contains("a.txt");
             assertThat(out).contains("b.txt");
         }
