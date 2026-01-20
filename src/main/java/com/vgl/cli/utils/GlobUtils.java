@@ -264,22 +264,31 @@ public final class GlobUtils {
         }
         if (out != null) {
             out.println("Globs resolved to " + resolved.size() + " file(s)");
-            out.println("Resolved files:");
-            final int maxListed = 200;
-            int listed = 0;
-            for (String p : resolved) {
-                if (p == null || p.isBlank()) {
-                    continue;
+            // Use the shared compact, ls-style printer so file lists are consistently
+            // grouped by directory across commands (status, diff, etc.).
+            try {
+                java.util.LinkedHashSet<String> set = new java.util.LinkedHashSet<>(resolved);
+                com.vgl.cli.commands.helpers.StatusVerboseOutput.printCompactListAlwaysGroupByDir(
+                    "Resolved files:", set, repoRoot == null ? "" : repoRoot.toString(), null);
+            } catch (Exception e) {
+                // Fallback to simple listing on any unexpected error to preserve functionality.
+                out.println("Resolved files:");
+                final int maxListed = 200;
+                int listed = 0;
+                for (String p : resolved) {
+                    if (p == null || p.isBlank()) {
+                        continue;
+                    }
+                    if (listed >= maxListed) {
+                        break;
+                    }
+                    out.println("  " + p);
+                    listed++;
                 }
-                if (listed >= maxListed) {
-                    break;
+                int remaining = resolved.size() - listed;
+                if (remaining > 0) {
+                    out.println("  ... (" + remaining + " more)");
                 }
-                out.println("  " + p);
-                listed++;
-            }
-            int remaining = resolved.size() - listed;
-            if (remaining > 0) {
-                out.println("  ... (" + remaining + " more)");
             }
         }
         return resolved;
