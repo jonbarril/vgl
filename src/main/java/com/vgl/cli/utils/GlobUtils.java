@@ -229,7 +229,33 @@ public final class GlobUtils {
      * Returns the sorted list of matched repo-relative paths (or an empty list).
      */
     public static List<String> resolveGlobs(List<String> globs, Path repoRoot, java.io.PrintStream out) throws IOException {
-        List<String> resolved = expandGlobsToFiles(globs, repoRoot);
+        // First, include any explicit literal paths referenced by the caller
+        // (e.g. ".gitignore"). `expandGlobsToFiles` intentionally excludes
+        // certain VGL admin files from its candidate set; however callers
+        // that request an explicit literal should still be able to act on
+        // those files. Collect explicit literals that exist on disk first,
+        // then merge with the glob expansion results.
+        java.util.LinkedHashSet<String> explicit = new java.util.LinkedHashSet<>();
+        if (globs != null && repoRoot != null) {
+            for (String g : globs) {
+                if (g == null || g.isBlank()) continue;
+                String trimmed = g.trim();
+                // Only consider literal patterns (no wildcards)
+                if (!hasWildcard(trimmed)) {
+                    Path p = repoRoot.resolve(trimmed).normalize();
+                    if (Files.exists(p) && Files.isRegularFile(p)) {
+                        String rel = repoRoot.toAbsolutePath().normalize().relativize(p).toString().replace('\\','/');
+                        explicit.add(rel);
+                    }
+                }
+            }
+        }
+
+        List<String> expanded = expandGlobsToFiles(globs, repoRoot);
+        java.util.LinkedHashSet<String> merged = new java.util.LinkedHashSet<>();
+        merged.addAll(explicit);
+        if (expanded != null) merged.addAll(expanded);
+        List<String> resolved = new java.util.ArrayList<>(merged);
         if (resolved == null || resolved.isEmpty()) {
             if (out != null) {
                 out.println("No files matched globs: " + String.join(", ", globs == null ? List.of() : globs));
