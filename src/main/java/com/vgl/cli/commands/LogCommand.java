@@ -131,17 +131,60 @@ public class LogCommand implements Command {
         String authorName = (c.getAuthorIdent() != null) ? c.getAuthorIdent().getName() : "";
         String authorEmail = (c.getAuthorIdent() != null) ? c.getAuthorIdent().getEmailAddress() : "";
         String subject = oneLine(c.getShortMessage());
+        // Align header values in a column. Compute label width from known labels.
+        String labelCommit = "Commit:";
+        String labelAuthor = "Author:";
+        String labelDate = "Date:";
+        String labelMessage = "Message:";
+        int maxLabel = Math.max(Math.max(labelCommit.length(), labelAuthor.length()), Math.max(labelDate.length(), labelMessage.length()));
+        int valueStart = maxLabel + 2; // at least one space after longest label
 
-        System.out.println("commit " + fullId);
+        // Helper prints label and wrapped value aligned at valueStart column.
+        java.io.PrintStream out = System.out;
+        String shortId = fullId.substring(0, Math.min(7, fullId.length()));
+        printAligned(out, labelCommit, shortId + " (" + fullId + ")", valueStart);
         if (!authorName.isBlank()) {
-            if (authorEmail != null && !authorEmail.isBlank()) {
-                System.out.println("Author: " + authorName + " <" + authorEmail + ">");
+            String auth = (authorEmail != null && !authorEmail.isBlank()) ? (authorName + " <" + authorEmail + ">") : authorName;
+            printAligned(out, labelAuthor, auth, valueStart);
+        }
+        printAligned(out, labelDate, date, valueStart);
+        printAligned(out, labelMessage, subject, valueStart);
+    }
+
+    private static void printAligned(java.io.PrintStream out, String label, String value, int valueStart) {
+        if (out == null) return;
+        if (label == null) label = "";
+        if (value == null) value = "";
+
+        int maxWidth = 80;
+        String sanitized = value.replace("\r", "");
+
+        // Compute padding after label so that value begins at column valueStart (1-based)
+        int pad = Math.max(1, valueStart - label.length());
+        String firstIndent = label + "".repeat(pad);
+
+        int wrapWidth = Math.max(10, maxWidth - valueStart);
+
+        // Simple word wrap
+        String[] words = sanitized.split("\\s+");
+        StringBuilder line = new StringBuilder();
+        for (int i = 0; i < words.length; i++) {
+            String w = words[i];
+            if (line.length() == 0) {
+                line.append(w);
+            } else if (line.length() + 1 + w.length() <= wrapWidth) {
+                line.append(' ').append(w);
             } else {
-                System.out.println("Author: " + authorName);
+                // flush line
+                out.println(firstIndent + line.toString());
+                // subsequent lines use spaces equal to valueStart
+                firstIndent = "".repeat(valueStart);
+                line.setLength(0);
+                line.append(w);
             }
         }
-        System.out.println("Date:   " + date);
-        System.out.println("Message:    " + subject);
+        // print remaining
+        out.println(firstIndent + line.toString());
     }
 
     private static void printCommitPatch(Repository repo, RevCommit commit) {
