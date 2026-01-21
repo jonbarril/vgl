@@ -141,9 +141,8 @@ public class LogCommand implements Command {
             }
         }
         System.out.println("Date:   " + date);
-        System.out.println();
+        System.out.println("Message:");
         System.out.println("    " + subject);
-        System.out.println();
     }
 
     private static void printCommitPatch(Repository repo, RevCommit commit) {
