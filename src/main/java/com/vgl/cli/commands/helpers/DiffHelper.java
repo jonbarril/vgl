@@ -590,13 +590,24 @@ public final class DiffHelper {
                         if (!GlobUtils.matchesAny(d.getOldPath(), globs) && !GlobUtils.matchesAny(d.getNewPath(), globs)) {
                             continue;
                         }
-                        any = true;
                         // Compute counts using HistogramDiff on the actual blob bytes so counts
                         // match the human-readable rendering.
                         String oldPath = (d.getOldPath() == null) ? "/dev/null" : d.getOldPath();
                         String newPath = (d.getNewPath() == null) ? "/dev/null" : d.getNewPath();
                         byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readBlobOrNull(repo, d.getOldId().toObjectId());
                         byte[] newBytes = "/dev/null".equals(newPath) ? null : readWorkingFileOrNull(repo, newPath);
+
+                        // If the only difference is line endings (or a mode-only diff on platforms
+                        // where Git ignores file mode), treat as unchanged.
+                        if (oldBytes != null && newBytes != null) {
+                            byte[] an = normalizeNewlines(oldBytes);
+                            byte[] bn = normalizeNewlines(newBytes);
+                            if (java.util.Arrays.equals(an, bn)) {
+                                continue;
+                            }
+                        }
+
+                        any = true;
                         int added = 0;
                         int removed = 0;
                         int blocks = 0;
@@ -640,14 +651,22 @@ public final class DiffHelper {
                     if (!GlobUtils.matchesAny(d.getOldPath(), globs) && !GlobUtils.matchesAny(d.getNewPath(), globs)) {
                         continue;
                     }
-                    matched.add(d);
-
                     // Compute edits using the same HistogramDiff algorithm used for printing
                     // so the summary counts match the printed +/- lines.
                     String oldPath = (d.getOldPath() == null) ? "/dev/null" : d.getOldPath();
                     String newPath = (d.getNewPath() == null) ? "/dev/null" : d.getNewPath();
                     byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readBlobOrNull(repo, d.getOldId().toObjectId());
                     byte[] newBytes = "/dev/null".equals(newPath) ? null : readWorkingFileOrNull(repo, newPath);
+
+                    if (oldBytes != null && newBytes != null) {
+                        byte[] an = normalizeNewlines(oldBytes);
+                        byte[] bn = normalizeNewlines(newBytes);
+                        if (java.util.Arrays.equals(an, bn)) {
+                            continue;
+                        }
+                    }
+
+                    matched.add(d);
                     int added = 0;
                     int removed = 0;
                     int blocks = 0;
@@ -703,8 +722,12 @@ public final class DiffHelper {
                     byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readBlobOrNull(repo, d.getOldId().toObjectId());
                     byte[] newBytes = "/dev/null".equals(newPath) ? null : readWorkingFileOrNull(repo, newPath);
 
-                    if (oldBytes != null && newBytes != null && java.util.Arrays.equals(oldBytes, newBytes)) {
-                        continue;
+                    if (oldBytes != null && newBytes != null) {
+                        byte[] an = normalizeNewlines(oldBytes);
+                        byte[] bn = normalizeNewlines(newBytes);
+                        if (java.util.Arrays.equals(an, bn)) {
+                            continue;
+                        }
                     }
 
                     any = true;
@@ -761,13 +784,21 @@ public final class DiffHelper {
                         if (!GlobUtils.matchesAny(d.getOldPath(), globs) && !GlobUtils.matchesAny(d.getNewPath(), globs)) {
                             continue;
                         }
-                        any = true;
-
                         String oldPath = (d.getOldPath() == null) ? "/dev/null" : d.getOldPath();
                         String newPath = (d.getNewPath() == null) ? "/dev/null" : d.getNewPath();
 
                         byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readWorkingFileOrNull(repo, oldPath);
                         byte[] newBytes = "/dev/null".equals(newPath) ? null : readBlobOrNull(repo, d.getNewId().toObjectId());
+
+                        if (oldBytes != null && newBytes != null) {
+                            byte[] an = normalizeNewlines(oldBytes);
+                            byte[] bn = normalizeNewlines(newBytes);
+                            if (java.util.Arrays.equals(an, bn)) {
+                                continue;
+                            }
+                        }
+
+                        any = true;
 
                         int added = 0;
                         int removed = 0;
@@ -813,13 +844,21 @@ public final class DiffHelper {
                     if (!GlobUtils.matchesAny(d.getOldPath(), globs) && !GlobUtils.matchesAny(d.getNewPath(), globs)) {
                         continue;
                     }
-                    matched.add(d);
-
                     String oldPath = (d.getOldPath() == null) ? "/dev/null" : d.getOldPath();
                     String newPath = (d.getNewPath() == null) ? "/dev/null" : d.getNewPath();
 
                     byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readWorkingFileOrNull(repo, oldPath);
                     byte[] newBytes = "/dev/null".equals(newPath) ? null : readBlobOrNull(repo, d.getNewId().toObjectId());
+
+                    if (oldBytes != null && newBytes != null) {
+                        byte[] an = normalizeNewlines(oldBytes);
+                        byte[] bn = normalizeNewlines(newBytes);
+                        if (java.util.Arrays.equals(an, bn)) {
+                            continue;
+                        }
+                    }
+
+                    matched.add(d);
 
                     int added = 0;
                     int removed = 0;
@@ -856,11 +895,26 @@ public final class DiffHelper {
                 }
 
                 for (DiffEntry d : matched) {
-                    any = true;
                     String path = d.getNewPath();
                     if (path == null || path.equals("/dev/null")) {
                         path = d.getOldPath();
                     }
+
+                    if (v != Verbosity.RAW) {
+                        String oldPath = (d.getOldPath() == null) ? "/dev/null" : d.getOldPath();
+                        String newPath = (d.getNewPath() == null) ? "/dev/null" : d.getNewPath();
+                        byte[] oldBytes = "/dev/null".equals(oldPath) ? null : readWorkingFileOrNull(repo, oldPath);
+                        byte[] newBytes = "/dev/null".equals(newPath) ? null : readBlobOrNull(repo, d.getNewId().toObjectId());
+                        if (oldBytes != null && newBytes != null) {
+                            byte[] an = normalizeNewlines(oldBytes);
+                            byte[] bn = normalizeNewlines(newBytes);
+                            if (java.util.Arrays.equals(an, bn)) {
+                                continue;
+                            }
+                        }
+                    }
+
+                    any = true;
 
                     int[] counts = s.perFileCounts.get(path);
                     int added = (counts == null) ? 0 : counts[0];
