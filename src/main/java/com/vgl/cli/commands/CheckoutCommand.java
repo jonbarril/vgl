@@ -60,7 +60,7 @@ public class CheckoutCommand implements Command {
         if (Files.exists(targetDir) && Files.isDirectory(targetDir)) {
             try (var stream = Files.list(targetDir)) {
                 if (stream.findAny().isPresent()) {
-                    System.err.println("Error: Target directory is not empty: " + targetDir);
+                    System.err.println("ERROR: Target directory is not empty: " + targetDir);
                     return 1;
                 }
             }

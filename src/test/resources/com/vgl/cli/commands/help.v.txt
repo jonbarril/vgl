@@ -28,8 +28,8 @@ Remote collaboration:
   abort
 
 Review:
-  diff  [-v|-vv] [SOURCE] [SOURCE] [GLOB...]
-  log [-v|-vv] [-graph] [COMMIT]
+  diff  [-v|-vv] [-all] [SOURCE] [SOURCE] [GLOB...]
+  log [-v|-vv] [-all] [-graph] [COMMIT..COMMIT] [DATE..DATE]
 
 Flag reference:
   -f            Force; bypass confirmation prompts

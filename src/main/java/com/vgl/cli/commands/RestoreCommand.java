@@ -97,7 +97,7 @@ public class RestoreCommand implements Command {
                     // We already printed the auth hint.
                     return 1;
                 }
-                System.err.println("Error: Cannot resolve " + treeish);
+                System.err.println("ERROR: Cannot resolve " + treeish);
                 return 1;
             }
 

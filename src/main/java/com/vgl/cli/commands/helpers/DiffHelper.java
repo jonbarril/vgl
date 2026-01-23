@@ -28,7 +28,8 @@ public final class DiffHelper {
     private enum FileChangeKind {
         ADDED,
         DELETED,
-        MODIFIED
+        MODIFIED,
+        RENAMED
     }
 
     public enum Verbosity {
@@ -192,6 +193,7 @@ public final class DiffHelper {
             case ADDED -> "A";
             case DELETED -> "D";
             case MODIFIED -> "M";
+            case RENAMED -> "R";
         };
         String countsWrapped = "(+" + added + "/-" + removed + " lines, " + blocks + " blocks)";
 
@@ -241,8 +243,9 @@ public final class DiffHelper {
         return switch (t) {
             case ADD -> FileChangeKind.ADDED;
             case DELETE -> FileChangeKind.DELETED;
-            // Treat rename/copy/modify as modified for display purposes.
-            case MODIFY, RENAME, COPY -> FileChangeKind.MODIFIED;
+            case RENAME -> FileChangeKind.RENAMED;
+            // Treat copy/modify as modified for display purposes.
+            case MODIFY, COPY -> FileChangeKind.MODIFIED;
         };
     }
 
@@ -254,7 +257,9 @@ public final class DiffHelper {
         out.println(s.perFileCounts.size() + " file(s) changed - +" + s.totalAdded + "/-" + s.totalRemoved);
     }
 
-    public static boolean diffWorkingTrees(Path leftRoot, Path rightRoot, List<String> globs, Verbosity v) throws IOException {
+    
+
+    public static boolean diffWorkingTrees(Path leftRoot, Path rightRoot, List<String> globs, Verbosity v, boolean showAll) throws IOException {
         // If globs were provided, expand them to the set of repo-relative files
         // so we can report what they matched (and fail early if none matched).
         int matchedFiles = -1;
@@ -293,8 +298,10 @@ public final class DiffHelper {
             matchedFiles = all.size();
         }
 
+        
         if (v == Verbosity.HUMAN) {
             int changedFiles = 0;
+            int printed = 0;
             for (String rel : all) {
                 byte[] a = left.get(rel);
                 byte[] b = right.get(rel);
@@ -315,11 +322,21 @@ public final class DiffHelper {
         // Top summary already shows matched/changed files; avoid redundant totals here.
 
         boolean any = false;
+        int printed = 0;
         for (String rel : all) {
             byte[] a = left.get(rel);
             byte[] b = right.get(rel);
             if (a != null && b != null && java.util.Arrays.equals(a,b)) continue;
             any = true;
+
+            if (!showAll) {
+                if (printed >= 10) {
+                    System.out.println("  ...");
+                    System.out.println("Hint: Use 'vgl diff -all' to show all changes.");
+                    break;
+                }
+                printed++;
+            }
 
             int[] counts = summary.perFileCounts.get(rel);
             int added = (counts == null) ? 0 : counts[0];
@@ -371,7 +388,7 @@ public final class DiffHelper {
         return any;
     }
 
-    public static boolean diffTrees(Repository repo, ObjectId oldTreeId, ObjectId newTreeId, List<String> globs, Verbosity v) throws Exception {
+    public static boolean diffTrees(Repository repo, ObjectId oldTreeId, ObjectId newTreeId, List<String> globs, Verbosity v, boolean showAll) throws Exception {
         boolean any = false;
         try (ObjectReader reader = repo.newObjectReader()) {
             CanonicalTreeParser oldTree = new CanonicalTreeParser();
@@ -508,12 +525,23 @@ public final class DiffHelper {
                     System.out.println();
                 }
 
+                
+
                 // Top summary already shows matched/changed files; avoid redundant totals here.
 
                 try (DiffFormatter dfOut = new DiffFormatter(System.out)) {
                     dfOut.setRepository(repo);
                     dfOut.setDetectRenames(true);
+                    int printed = 0;
                     for (DiffEntry d : matched) {
+                        if (!showAll) {
+                            if (printed >= 10) {
+                                System.out.println("  ...");
+                                System.out.println("Hint: Use 'vgl diff -all' to show all changes.");
+                                break;
+                            }
+                            printed++;
+                        }
                         any = true;
                         String path = d.getNewPath();
                         if (path == null || path.equals("/dev/null")) {
@@ -553,7 +581,7 @@ public final class DiffHelper {
         return any;
     }
 
-    public static boolean diffTreeToWorking(Repository repo, ObjectId oldTreeId, FileTreeIterator workingTree, List<String> globs, Verbosity v) throws Exception {
+    public static boolean diffTreeToWorking(Repository repo, ObjectId oldTreeId, FileTreeIterator workingTree, List<String> globs, Verbosity v, boolean showAll) throws Exception {
         boolean any = false;
         try (ObjectReader reader = repo.newObjectReader()) {
             CanonicalTreeParser oldTree = new CanonicalTreeParser();
@@ -712,9 +740,20 @@ public final class DiffHelper {
                     System.out.println();
                 }
 
+                
+
                 // Top summary already shows matched/changed files; avoid redundant totals here.
 
+                int printed = 0;
                 for (DiffEntry d : matched) {
+                    if (!showAll) {
+                        if (printed >= 10) {
+                            System.out.println("  ...");
+                            System.out.println("Hint: Use 'vgl diff -all' to show all changes.");
+                            break;
+                        }
+                        printed++;
+                    }
 
                     String oldPath = (d.getOldPath() == null) ? "/dev/null" : d.getOldPath();
                     String newPath = (d.getNewPath() == null) ? "/dev/null" : d.getNewPath();
@@ -747,7 +786,7 @@ public final class DiffHelper {
         return any;
     }
 
-    public static boolean diffWorkingToTree(Repository repo, FileTreeIterator workingTree, ObjectId newTreeId, List<String> globs, Verbosity v) throws Exception {
+    public static boolean diffWorkingToTree(Repository repo, FileTreeIterator workingTree, ObjectId newTreeId, List<String> globs, Verbosity v, boolean showAll) throws Exception {
         boolean any = false;
         try (ObjectReader reader = repo.newObjectReader()) {
             CanonicalTreeParser newTree = new CanonicalTreeParser();
@@ -894,7 +933,18 @@ public final class DiffHelper {
                     return false;
                 }
 
+                
+
+                int printed = 0;
                 for (DiffEntry d : matched) {
+                    if (!showAll) {
+                        if (printed >= 10) {
+                            System.out.println("  ...");
+                            System.out.println("Hint: Use 'vgl diff -all' to show all changes.");
+                            break;
+                        }
+                        printed++;
+                    }
                     String path = d.getNewPath();
                     if (path == null || path.equals("/dev/null")) {
                         path = d.getOldPath();

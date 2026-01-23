@@ -6,8 +6,8 @@ import java.util.List;
 public final class Messages {
     private Messages() {}
 
-    public static final String ERR_NO_REPO_FOUND = "Error: No VGL repository found.";
-    public static final String ERR_NO_REPO_AT_TARGET_PREFIX = "Error: No VGL or Git repository exists at target: ";
+    public static final String ERR_NO_REPO_FOUND = "ERROR: No VGL repository found.";
+    public static final String ERR_NO_REPO_AT_TARGET_PREFIX = "ERROR: No VGL or Git repository exists at target: ";
     public static final String WARN_MALFORMED_REPO_PREFIX = "Warning: Repository appears malformed or inconsistent at: ";
     public static final String ERR_REFUSING_CREATE_NESTED_REPO = "Refusing to create nested repository. Use -f to bypass.";
     public static final String ERR_REFUSING_DELETE_REPO = "Refusing to delete repository. Use -f to bypass.";
@@ -21,12 +21,12 @@ public final class Messages {
     public static final String OUT_CREATED_AND_SWITCHED_BRANCH_PREFIX = "Created and switched to branch: ";
     public static final String OUT_ALREADY_ON_BRANCH_PREFIX = "Already on branch: ";
 
-    public static final String ERR_BRANCH_NOT_FOUND_PREFIX = "Error: Branch does not exist: ";
+    public static final String ERR_BRANCH_NOT_FOUND_PREFIX = "ERROR: Branch does not exist: ";
     public static final String WARN_DELETE_BRANCH_NOT_MERGED_PREFIX = "Warning: Branch is not merged into the current branch: ";
     public static final String WARN_DELETE_BRANCH_HAS_UNPUSHED_COMMITS_PREFIX = "Warning: Branch has unpushed commits: ";
 
-    public static final String ERR_REPO_EXISTS_PREFIX = "Error: Repository already exists at: ";
-    public static final String ERR_REFUSING_DELETE_CURRENT_BRANCH_PREFIX = "Error: Refusing to delete the current branch: ";
+    public static final String ERR_REPO_EXISTS_PREFIX = "ERROR: Repository already exists at: ";
+    public static final String ERR_REFUSING_DELETE_CURRENT_BRANCH_PREFIX = "ERROR: Refusing to delete the current branch: ";
 
     public static final String WARN_REPO_DIRTY_OR_AHEAD = "Warning: Repository has uncommitted changes and/or unpushed commits.";
 
@@ -50,12 +50,24 @@ public final class Messages {
     private static final String USAGE_RESTORE = "Usage:\n  vgl restore [-f] [GLOB|*]";
     private static final String USAGE_DIFF = String.join("\n",
         "Usage:",
-        "  vgl diff [-noop] [GLOB|*] [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]",
-        "  vgl diff [-noop] COMMIT1 COMMIT2",
-        "  vgl diff [-noop] -lb BRANCH1 -lb BRANCH2",
-        "  vgl diff [-noop] -lr DIR1 -lr DIR2"
+        "  vgl diff [-noop] [-all] [GLOB|*] [-lr DIR] [-lb BRANCH|-bb BRANCH] [-rr URL] [-rb BRANCH]",
+        "  vgl diff [-noop] [-all] COMMIT1 COMMIT2",
+        "  vgl diff [-noop] [-all] -lb BRANCH1 -lb BRANCH2",
+        "  vgl diff [-noop] [-all] -lr DIR1 -lr DIR2",
+        "",
+        "Notes:",
+        "  - Default: shows up to 10 matching changes/results; use '-all' to show all"
     );
-    private static final String USAGE_LOG = "Usage:\n  vgl log [-v|-vv] [-graph] [COMMIT]";
+    private static final String USAGE_LOG = String.join("\n",
+        "Usage:",
+        "  vgl log [-v|-vv] [-all] [-graph] [COMMIT | COMMIT..COMMIT | DATE | DATE..DATE]...",
+        "",
+        "Notes:",
+        "  - Default: shows the 10 most recent commits; use '-all' to show all commits",
+        "  - DATE formats accepted: yyyy-MM-dd (day) or yyyy-MM (month)",
+        "  - Ranges use two dots: COMMIT..COMMIT or DATE..DATE",
+        "  - Multiple commits/dates may be provided and are combined"
+    );
     private static final String USAGE_MERGE = "Usage:\n  vgl merge -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH]";
     private static final String USAGE_SPLIT = "Usage:\n  vgl split -from|-into [-lr DIR] [-lb BRANCH|-bb BRANCH]";
     private static final String USAGE_CHECKOUT = "Usage:\n  vgl checkout [-f] -rr URL [-rb BRANCH]";
@@ -326,7 +338,7 @@ public final class Messages {
     }
 
     public static String pushNoRemoteConfigured() {
-        return "Error: No remote configured.";
+        return "ERROR: No remote configured.";
     }
 
     public static String pushed() {
@@ -374,7 +386,7 @@ public final class Messages {
     }
 
     public static String trackNoMatches() {
-        return "Error: No matching files.";
+        return "ERROR: No matching files.";
     }
 
     public static String trackSuccess(List<String> files) {
@@ -386,11 +398,11 @@ public final class Messages {
     }
 
     public static String trackAlreadyTracked(String file) {
-        return "Error: File is already tracked: " + file;
+        return "ERROR: File is already tracked: " + file;
     }
 
     public static String untrackNotTracked(String file) {
-        return "Error: File is not tracked: " + file;
+        return "ERROR: File is not tracked: " + file;
     }
 
     public static String trackIgnoringNested(List<String> paths) {
@@ -398,7 +410,7 @@ public final class Messages {
     }
 
     public static String untrackNestedError(List<String> paths) {
-        return "Error: Cannot untrack nested repository paths: " + String.join(" ", paths);
+        return "ERROR: Cannot untrack nested repository paths: " + String.join(" ", paths);
     }
 
     public static String trackStageFailed(String file, String problem) {

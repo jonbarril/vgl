@@ -117,6 +117,24 @@ This document captures concrete user-facing use cases, edge cases, and the expec
   - -lr and/or -lb specify a local repo and branch as a source.
   - -rr and/or -rb specify a remote repo and branch as a source.
 
+**Log command**
+- **Overview** Displays the timeline of commits for the current repo/branch.
+- **Output** In general, output is limited to the most recent ~10 commits. If more exist the list should be followed by elipsis to indicate more and a hint to use the "-all" flag to show all commits.
+  - Non-verbose: Each commit is shown on a single line: <hash> <truncated-message>. The message is truncated with elipsis as needed.
+  - Verbose (-v): Each commit is shown as: <hash> <date> <author> <full-message>. As needed the message will be indented and wrapped.
+  - Very Verbose (-vv): Each commit is shown on multiple lines with subheaders.
+    - Subheaders are indented and their info is column aligned.
+    - The full message should be wrapped and indented.
+    - Changes are similar to that shown in status, with summary counts followed by a file list, with each directory on a line and contained files on the next and subsequent lines (horizontal format, column aligned).
+    - Output format:
+      - <hash> (<long-hash>).
+      -   Date:    <yyy-mm-dd> <time>
+      -   Author:  <name>
+      -   Message: <full-message>
+      -   Changes: # Added, # Modified, # Renamed, # Deleted
+            <changed-files-list>
+
+
 **Help command**
 -Goal
   - Rewrite the vgl help output to be user-centric, predictable, and low-cognitive-load, while accurately reflecting vgl’s actual behavior.
@@ -220,6 +238,14 @@ This document captures concrete user-facing use cases, edge cases, and the expec
     - A novice to complete basic workflows without learning Git
     - An expert to understand guarantees and boundaries
     - Zero ambiguity about when files change and when they don’t
+
+
+** User messages**
+User messages should use the following prefixes:
+- ERROR: – the operation failed
+- Warning: – something unexpected but non-fatal
+- Hint: – how to fix or proceed
+- Note: – extra information, no action required
 
 **Interactive vs automated modes:**
 - **Interactive detection:** Use `Utils.isInteractive()`; honor `-Dvgl.noninteractive=true` for tests and CI to suppress prompts.

@@ -71,7 +71,7 @@ public class MergeCommand implements Command {
                 headResolves = false;
             }
             if (!headResolves) {
-                System.err.println("Error: Repository has no commits yet.");
+                System.err.println("ERROR: Repository has no commits yet.");
                 return 1;
             }
 
@@ -79,7 +79,7 @@ public class MergeCommand implements Command {
             
             // Check for dirty workspace - merge requires clean state
             if (MergeOperations.isWorkingTreeDirty(status)) {
-                System.err.println("Error: Workspace has uncommitted changes.");
+                System.err.println("ERROR: Workspace has uncommitted changes.");
                 return 1;
             }
 
@@ -87,7 +87,7 @@ public class MergeCommand implements Command {
             try {
                 originalBranch = repo.getBranch();
             } catch (Exception e) {
-                System.err.println("Error: Cannot determine current branch.");
+                System.err.println("ERROR: Cannot determine current branch.");
                 return 1;
             }
 
@@ -107,7 +107,7 @@ public class MergeCommand implements Command {
                     try {
                         git.checkout().setName(targetBranch).call();
                     } catch (Exception e) {
-                        System.err.println("Error: Cannot switch to branch: " + targetBranch);
+                        System.err.println("ERROR: Cannot switch to branch: " + targetBranch);
                         return 1;
                     }
                 }
@@ -128,7 +128,7 @@ public class MergeCommand implements Command {
                     return 1;
                 }
                 if (sourceBranch.equals(targetBranch)) {
-                    System.err.println("Error: Cannot merge a branch into itself: " + sourceBranch);
+                    System.err.println("ERROR: Cannot merge a branch into itself: " + sourceBranch);
                     return 1;
                 }
             }
@@ -141,7 +141,7 @@ public class MergeCommand implements Command {
 
             ObjectId headId = repo.resolve("HEAD");
             if (headId == null) {
-                System.err.println("Error: Cannot determine current HEAD.");
+                System.err.println("ERROR: Cannot determine current HEAD.");
                 return 1;
             }
 

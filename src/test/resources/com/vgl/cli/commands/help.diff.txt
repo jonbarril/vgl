@@ -3,10 +3,10 @@ Voodoo Gitless (TEST_VERSION) -- Git for mortals
 diff -- Compare files between any two sources
 
 Usage:
-  vgl diff [-v|-vv] [GLOB...]
-  vgl diff [-v|-vv] COMMIT [GLOB...]
-  vgl diff [-v|-vv] COMMIT1 COMMIT2 [GLOB...]
-  vgl diff [-v|-vv] [GLOB...] [-lr DIR]... [-lb BRANCH]... [-rr URL]... [-rb BRANCH]...
+  vgl diff [-v|-vv] [-all] [GLOB...]
+  vgl diff [-v|-vv] [-all] COMMIT [GLOB...]
+  vgl diff [-v|-vv] [-all] COMMIT1 COMMIT2 [GLOB...]
+  vgl diff [-v|-vv] [-all] [GLOB...] [-lr DIR]... [-lb BRANCH]... [-rr URL]... [-rb BRANCH]...
 
 How sources work:
   - 0 sources: A = workspace; B = local branch (switch state)
@@ -21,10 +21,12 @@ Sources:
 
 Examples:
   vgl diff                            Workspace vs HEAD
-  vgl diff COMMIT                      Workspace vs commit
+  vgl diff COMMIT                     Workspace vs commit
   vgl diff -lb main -lb feature       Local branch comparison
   vgl diff -rb dev                    Workspace vs remote 'dev' (remote URL from switch state)
   vgl diff -rr URL1 -rb main -rr URL2 -rb main  Remote-to-remote
 
 Notes:
+  - Default: shows up to 10 matching changes/results; prints '  ...' if more exist
+  - Use '-all' to show all matching differences
   - diff never changes files; it only reports differences

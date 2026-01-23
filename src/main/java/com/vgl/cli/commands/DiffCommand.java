@@ -38,6 +38,7 @@ import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.treewalk.CanonicalTreeParser;
 import org.eclipse.jgit.treewalk.FileTreeIterator;
+import org.eclipse.jgit.revwalk.RevCommit;
 
 /**
  * Diff between the workspace and a local/remote reference.
@@ -67,6 +68,7 @@ public class DiffCommand implements Command {
         List<String> positionals = collectPositionals(args);
 
         int verbosityLevel = args.contains("-vv") ? 2 : (args.contains("-v") ? 1 : 0);
+        boolean showAll = args.contains("-all");
 
         // Remote-to-remote diff: `diff -rr URL0 -rb B0 -rr URL1 -rb B1` compares workspaces via temp clones.
         List<String> remoteUrls = valuesAfterFlagAllAllowMissing(args, "-rr");
@@ -126,7 +128,7 @@ public class DiffCommand implements Command {
                     System.out.println("A: " + leftDisplay);
                     System.out.println("B: " + rightDisplay);
 
-                    boolean any = DiffHelper.diffWorkingTrees(leftClone, rightClone, globs, DiffHelper.computeVerbosity(args));
+                    boolean any = DiffHelper.diffWorkingTrees(leftClone, rightClone, globs, DiffHelper.computeVerbosity(args), showAll);
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -156,7 +158,7 @@ public class DiffCommand implements Command {
             System.out.println("A: " + leftDisplay);
             System.out.println("B: " + rightDisplay);
 
-            boolean any = DiffHelper.diffWorkingTrees(left, right, globs, DiffHelper.computeVerbosity(args));
+            boolean any = DiffHelper.diffWorkingTrees(left, right, globs, DiffHelper.computeVerbosity(args), showAll);
             if (!any) {
                 System.out.println("No differences.");
             }
@@ -181,7 +183,7 @@ public class DiffCommand implements Command {
                 Repository repo = git.getRepository();
                 ObjectId commitTreeId = resolveTree(repo, commit);
                 if (commitTreeId == null) {
-                    System.err.println("Error: Cannot resolve " + commit);
+                    System.err.println("ERROR: Cannot resolve " + commit);
                     return 1;
                 }
 
@@ -206,7 +208,7 @@ public class DiffCommand implements Command {
                     return 0;
                 }
 
-                boolean any = DiffHelper.diffWorkingToTree(repo, workingTree, commitTreeId, globs, dVerb);
+                boolean any = DiffHelper.diffWorkingToTree(repo, workingTree, commitTreeId, globs, dVerb, showAll);
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -224,15 +226,16 @@ public class DiffCommand implements Command {
                 ObjectId t1 = resolveTree(repo, commit1);
                 ObjectId t2 = resolveTree(repo, commit2);
                 if (t1 == null || t2 == null) {
-                    System.err.println("Error: Cannot resolve diff endpoints.");
+                    System.err.println("ERROR: Cannot resolve diff endpoints.");
                     return 1;
                 }
+                // Proceed to tree diff printing (respecting verbosity flags)
                 if (noop) {
                     int changed = countTreeDiff(repo, t1, t2, globs);
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = DiffHelper.diffTrees(repo, t1, t2, globs, DiffHelper.computeVerbosity(args));
+                boolean any = DiffHelper.diffTrees(repo, t1, t2, globs, DiffHelper.computeVerbosity(args), showAll);
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -250,15 +253,16 @@ public class DiffCommand implements Command {
                 ObjectId t1 = resolveTree(repo, "refs/heads/" + b1);
                 ObjectId t2 = resolveTree(repo, "refs/heads/" + b2);
                 if (t1 == null || t2 == null) {
-                    System.err.println("Error: Cannot resolve diff endpoints.");
+                    System.err.println("ERROR: Cannot resolve diff endpoints.");
                     return 1;
                 }
+                // Proceed to tree diff printing (respecting verbosity flags)
                 if (noop) {
                     int changed = countTreeDiff(repo, t1, t2, globs);
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = DiffHelper.diffTrees(repo, t1, t2, globs, DiffHelper.computeVerbosity(args));
+                boolean any = DiffHelper.diffTrees(repo, t1, t2, globs, DiffHelper.computeVerbosity(args), showAll);
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -274,7 +278,7 @@ public class DiffCommand implements Command {
                 ObjectId t1 = resolveTree(repo, "HEAD");
                 ObjectId t2 = resolveTree(repo, "refs/heads/" + b);
                 if (t1 == null || t2 == null) {
-                    System.err.println("Error: Cannot resolve diff endpoints.");
+                    System.err.println("ERROR: Cannot resolve diff endpoints.");
                     return 1;
                 }
                 if (noop) {
@@ -282,7 +286,7 @@ public class DiffCommand implements Command {
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = DiffHelper.diffTrees(repo, t1, t2, globs, DiffHelper.computeVerbosity(args));
+                boolean any = DiffHelper.diffTrees(repo, t1, t2, globs, DiffHelper.computeVerbosity(args), showAll);
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -366,15 +370,16 @@ public class DiffCommand implements Command {
                 oldTreeId = resolveTree(repo, "refs/heads/" + localBranch);
                 newTreeId = resolveTree(repo, "refs/remotes/origin/" + remoteBranch);
                 if (oldTreeId == null || newTreeId == null) {
-                    System.err.println("Error: Cannot resolve diff endpoints.");
+                    System.err.println("ERROR: Cannot resolve diff endpoints.");
                     return 1;
                 }
+                // Proceed to tree diff printing (respecting verbosity flags)
                 if (noop) {
                     int changed = countTreeDiff(repo, oldTreeId, newTreeId, globs);
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = DiffHelper.diffTrees(repo, oldTreeId, newTreeId, globs, dVerb);
+                boolean any = DiffHelper.diffTrees(repo, oldTreeId, newTreeId, globs, dVerb, showAll);
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -387,15 +392,16 @@ public class DiffCommand implements Command {
                     }
                 oldTreeId = resolveTree(repo, "refs/remotes/origin/" + remoteBranch);
                 if (oldTreeId == null) {
-                    System.err.println("Error: Cannot resolve origin/" + remoteBranch);
+                    System.err.println("ERROR: Cannot resolve origin/" + remoteBranch);
                     return 1;
                 }
+                // Proceed to tree diff printing (respecting verbosity flags)
                 if (noop) {
                     int changed = countTreeToWorkingDiff(repo, oldTreeId, workingTree, globs);
                     System.out.println(Messages.diffDryRunSummary(changed));
                     return 0;
                 }
-                boolean any = DiffHelper.diffTreeToWorking(repo, oldTreeId, workingTree, globs, dVerb);
+                boolean any = DiffHelper.diffTreeToWorking(repo, oldTreeId, workingTree, globs, dVerb, showAll);
                 if (!any) {
                     System.out.println("No differences.");
                 }
@@ -409,16 +415,17 @@ public class DiffCommand implements Command {
             String ref = hasLocalBranch ? ("refs/heads/" + localBranch) : ("refs/heads/" + switchLocalBranch);
             oldTreeId = resolveTree(repo, ref);
             if (oldTreeId == null) {
-                System.err.println("Error: Cannot resolve " + ref);
+                System.err.println("ERROR: Cannot resolve " + ref);
                 return 1;
             }
-
+            // Proceed to tree diff printing (respecting verbosity flags)
+            
             if (noop) {
                 int changed = countTreeToWorkingDiff(repo, oldTreeId, workingTree, globs);
                 System.out.println(Messages.diffDryRunSummary(changed));
                 return 0;
             }
-            boolean any = DiffHelper.diffTreeToWorking(repo, oldTreeId, workingTree, globs, dVerb);
+            boolean any = DiffHelper.diffTreeToWorking(repo, oldTreeId, workingTree, globs, dVerb, showAll);
             if (!any) {
                 System.out.println("No differences.");
             }
@@ -500,6 +507,8 @@ public class DiffCommand implements Command {
             // best-effort
         }
     }
+
+    
 
     private static int countTreeDiff(Repository repo, ObjectId oldTreeId, ObjectId newTreeId, List<String> globs) throws Exception {
         try (ObjectReader reader = repo.newObjectReader()) {

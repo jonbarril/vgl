@@ -89,7 +89,7 @@ public class CopyCommand implements Command {
         if (Files.exists(destDir) && Files.isDirectory(destDir)) {
             try (var stream = Files.list(destDir)) {
                 if (stream.findAny().isPresent()) {
-                    System.err.println("Error: Target directory is not empty: " + Utils.formatPath(destDir));
+                    System.err.println("ERROR: Target directory is not empty: " + Utils.formatPath(destDir));
                     return 1;
                 }
             }

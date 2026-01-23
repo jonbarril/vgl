@@ -314,4 +314,6 @@ class DiffCommandTest {
             assertThat(io.stdout()).contains("+ two");
         }
     }
+
+    
 }

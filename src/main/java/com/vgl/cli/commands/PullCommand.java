@@ -69,12 +69,12 @@ public class PullCommand implements Command {
             org.eclipse.jgit.lib.ObjectId headId = repo.resolve("HEAD");
 
             if (remoteId == null) {
-                System.err.println("Error: Cannot resolve remote branch: " + remoteBranch);
+                System.err.println("ERROR: Cannot resolve remote branch: " + remoteBranch);
                 return 1;
             }
 
             if (headId == null) {
-                System.err.println("Error: Repository has no commits yet.");
+                System.err.println("ERROR: Repository has no commits yet.");
                 return 1;
             }
 
